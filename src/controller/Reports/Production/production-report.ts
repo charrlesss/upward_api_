@@ -179,4 +179,18 @@ ProductionReports.post("/export-excel-production-report", async (req, res) => {
   });
 });
 
+ProductionReports.get("/users", async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const data: Array<any> = await prisma.$queryRawUnsafe(`SELECT * FROM  users;`);
+    res.send({
+      success: true,
+      message: "Successfully get production report ",
+      data,
+    });
+  } catch (err: any) {
+    res.send({ message: "SERVER ERROR", success: false, report: [] });
+  }
+});
+
 export default ProductionReports;

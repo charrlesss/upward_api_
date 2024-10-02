@@ -6,7 +6,6 @@ import Reports from "./Reports";
 import Template from "./Template";
 import Dashboard from "./dashboard";
 import MasterAdminUser from "./MasterAdmin/user";
-import os from "os";
 import { getPdcPolicyIdAndCLientId } from "../model/Task/Accounting/pdc.model";
 const router = express.Router();
 
@@ -25,21 +24,17 @@ router.get("/get-user-details", async (req, res) => {
       : "upward_insurance_umis_new";
 
 
-  res.send(`[DATABASE]
-SERVER:192.168.100.220
-USERNAME:root
-PASSWORD:charles
-DATABASE:${DATABASE}
-DEPARTMENT:${userDetails.department}
-ACCESS:${userDetails.userAccess}
-IS_ADMIN:${userDetails.is_admin === false ? "NO" : "YES"}
-ACCESS_TOKEN:${userDetails.ACCESS_TOKEN}
-REFRESH_TOKEN:${userDetails.REFRESH_TOKEN}
-up_ac_login: ${userDetails.up_ac_login}
-up_dpm_login:${userDetails.up_dpm_login}
-up_ima_login:${userDetails.up_ima_login}
-up_at_login: ${userDetails.up_at_login}
-up_rt_login: ${userDetails.up_rt_login}
+  res.send(`
+        DEPARTMENT:${userDetails.department}
+        ACCESS:${userDetails.userAccess}
+        IS_ADMIN:${userDetails.is_admin === false ? "NO" : "YES"}
+        ACCESS_TOKEN:${userDetails.ACCESS_TOKEN}
+        REFRESH_TOKEN:${userDetails.REFRESH_TOKEN}
+        up_ac_login: ${userDetails.up_ac_login}
+        up_dpm_login:${userDetails.up_dpm_login}
+        up_ima_login:${userDetails.up_ima_login}
+        up_at_login: ${userDetails.up_at_login}
+        up_rt_login: ${userDetails.up_rt_login}
     `);
 });
 
