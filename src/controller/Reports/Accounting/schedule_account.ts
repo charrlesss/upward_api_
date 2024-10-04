@@ -100,7 +100,6 @@ ScheduleAccounts.get("/chart-schedule-account-account-desk", async (req, res) =>
     });
   }
 });
-
 ScheduleAccounts.get("/schedule-accounts", async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
@@ -124,7 +123,6 @@ ScheduleAccounts.get("/schedule-accounts", async (req, res) => {
     });
   }
 });
-
 ScheduleAccounts.get("/get-sub-account-acronym", async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
@@ -146,7 +144,6 @@ ScheduleAccounts.get("/get-sub-account-acronym", async (req, res) => {
     });
   }
 });
-
 ScheduleAccounts.post("/schedule-account-report", async (req, res) => {
   try {
     console.log(req.body);
@@ -388,7 +385,6 @@ ScheduleAccounts.post("/schedule-account-report", async (req, res) => {
     });
   }
 });
-
 ScheduleAccounts.post("/schedule-account-report-desk", async (req, res) => {
   try {
     const id_entry = `
@@ -525,6 +521,22 @@ FROM
               HAVING (qryJournal.GL_Acct='${account.trim()}') ${subsiText.toUpperCase() === 'ALL' ? "" : ` AND (qryJournal.Sub_Acct='${subsiText}')) `} 
               ORDER BY  ${parseInt(sort) === 0 ? "qryJournal.mSub_Acct": "qryJournal.Sub_Acct"}  ${parseInt(order) === 0 ? "ASC" : "DESC"}
         `
+      }else{
+        qry = `
+        SELECT 
+              qryJournal.GL_Acct, 
+              qryJournal.Sub_Acct, 
+              qryJournal.mSub_Acct,
+              Sum(qryJournal.mDebit) AS Debit, 
+              Sum(qryJournal.mCredit) AS Credit, 
+              IF(SUBSTRING(GL_Acct, 1, 1) <= '3' OR SUBSTRING(GL_Acct, 1, 1) = '7', 
+              SUM(qryJournal.mDebit) - SUM(qryJournal.mCredit), 
+              SUM(qryJournal.mCredit) - SUM(qryJournal.mDebit)) AS Balance
+              From (${_qryJournal}) QryJournal 
+              WHERE (((qryJournal.Source_Type) <>'BF' And (qryJournal.Source_Type) <>'BFD' And (qryJournal.Source_Type) <>'BFS') AND ((qryJournal.Date_Entry) <='${dateFormatted}')) 
+              GROUP BY qryJournal.GL_Acct, qryJournal.Sub_Acct, qryJournal.mSub_Acct 
+              ORDER BY  ${parseInt(sort) === 0 ? "qryJournal.mSub_Acct": "qryJournal.Sub_Acct"}  ${parseInt(order) === 0 ? "ASC" : "DESC"}
+        `
       }
     }else if(parseInt(subsi) === 1){
       if(subsiText.trim().toUpperCase() !== 'ALL'){  
@@ -648,7 +660,7 @@ FROM
         WHERE qryJournal.Date_Entry <='${dateFormatted}' 
         GROUP BY Account.AccountCode, qryJournal.Sub_Acct, qryJournal.GL_Acct, qryJournal.ID_No 
         ) a
-         where Balance <> 0 AND a.GL_Acct='${account.trim()}' AND a.mID = '${insurance}'
+         where Balance <> 0 ${report === "GL Account (Detailed)" ? ` AND a.GL_Acct='${account.trim()}' ` :``} AND a.mID = '${insurance}'
         `
       }else{
          qry =   `
@@ -669,7 +681,7 @@ FROM
         WHERE qryJournal.Date_Entry <='${dateFormatted}' 
         GROUP BY Account.AccountCode, qryJournal.Sub_Acct, qryJournal.GL_Acct, qryJournal.ID_No 
         ) a
-         where Balance <> 0 AND a.GL_Acct='${account.trim()}'
+         where Balance <> 0 ${report === "GL Account (Detailed)" ? ` AND a.GL_Acct='${account.trim()}' ` :``}
         `
       }
     }
@@ -690,7 +702,6 @@ FROM
     });
   }
 });
-
 function FormatGroupArray(data: Array<any>) {
   const groupedArray = data.reduce((acc: any, obj: any) => {
     const key = obj.GL_Acct;
@@ -750,16 +761,6 @@ function FormatGroupArray(data: Array<any>) {
   const rr = result.flat();
   return rr;
 }
+    
 
 export default ScheduleAccounts;
-
-//  Group_Header,
-//  Header,
-// a.GL_Acct,
-// 'mShort',
-// Sub_Acct,
-// 'mID',
-//  ID_No,
-//  Debit,
-//  Credit,
-//  Balance
