@@ -118,15 +118,14 @@ GeneralLedger.post("/general-ledger-report", async (req, res) => {
 GeneralLedger.post("/general-ledger-report-desk", async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
+    console.log(req.body)
     const qry = GeneralLedgerReport(
       req.body.dateFormat,
       new Date(req.body.date),
       req.body.sub_acct,
-      req.body.format,
+      parseFloat(req.body.format),
       req.body.closing
     );
-    const qrySum = GeneralLedgerSumm(new Date(), "Monthly", 0, 1);
 
     console.log(req.body);
     const data = await prisma.$queryRawUnsafe(qry);

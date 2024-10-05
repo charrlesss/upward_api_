@@ -253,8 +253,8 @@ IncomeStatement.post("/income-statement-report-desk", async (req, res) => {
 
     let sql = "";
 
-    if (req.body.format === 0) {
-      const fs = FinancialStatement(req.body.date, "ALL", "Monthly");
+    if (parseInt(req.body.format) === 0) {
+      const fs = FinancialStatement(req.body.date, req.body.sub_acct.trim(), req.body.dateFormat);
       const tmp1 = `
       SELECT
         *,
@@ -292,7 +292,7 @@ IncomeStatement.post("/income-statement-report-desk", async (req, res) => {
           tmp1.Code;
       `;
     } else {
-      const tmp = FinancialStatementSumm(req.body.date, "Monthly");
+      const tmp = FinancialStatementSumm(req.body.date, req.body.dateFormat);
       const tmp1 = `
       SELECT
           *,

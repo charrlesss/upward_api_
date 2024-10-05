@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import express from "express";
-import { FinancialStatement } from "../../../model/db/stored-procedured";
+import { FinancialStatement, FinancialStatementSumm } from "../../../model/db/stored-procedured";
 import { PrismaList } from "../../../model/connection";
 const BalanceSheetLong = express.Router();
 const { CustomPrismaClient } = PrismaList();
@@ -9,7 +9,7 @@ BalanceSheetLong.post("/balance-sheet-long-report", async (req, res) => {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   let qry = "";
-  if (req.body.format === 0) {
+  if (parseInt(req.body.format) === 0) {
     const tmp = `
     select 
         tmp.Code ,
@@ -204,8 +204,8 @@ BalanceSheetLong.post("/balance-sheet-long-report", async (req, res) => {
         format(ifnull(SUM(PrevCredit) - SUM(PrevDebit),0),2),
         format(ifnull(SUM(CurrDebit),0),2),
         format(ifnull(SUM(CurrCredit),0),2),
-        format(ifnull(SUM(CurrCredit) - SUM(CurrDebit) ,0)),
-        format(ifnull((SUM(PrevCredit) - SUM(PrevDebit)) + (SUM(CurrCredit) - SUM(CurrDebit)) ,0))
+        format(ifnull(SUM(CurrCredit) - SUM(CurrDebit) ,0),2),
+        format(ifnull((SUM(PrevCredit) - SUM(PrevDebit)) + (SUM(CurrCredit) - SUM(CurrDebit)) ,0),2)
       FROM (${tmp2}) tmp2`;
     qry = `
     SELECT  
@@ -499,7 +499,7 @@ BalanceSheetLong.post("/balance-sheet-long-report-desk", async (req, res) => {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   let qry = "";
-  if (req.body.format === 0) {
+  if (parseInt(req.body.format) === 0) {
     const tmp = `
     select 
         tmp.Code ,
@@ -611,109 +611,108 @@ BalanceSheetLong.post("/balance-sheet-long-report-desk", async (req, res) => {
   } else {
     const tmp = `
     select
-    Code , 
+    SACode , 
+    SubAccount  , 
+    Code  , 
     Title , 
-    PrevDebit , 
-    PrevCredit , 
-    PrevBalance , 
-    CurrDebit , 
-    CurrCredit , 
-    CurrBalance , 
-    BalDebit , 
-    BalCredit , 
-    TotalBalance
-    from (${FinancialStatement(
+    Balance , 
+    TotalBalance 
+    from (${FinancialStatementSumm(
       req.body.date,
-      req.body.sub_acct,
       req.body.dateFormat
     )}) tmp
   `;
     const tmp1 = `
     SELECT 
-      tmp.Code, 
-      tmp.Title, 
-      LEFT(tmp.Code, 1) AS H1, 
-      LEFT(tmp.Code, 4) AS H2, 
-      IF(CAST(LEFT(tmp.Code, 1) AS SIGNED) >= 4, PrevCredit-PrevDebit, PrevBalance) AS PrevBalance, 
-      CurrDebit, 
-      CurrCredit, 
-      IF(CAST(LEFT(tmp.Code, 1) AS SIGNED) >= 4, CurrCredit-CurrDebit, CurrBalance) AS CurrBalance, 
-      IF(CAST(LEFT(tmp.Code, 1) AS SIGNED) >= 4, (PrevCredit-PrevDebit)+(CurrCredit-CurrDebit), TotalBalance) AS TotalBalance
+      SUBSTRING(tmp.Code, 1, 1) AS H1, 
+      SUBSTRING(tmp.Code, 1, 4) AS H2, 
+      SACode, 
+      SubAccount, 
+      Code, 
+      Title, 
+      IF(CAST(SUBSTRING(tmp.Code, 1, 1) AS SIGNED) >= 4, -Balance, Balance) AS Balance, 
+      IF(CAST(SUBSTRING(tmp.Code, 1, 1) AS SIGNED) >= 4, -TotalBalance, TotalBalance) AS TotalBalance
       FROM (${tmp}) tmp
-    WHERE LEFT(tmp.Code, 1) <= '5'`;
+    WHERE CAST(SUBSTRING(tmp.Code, 1, 1) AS SIGNED) <= 5`;
+
+
+
+
     const FinalTemp = `
     SELECT 
-    LEFT(tmp1.Code, 1) AS H1, 
-    tmp1.H2, 
-    ca.Acct_Title AS HT2, 
-    tmp1.Code AS H3, 
-    tmp1.Title AS HT3, 
-    PrevBalance, 
-    CurrDebit, 
-    CurrCredit, 
-    CurrBalance, 
-    TotalBalance
-    FROM (${tmp1}) tmp1 LEFT JOIN chart_account  ca ON tmp1.H2 = ca.Acct_Code
+        tmp1.H1, 
+        tmp1.H2, 
+        ca.Acct_Title AS HT2, 
+        tmp1.Code AS H3, 
+        tmp1.Title AS HT3, 
+        tmp1.SACode, 
+        tmp1.SubAccount, 
+        tmp1.Balance, 
+        tmp1.TotalBalance
+    FROM (${tmp1}) tmp1
+    LEFT JOIN chart_account ca ON tmp1.H2 = ca.Acct_Code
     `;
+
+    
     const Final = `
-      SELECT 
-        H1, 
+    SELECT
+       FinalTemp.H1, 
         ca.Acct_Title AS HT1, 
-        H2, 
-        HT2, 
-        H3, 
-        HT3, 
-        format(ifnull(PrevBalance,0),2) as PrevBalance,
-        format(ifnull(CurrDebit,0),2) as CurrDebit,
-        format(ifnull(CurrCredit,0),2) as CurrCredit,
-        format(ifnull(CurrBalance,0),2) as CurrBalance,
-        format(ifnull(TotalBalance,0),2) as TotalBalance
-      FROM (${FinalTemp}) FinalTemp LEFT JOIN chart_account ca ON FinalTemp.H1 = ca.Acct_Code
+        FinalTemp.H2, 
+        FinalTemp.HT2, 
+        FinalTemp.H3, 
+        FinalTemp.HT3, 
+        FinalTemp.SACode, 
+        FinalTemp.SubAccount, 
+        FinalTemp.Balance, 
+        FinalTemp.TotalBalance
+      FROM (${FinalTemp}) FinalTemp 
+      LEFT JOIN chart_account ca ON FinalTemp.H1 = ca.Acct_Code
       `;
+
+
+
     const tmp2 = `
       SELECT 
-        PrevDebit, 
-        PrevCredit, 
-        IF(LEFT(tmp.Code, 1) = '6', PrevCredit-PrevDebit, PrevBalance) AS PrevBalance, 
-        CurrDebit, 
-        CurrCredit, 
-        IF(LEFT(tmp.Code, 1) = '6', CurrCredit-CurrDebit, CurrBalance) AS CurrBalance, 
-        IF(LEFT(Code, 1) = '6', (PrevCredit-PrevDebit)+(CurrCredit-CurrDebit), TotalBalance) AS TotalBalance
+        '5' AS H1, 
+        'STOCKHOLDERS EQUITY' AS HT1, 
+        '5.50' AS H2, 
+        'RESULT OF OPERATION' AS HT2, 
+        '5.50.01' AS H3, 
+        'Net Income / (Loss)' AS HT3, 
+        SACode, 
+        SubAccount, 
+        -Balance AS Balance, 
+        -TotalBalance AS TotalBalance
       FROM (${tmp}) tmp
-      WHERE LEFT(tmp.Code, 1) >= '6'`;
+      WHERE CAST(SUBSTRING(tmp.Code, 1, 1) AS SIGNED) >= 6`;
+
+
+
     const Finals = `
       (${Final})
       union all
       SELECT 
-        '5',
-        'STOCKHOLDERS EQUITY',
-        '5.50',
-        'RESULT OF OPERATION', 
-        '5.50.01', 
-        'Net Income / (Loss)', 
-        format(ifnull(SUM(PrevCredit) - SUM(PrevDebit),0),2),
-        format(ifnull(SUM(CurrDebit),0),2),
-        format(ifnull(SUM(CurrCredit),0),2),
-        format(ifnull(SUM(CurrCredit) - SUM(CurrDebit) ,0)),
-        format(ifnull((SUM(PrevCredit) - SUM(PrevDebit)) + (SUM(CurrCredit) - SUM(CurrDebit)) ,0))
-      FROM (${tmp2}) tmp2`;
+         H1, 
+        'STOCKHOLDERS EQUITY' AS HT1, 
+        '5.50' AS H2, 
+        'RESULT OF OPERATION' AS HT2, 
+        '5.50.01' AS H3, 
+        'Net Income / (Loss)' AS HT3, 
+        SACode, 
+        SubAccount, 
+        SUM(Balance) AS Balance, 
+        SUM(TotalBalance) AS TotalBalance
+      FROM (${tmp2}) tmp2
+      GROUP BY H1, HT1, H2, HT2, H3, HT3, SACode, SubAccount
+`;
     qry = `
     SELECT  
-      H1,
-      HT1,
-      H2,
-      HT2,
-      H3,
-      HT3,
-      format(ifnull(PrevBalance,0),0) as PrevBalance,
-      format(ifnull(CurrDebit,0),0) as CurrDebit,
-      format(ifnull(CurrCredit,0),0) as CurrCredit,
-      format(ifnull(CurrBalance,0),0) as CurrBalance,
-      format(ifnull(TotalBalance,0),0) as TotalBalance,
-      CASE WHEN CAST(H1 AS UNSIGNED) < 4 THEN 'ASSETS' ELSE 'LIABILITIES' END AS H 
+      IF(CAST(H1 AS SIGNED) < 4, 'TOTAL ASSETS', 'TOTAL LIABILITIES AND CAPITAL') AS H, 
+      Final.*
     FROM (${Finals}) Final`;
   }
-
+  console.log(qry)
   const data: any = await prisma.$queryRawUnsafe(qry);
 
   try {
@@ -731,6 +730,7 @@ BalanceSheetLong.post("/balance-sheet-long-report-desk", async (req, res) => {
     });
   }
 });
+
 
 
 

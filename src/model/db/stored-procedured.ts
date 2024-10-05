@@ -121,6 +121,7 @@ export function FinancialStatementSumm(date: any, dateFormat: string) {
         SUM(IFNULL(Credit, 0)) as Credit, 
         SUM(IFNULL(Debit, 0)) - SUM(IFNULL(Credit, 0)) as Balance
         FROM journal
+        WHERE Source_Type NOT IN ('AB','BF','BFS','BFD')
         AND str_to_date(Date_Entry,'%Y-%m-%d') < '${DateFrom}'
         GROUP BY GL_Acct
         `;

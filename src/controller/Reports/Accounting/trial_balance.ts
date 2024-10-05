@@ -1,5 +1,5 @@
 import express from "express";
-import { FinancialStatement } from "../../../model/db/stored-procedured";
+import { FinancialStatement, FinancialStatementSumm } from "../../../model/db/stored-procedured";
 import { PrismaList } from "../../../model/connection";
 
 const TrialBalance = express.Router();
@@ -34,13 +34,38 @@ TrialBalance.post("/trial-balance-report", async (req, res) => {
 TrialBalance.post("/trial-balance-report-desk", async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-    const qry = FinancialStatement(
-      req.body.date,
-      req.body.sub_acct,
-      req.body.dateFormat
-    );
+    let qry = ""
+    if(parseInt(req.body.format) === 0){
+      qry = FinancialStatement(
+        req.body.date,
+        req.body.sub_acct,
+        req.body.dateFormat
+      );
+    }else{
+      qry =  FinancialStatementSumm(req.body.date,req.body.dateFormat)
+    }
+    console.log(qry );
+
     const data = await prisma.$queryRawUnsafe(qry);
-    console.log(qry ,'==========');
+    res.send({
+      message: "Successfully get Report",
+      success: false,
+      data,
+    });
+  } catch (err: any) {
+    res.send({
+      message: err.message,
+      success: false,
+      report: [],
+    });
+  }
+});
+
+TrialBalance.get("/get-sub-account-trial", async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  
+    const data = await prisma.$queryRawUnsafe(`select Acronym as Sub_Acct from sub_account  `);
     res.send({
       message: "Successfully get Report",
       success: false,

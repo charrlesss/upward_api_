@@ -275,3 +275,51 @@ FROM
   return qry;
 }
 
+
+export function xID_Sub_Entry(){
+
+    return `
+    select * from (
+        SELECT 
+            id_entry.IDNo,
+            id_entry.cID_No,
+            b.ShortName,
+            b.Acronym AS Sub_Acct,
+            b.Sub_Acct AS sub_id
+        FROM
+            (SELECT 
+                a.entry_client_id as IDNo,
+                    sub_account,
+                    IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                        AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No
+            FROM
+                entry_client a UNION ALL SELECT 
+                a.entry_supplier_id as IDNo,
+                    sub_account,
+                    IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                        AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No
+            FROM
+                entry_supplier a UNION ALL SELECT 
+                a.entry_employee_id as IDNo,
+                    sub_account,
+                    IF(a.lastname IS NOT NULL
+                        AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No
+            FROM
+                entry_employee a UNION ALL SELECT 
+                a.entry_fixed_assets_id as IDNo, sub_account, a.fullname AS cID_No
+            FROM
+                entry_fixed_assets a UNION ALL SELECT 
+                a.entry_others_id as IDNo, sub_account, a.description AS cID_No
+            FROM
+                entry_others a UNION ALL SELECT 
+                a.entry_agent_id as IDNo,
+                    sub_account,
+                    IF(a.lastname IS NOT NULL
+                        AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No
+            FROM
+                entry_agent a) id_entry
+                LEFT JOIN
+            sub_account b ON id_entry.sub_account = b.Sub_Acct
+        ) xID_Sub_Entry
+    `
+}
