@@ -288,10 +288,12 @@ DepositedCollection.post(
 
       const { queryDeposit, queryJournal } = DepositedCollections(
         req.body.dateFormat,
-        req.body.sub_acct.toUpperCase(),
-        new Date(req.body.date),
+        req.body.sub_acct,
+        req.body.date,
         "Ascending"
       );
+      console.log(queryDeposit)
+      console.log(queryJournal)
 
       const data: any = await prisma.$queryRawUnsafe(queryDeposit);
       const summary: any = await prisma.$queryRawUnsafe(queryJournal);

@@ -14,8 +14,8 @@ AbstractCollection.post("/abstract-collection-report", async (req, res) => {
       new Date(req.body.date),
       "Ascending"
     );
-    console.log(queryCollection , "=============== sdasd");
-    console.log(queryJournal , "=============== dddd");
+    console.log(queryCollection, "=============== sdasd");
+    console.log(queryJournal, "=============== dddd");
 
     const dataCollection: any = await prisma.$queryRawUnsafe(queryCollection);
     const dataJournal: any = await prisma.$queryRawUnsafe(queryJournal);
@@ -284,19 +284,20 @@ AbstractCollection.post("/abstract-collection-report", async (req, res) => {
 AbstractCollection.post("/abstract-collection-report-desk", async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-    console.log(req.cookies["up-dpm-login"]);
-
     const { queryCollection, queryJournal } = AbstractCollections(
       req.body.dateFormat,
-      req.body.sub_acct.toUpperCase(),
-      new Date(req.body.date),
-      "Ascending"
+      req.body.sub_acct,
+      req.body.date,
+      req.body.order
     );
+    console.log(req.body)
 
 
     const data: any = await prisma.$queryRawUnsafe(queryCollection);
     const summary: any = await prisma.$queryRawUnsafe(queryJournal);
+    console.log(data)
     console.log(summary)
+
     res.send({
       message: "Successfully Get Report",
       success: true,
@@ -309,8 +310,50 @@ AbstractCollection.post("/abstract-collection-report-desk", async (req, res) => 
       message: err.message,
       success: false,
       report: [],
+      summary:[]
     });
   }
 });
 
+AbstractCollection.get('/get-report-policy-types', async (req, res) => {
+  try {
+
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const data = await prisma.$queryRawUnsafe(`select 'Bonds' union 
+    select distinct PolicyType from Policy where PolicyType not in (select SublineName from subline where line = 'Bonds') group by PolicyType having PolicyType <> ''`)
+
+    res.send({
+      message: "SuccessFully Get Policy Types",
+      success: true,
+      data,
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({
+      message: err.message,
+      success: false,
+      data: [],
+    });
+  }
+})
+
+AbstractCollection.get('/get-report-policy-accounts', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const data = await prisma.$queryRawUnsafe(`select Account from Policy_Account`)
+
+    res.send({
+      message: "SuccessFully Get Policy Accounts",
+      success: true,
+      data,
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({
+      message: err.message,
+      success: false,
+      data: [],
+    });
+  }
+})
 export default AbstractCollection;

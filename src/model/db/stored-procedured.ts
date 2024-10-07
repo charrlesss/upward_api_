@@ -6,14 +6,30 @@ import {
   subDays,
   lastDayOfMonth,
 } from "date-fns";
+
 import { clients_view, qryJournal } from "./views";
+
+export function parseDate(vbDate: any) {
+  console.log(vbDate)
+  let datePart = '';
+
+  if (vbDate.includes(' ')) {
+    datePart = vbDate.split(' ');
+  } else {
+    datePart = vbDate
+  }
+  const [day, month, year] = datePart.split('/');
+
+  // Create a new Date object (ensure to create it in local time)
+  const localDate = new Date(`${year}-${month}-${day}`);
+  return localDate;
+}
 export function FinancialStatement(
   date: any,
   sub_acct: string,
   dateFormat: string
 ) {
-  const dateFrom = new Date(date);
-
+  const dateFrom = parseDate(date);
   let currText = "";
   let prevText = "";
   let DateFrom = "";
@@ -101,7 +117,7 @@ export function FinancialStatement(
     `;
 }
 export function FinancialStatementSumm(date: any, dateFormat: string) {
-  const dateFrom = new Date(date);
+  const dateFrom = parseDate(date);
   let DateFrom = "";
   let DateTo = "";
 
@@ -379,11 +395,10 @@ export function id_entry(WhereIDEntry: string) {
         aa.tin_no
     FROM
           entry_supplier aa) id_entry
-        ${
-          WhereIDEntry === null || WhereIDEntry === ""
-            ? " LIMIT 100 "
-            : ` ${WhereIDEntry} `
-        }
+        ${WhereIDEntry === null || WhereIDEntry === ""
+      ? " LIMIT 100 "
+      : ` ${WhereIDEntry} `
+    }
     `;
 }
 export function production_renewal_notice() {
@@ -511,11 +526,10 @@ export function ProductionReport(
     									line = 'Bonds')`;
         }
       }
-      whr_query = `${whr_query} ${
-        IsFinanced === 0
-          ? ""
-          : ` AND ((VPolicy.Mortgagee LIKE '%CASH MANAGEMENT%') OR (VPolicy.Mortgagee LIKE '%CREDIT MASTER%') OR (VPolicy.Mortgagee LIKE '%CAMFIN%'))`
-      }`;
+      whr_query = `${whr_query} ${IsFinanced === 0
+        ? ""
+        : ` AND ((VPolicy.Mortgagee LIKE '%CASH MANAGEMENT%') OR (VPolicy.Mortgagee LIKE '%CREDIT MASTER%') OR (VPolicy.Mortgagee LIKE '%CAMFIN%'))`
+        }`;
     }
 
     if (PolicyType !== "Bonds") {
@@ -548,11 +562,10 @@ export function ProductionReport(
           whr_query = ` WHERE date(IFNULL(BPolicy.BidDate, IFNULL(VPolicy.DateFrom, IFNULL(MPolicy.DateFrom, IFNULL(PAPolicy.PeriodFrom, IFNULL(CGLPolicy.PeriodFrom, IFNULL(MSPRPolicy.PeriodFrom, FPolicy.DateFrom))))))) <= date('${DateTo}') AND date(IFNULL(BPolicy.BidDate, IFNULL(VPolicy.DateFrom, IFNULL(MPolicy.DateFrom, IFNULL(PAPolicy.PeriodFrom, IFNULL(CGLPolicy.PeriodFrom, IFNULL(MSPRPolicy.PeriodFrom, FPolicy.DateFrom))))))) >= date('${DateFrom}') AND Policy.Account = '${Account_}' AND Policy.PolicyType = '${PolicyType}'`;
         }
       }
-      whr_query = `${whr_query} ${
-        IsFinanced === 0
-          ? ""
-          : ` AND ((VPolicy.Mortgagee LIKE '%CASH MANAGEMENT%') OR (VPolicy.Mortgagee LIKE '%CREDIT MASTER%') OR (VPolicy.Mortgagee LIKE '%CAMFIN%')`
-      }`;
+      whr_query = `${whr_query} ${IsFinanced === 0
+        ? ""
+        : ` AND ((VPolicy.Mortgagee LIKE '%CASH MANAGEMENT%') OR (VPolicy.Mortgagee LIKE '%CREDIT MASTER%') OR (VPolicy.Mortgagee LIKE '%CAMFIN%')`
+        }`;
     }
   }
 
@@ -758,163 +771,329 @@ export function TemplateRenewalNotice(PolicyType: string, PolicyNo: string) {
   select_query = `${select_query} WHERE Policy.PolicyNo ='${PolicyNo}'`;
   return select_query;
 }
-export function GeneralLedgerReport(
-  Report: string,
-  DateEntry: any,
-  SubAcct: string,
-  TransSumm: number,
-  PrePost: number
+export function _GeneralLedgerReport(
+  _date: any,
+  sub_acct: string,
+  report: string,
+  transSumm: number = 0,
+  prepost: number
 ) {
-  let PrevQry = "";
-  let PrevWhr = "";
-  let CurrQry = "";
-  let CurrWhr = "";
-  let FinalQry = "";
-  let DateFrom = new Date(DateEntry);
-  let DateTo = new Date(DateEntry);
-  let PPClosing = "";
+  const date = parseDate(_date);
+  const DateFrom = format(new Date(date), "yyyy-MM-01");
+  const DateTo = format(lastDayOfMonth(new Date(date)), 'yyyy-MM-dd'); // Add 1 month then subtract 1 day
+  const PPClosing = prepost === 0 ? "" : " Explanation <> 'Closing of Nominal Accounts' AND "
+  const dateMinusOne = subDays(new Date(date), 1);
+  const formattedDateMinusOne = format(dateMinusOne, 'yyyy-MM-dd');
 
-  DateFrom = new Date(DateFrom.getFullYear(), DateFrom.getMonth(), 1);
-  DateTo = subDays(addMonths(DateFrom, 1), 1); // Add 1 month then subtract 1 day
+  console.log(_date)
+  console.log(DateFrom)
+  console.log(DateTo)
+  console.log(formattedDateMinusOne)
+  console.log(sub_acct === 'ALL')
 
-  const formattedDateFrom = format(DateFrom, "yyyy-MM-dd");
-  const formattedDateTo = format(DateTo, "yyyy-MM-dd");
 
-  if (PrePost !== 0) {
-    PPClosing = " Explanation <> 'Closing of Nominal Accounts' AND ";
-  }
 
-  if (Report === "Monthly") {
-    if (SubAcct === "ALL") {
-      PrevWhr = `Source_Type IN ('AB', 'BF')
-      AND Date_Entry >= DATE_ADD(DATE_SUB('${formattedDateFrom}', INTERVAL 1 DAY), INTERVAL -1 MONTH)
-      AND Date_Entry <= DATE_SUB('${formattedDateTo}', INTERVAL 1 DAY)`;
+  let PrevWhr = ''
+  let CurrWhr = ''
 
-      CurrWhr =
-        PPClosing +
-        `Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') 
-      AND Date_Entry >= '${formattedDateFrom}'
-      AND Date_Entry <= '${formattedDateTo}'`;
+
+  if (report === "Monthly") {
+    if (sub_acct === 'ALL') {
+      PrevWhr = `Source_Type IN ('AB', 'BF') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`
+      CurrWhr = PPClosing + `Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`
     } else {
-      PrevWhr = `Source_Type IN ('AB', 'BFS') AND Sub_Acct='${SubAcct}'
-      AND Date_Entry >= DATE_ADD(DATE_SUB('${formattedDateFrom}', INTERVAL 1 DAY), INTERVAL -1 MONTH)
-      AND Date_Entry <= DATE_SUB('${formattedDateTo}', INTERVAL 1 DAY)`;
+      PrevWhr = `Source_Type IN ('AB', 'BFS') AND Sub_Acct ='${sub_acct}' AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`
+      CurrWhr = PPClosing + `Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}' AND Sub_Acct ='${sub_acct}'`
 
-      CurrWhr =
-        PPClosing +
-        `Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') 
-      AND Date_Entry >= '${formattedDateFrom}'
-      AND Date_Entry <= '${formattedDateTo}' 
-      AND Sub_Acct='${SubAcct}'`;
     }
-  } else {
-    // Daily
-    if (SubAcct === "ALL") {
-      if (format(DateEntry, "MM/dd/yyyy") === format(DateEntry, "MM/01/yyyy")) {
-        PrevWhr = `((Source_Type = 'BF' OR Source_Type = 'AB') 
-        AND Date_Entry = DATE_SUB('${format(
-          DateEntry,
-          "yyyy-MM-dd"
-        )}', INTERVAL 1 DAY))`;
-      } else {
-        PrevWhr =
-          PPClosing +
-          `((Source_Type <> 'BFD' AND Source_Type <> 'BFS')
-        AND ((IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry)) 
-        >= '${formattedDateFrom}' 
-        AND (IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry)) 
-        < '${format(DateEntry, "yyyy-MM-dd")}'))`;
-      }
 
-      CurrWhr =
-        PPClosing +
-        `((Source_Type <> 'BF' AND Source_Type <> 'AB' AND Source_Type <> 'BFD' AND Source_Type <> 'BFS') 
-      AND (IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry)) 
-      = '${format(DateEntry, "yyyy-MM-dd")}')`;
+  } else { // Daily
+
+    if (sub_acct === 'ALL') {
+      if (format(new Date(date), "yyyy-MM-dd") === format(new Date(date), "yyy-MM-01")) {
+        PrevWhr = `Source_Type = 'BF' OR Source_Type = 'AB'  AND Date_Entry = ${formattedDateMinusOne}`
+      } else {
+        PrevWhr = PPClosing + `
+        Source_Type <> 'BFD' AND 
+        Source_Type <> 'BFS' AND 
+        (CASE 
+          WHEN Source_Type IN ('BFD', 'AB', 'BF', 'BFS') 
+              THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
+              ELSE Date_Entry 
+          END) >= '${DateFrom}'
+        AND 
+        (CASE 
+            WHEN Source_Type IN ('BFD', 'AB', 'BF', 'BFS') 
+            THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
+            ELSE Date_Entry 
+        END) < '${format(new Date(date), "yyyy-MM-dd")}'
+
+        `
+
+      }
+      CurrWhr = PPClosing + `
+      Source_Type <> 'BF' 
+      And Source_Type <> 'AB' 
+      And Source_Type <> 'BFD'
+      And Source_Type <> 'BFS'
+     AND (
+          (CASE 
+              WHEN Source_Type IN ('BFD', 'AB', 'BF', 'BFS') 
+              THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
+              ELSE Date_Entry 
+          END) = '${format(new Date(date), "yyyy-MM-dd")}}'
+      )`
+
     } else {
-      if (format(DateEntry, "MM/dd/yyyy") === format(DateEntry, "MM/01/yyyy")) {
-        CurrWhr = `((Source_Type = 'BFS')  
-        AND Date_Entry = DATE_SUB('${format(
-          DateEntry,
-          "yyyy-MM-dd"
-        )}', INTERVAL 1 DAY) 
-        AND Sub_Acct='${SubAcct}')`;
+      if (format(new Date(date), "yyyy-MM-dd") === format(new Date(date), "yyyy-MM-01")) {
+        CurrWhr = `Source_Type)='BFS'  AND Date_Entry = '${formattedDateMinusOne}' AND Sub_Acct = '${sub_acct}'`
       } else {
-        PrevWhr =
-          PPClosing +
-          `((Source_Type <> 'BFD' AND Source_Type <> 'BF')  
-        AND Sub_Acct='${SubAcct}' 
-        AND ((IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry)) 
-        >= '${formattedDateFrom}' 
-        AND (IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry)) 
-        < '${format(DateEntry, "yyyy-MM-dd")}'))`;
-
-        CurrWhr =
-          PPClosing +
-          `((Source_Type <> 'BF' AND Source_Type <> 'AB' AND Source_Type <> 'BFD' AND Source_Type <> 'BFS') 
-        AND (IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry)) 
-        = '${format(DateEntry, "yyyy-MM-dd")}' 
-        AND Sub_Acct='${SubAcct}')`;
+        PrevWhr = PPClosing + `
+        Source_Type <> 'BFD' 
+        And Source_Type <> 'BF' 
+        AND Sub_Acct = '${sub_acct}' 
+        AND (
+          (CASE 
+              WHEN Source_Type IN ('BFD', 'AB', 'BF', 'BFS') 
+              THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
+              ELSE Date_Entry 
+          END) >= '${DateFrom}'
+          AND 
+          (CASE 
+              WHEN Source_Type IN ('BFD', 'AB', 'BF', 'BFS') 
+              THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
+              ELSE Date_Entry 
+          END) < '${format(new Date(date), "yyyy-MM-dd")}'
+      )`
       }
+      CurrWhr = PPClosing + ` 
+      Source_Type <> 'BF' 
+      AND  Source_Type <> 'AB' 
+      AND  Source_Type <> 'BFD' 
+      AND Source_Type <> 'BFS' 
+      AND IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) = '${format(new Date(date), "yyyy-MM-dd")}')
+      AND Sub_Acct = '${sub_acct}'
+      `
+
     }
+
   }
 
-  // The following part is where you construct the final queries
-  // Balance Forwarded
-  PrevQry = ` 
-    SELECT GL_Acct, Source_Type, Number, Book_Code, CONCAT(Books_Desc, ' - ', '${format(
-      subDays(DateTo, 1),
-      "MMMM dd, yyyy"
-    )}') AS Book, 
-    SUM(IFNULL(Debit, 0)) AS Debit, SUM(IFNULL(Credit, 0)) AS Credit
-    FROM Journal 
-    LEFT JOIN Books ON Journal.Source_Type = Books.Code
-    WHERE ${PrevWhr}
-    GROUP BY GL_Acct, Source_Type, Number, Book_Code, Books_Desc
-    ORDER BY GL_Acct, Number`;
+  const PrevQry = `
+  SELECT GL_Acct, 
+        Source_Type, 
+        Number, 
+        Book_Code, 
+        CONCAT(Books_Desc, ' - ', DATE_FORMAT(DATE_SUB(IF('${report}' = 'Monthly',' ${DateFrom}', '${format(new Date(date), "yyyy-MM-dd")}'), INTERVAL 1 DAY), '%M %d, %Y')) AS Book, 
+        SUM(IFNULL(Debit, 0)) AS Debit, 
+        SUM(IFNULL(Credit, 0)) AS Credit
+  FROM Journal 
+  LEFT JOIN Books ON Journal.Source_Type = Books.Code
+  WHERE ${PrevWhr}
+  GROUP BY GL_Acct, Source_Type, Number, Book_Code, Books_Desc
+  ORDER BY GL_Acct, Number
+  `
 
-  // Current Transaction
-  CurrQry = ` 
-    SELECT GL_Acct, Source_Type, Number, Book_Code, CONCAT(Books_Desc, ' - ', '${format(
-      DateEntry,
-      Report === "Monthly" ? "MMMM yyyy" : "MMMM dd, yyyy"
-    )}') AS Book, 
-    SUM(IFNULL(Debit, 0)) AS Debit, 
-    SUM(IFNULL(Credit, 0)) AS Credit
-    FROM Journal 
-    LEFT JOIN Books ON Journal.Source_Type = Books.Code
-    WHERE ${CurrWhr}
-    GROUP BY GL_Acct, Source_Type, Number, Book_Code, Books_Desc
-    ORDER BY GL_Acct, Number`;
-
-  if (TransSumm === 0) {
-    FinalQry = ` 
-      SELECT GL_Acct, 'BF' AS Source_Type, 2 AS Number, 'BF' AS Book_Code, MIN(Book) AS Book, 
-      SUM(Debit) AS Debit, SUM(Credit) AS Credit
-      FROM (${PrevQry}) temp_Prev 
-      GROUP BY GL_Acct
-      UNION ALL
-      SELECT * FROM (${CurrQry}) temp_Curr`;
+  const CurrQry = `
+  SELECT GL_Acct, 
+       Source_Type, 
+       Number, 
+       Book_Code, 
+       CONCAT(Books_Desc, ' - ', DATE_FORMAT('${format(new Date(date), "yyyy-MM-dd")}', IF('${report}' = 'Monthly', '%M %Y', '%M %d, %Y'))) AS Book, 
+       SUM(IFNULL(Debit, 0)) AS Debit, 
+       SUM(IFNULL(Credit, 0)) AS Credit
+FROM Journal 
+LEFT JOIN Books ON Journal.Source_Type = Books.Code
+WHERE ${CurrWhr}
+GROUP BY GL_Acct, Source_Type, Number, Book_Code, Books_Desc
+ORDER BY GL_Acct, Number
+  `
+  let FinalQry = ''
+  if (transSumm === 0) {
+    FinalQry = `
+  SELECT GL_Acct, 
+       'BF' AS Source_Type, 
+        2 AS Number, 
+        'BF' AS Book_Code, 
+        MIN(Book) AS Book, 
+        SUM(Debit) AS Debit, 
+        SUM(Credit) AS Credit
+  FROM (${PrevQry}) Prev 
+  GROUP BY GL_Acct
+  UNION ALL
+  SELECT * FROM (${CurrQry}) Curr
+  `
   } else {
-    FinalQry = `SELECT * FROM (${CurrQry}) temp_Curr`;
+    FinalQry = `
+    SELECT * FROM (${CurrQry}) Curr
+  `
   }
 
-  const SubTotalQry = `SELECT GL_Acct, SUM(Debit)-SUM(Credit) AS SubTotal  FROM (${FinalQry}) Final GROUP BY GL_Acct`;
-
-  // Balance Query
-  return `SELECT
+  const SubTotal = `
+  SELECT GL_Acct, SUM(Debit)-SUM(Credit) AS SubTotal  FROM (${FinalQry}) Final GROUP BY GL_Acct
+`
+  const _Final = `
+SELECT
     Final.GL_Acct,
     Acct_Title AS Title,
     Book_Code AS BookCode,
     Book,
-    format(Debit,2) as Debit,
-    format(Credit,2) as Credit,
-    format(abs(SubTotal),2) as SubTotal
-  FROM
+    Debit,
+    Credit,
+    SubTotal
+FROM
     (${FinalQry}) Final 
-  LEFT JOIN Chart_Account ON Final.GL_Acct = Chart_Account.Acct_Code 
-  LEFT JOIN (${SubTotalQry}) SubTotal ON Final.GL_Acct = SubTotal.GL_Acct
-  ORDER BY GL_Acct, Number`;
+    LEFT JOIN Chart_Account ON Final.GL_Acct = Chart_Account.Acct_Code
+    LEFT JOIN (${SubTotal}) SubTotal ON Final.GL_Acct = SubTotal.GL_Acct
+ORDER BY
+    GL_Acct, Number;
+`
+
+
+  return _Final
+}
+export function _GeneralLedgerReportSumm(
+  _date: any,
+  report: string,
+  transSumm: number = 0,
+  prepost: number
+) {
+  const date = parseDate(_date);
+  const DateFrom = format(new Date(date), "yyyy-MM-01");
+  const DateTo = format(lastDayOfMonth(new Date(date)), 'yyyy-MM-dd'); // Add 1 month then subtract 1 day
+  const PPClosing = prepost === 0 ? "" : " Explanation <> 'Closing of Nominal Accounts' AND "
+  const dateMinusOne = subDays(new Date(date), 1);
+  const formattedDateMinusOne = format(dateMinusOne, 'yyyy-MM-dd');
+
+  console.log(_date)
+  console.log(DateFrom)
+  console.log(DateTo)
+  console.log(formattedDateMinusOne)
+
+
+
+  let PrevWhr = ''
+  let CurrWhr = ''
+
+
+  if (report === "Monthly") {
+    PrevWhr = `
+     Source_Type IN ('AB', 'BFS') 
+     AND Date_Entry >= '${DateFrom}' 
+     AND Date_Entry <= '${DateTo}'`
+    CurrWhr = PPClosing + `
+     Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') 
+     AND Date_Entry >= '${DateFrom}' 
+     AND Date_Entry <= '${DateTo}'`
+
+  } else { // Daily
+
+    if (format(new Date(date), "yyyy-MM-dd") === format(new Date(date), "yyy-MM-01")) {
+      PrevWhr = `Source_Type='BFS' AND Date_Entry = '${formattedDateMinusOne}'`
+    } else {
+
+      PrevWhr = PPClosing + `
+      Source_Type <> 'BFD' AND 
+      Source_Type <> 'BF' AND 
+      (CASE 
+        WHEN Source_Type IN ('BFD', 'AB', 'BF', 'BFS') 
+            THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
+            ELSE Date_Entry 
+        END) >= '${DateFrom}'
+      AND 
+      (CASE 
+          WHEN Source_Type IN ('BFD', 'AB', 'BF', 'BFS') 
+          THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
+          ELSE Date_Entry 
+      END) < '${format(new Date(date), "yyyy-MM-dd")}'
+
+      `
+
+    }
+
+  }
+
+  const PrevQry = `
+  SELECT 
+        GL_Acct, 
+        Sub_Acct, 
+        Source_Type, 
+        Number, 
+        Book_Code, 
+        CONCAT(Books_Desc, ' - ', DATE_FORMAT(DATE_SUB(IF('${report}' = 'Monthly',' ${DateFrom}', '${format(new Date(date), "yyyy-MM-dd")}'), INTERVAL 1 DAY), '%M %d, %Y')) AS Book, 
+        SUM(IFNULL(Debit, 0)) AS Debit, 
+        SUM(IFNULL(Credit, 0)) AS Credit
+  FROM Journal 
+  LEFT JOIN Books ON Journal.Source_Type = Books.Code
+  WHERE ${PrevWhr}
+  GROUP BY GL_Acct, Sub_Acct,Source_Type, Number, Book_Code, Books_Desc
+  ORDER BY GL_Acct, Number
+  `
+
+  const CurrQry = `
+  SELECT 
+       GL_Acct, 
+       Sub_Acct,
+       Source_Type, 
+       Number, 
+       Book_Code, 
+       CONCAT(Books_Desc, ' - ', DATE_FORMAT('${format(new Date(date), "yyyy-MM-dd")}', IF('${report}' = 'Monthly', '%M %Y', '%M %d, %Y'))) AS Book, 
+       SUM(IFNULL(Debit, 0)) AS Debit, 
+       SUM(IFNULL(Credit, 0)) AS Credit
+FROM Journal 
+LEFT JOIN Books ON Journal.Source_Type = Books.Code
+WHERE ${CurrWhr}
+GROUP BY GL_Acct,Sub_Acct, Source_Type, Number, Book_Code, Books_Desc
+ORDER BY GL_Acct, Number
+  `
+  let FinalQry = ''
+  if (transSumm === 0) {
+    FinalQry = `
+  SELECT 
+        GL_Acct, 
+        Sub_Acct,
+       'BF' AS Source_Type, 
+        2 AS Number, 
+        'BF' AS Book_Code, 
+        MIN(Book) AS Book, 
+        SUM(Debit) AS Debit, 
+        SUM(Credit) AS Credit
+  FROM (${PrevQry}) Prev 
+  GROUP BY GL_Acct,Sub_Acct
+  UNION ALL
+  SELECT * FROM (${CurrQry}) Curr
+  `
+  } else {
+    FinalQry = `
+    SELECT * FROM (${CurrQry}) Curr
+  `
+  }
+
+  const SubTotal = `
+  SELECT GL_Acct, Sub_Acct, SUM(Debit)-SUM(Credit) AS SubTotal  FROM (${FinalQry}) Final GROUP BY GL_Acct ,Sub_Acct
+`
+  const _Final = `
+SELECT
+    Final.GL_Acct,
+    Final.Sub_Acct as SACode,
+    sub_account.ShortName as SubAcct,
+    Acct_Title AS Title,
+    Book_Code AS BookCode,
+    Book,
+    Debit,
+    Credit,
+    SubTotal
+FROM
+    (${FinalQry}) Final 
+    LEFT JOIN Chart_Account ON Final.GL_Acct = Chart_Account.Acct_Code
+    LEFT JOIN (${SubTotal}) SubTotal ON Final.GL_Acct = SubTotal.GL_Acct
+    LEFT JOIN sub_account on Final.Sub_Acct = sub_account.Acronym
+ORDER BY
+    GL_Acct, Number;
+`
+
+
+  return _Final
 }
 export function GeneralLedgerSumm(
   DateEntry: any,
@@ -953,25 +1132,25 @@ export function GeneralLedgerSumm(
     if (format(DateEntry, "MM/dd/yyyy") === format(DateEntry, "MM/01/yyyy")) {
       PrevWhr = `Source_Type = 'BFS' 
                 AND Date_Entry = DATE_SUB('${format(
-                  DateEntry,
-                  "yyyy-MM-dd"
-                )}', INTERVAL 1 DAY)`;
+        DateEntry,
+        "yyyy-MM-dd"
+      )}', INTERVAL 1 DAY)`;
     } else {
       PrevWhr = `${PPClosing} (Source_Type NOT IN ('BFD', 'BF')) 
                 AND (IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), 
                 DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) >= '${formattedDateFrom}' 
                 AND IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), 
                 DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) < '${format(
-                  DateEntry,
-                  "yyyy-MM-dd"
-                )}')`;
+        DateEntry,
+        "yyyy-MM-dd"
+      )}')`;
     }
     CurrWhr = `${PPClosing} (Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS')) 
                 AND (IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), 
                 DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) = '${format(
-                  DateEntry,
-                  "yyyy-MM-dd"
-                )}')`;
+      DateEntry,
+      "yyyy-MM-dd"
+    )}')`;
   }
 
   const PrevQry = ` 
@@ -1032,9 +1211,11 @@ export function GeneralLedgerSumm(
 export function AbstractCollections(
   reportType: string, // or 'Monthly'
   subAcct: string, // or specific sub-account
-  date: Date, // example date
+  _date: Date, // example date
   order: string // or 'Des
 ) {
+  const date = parseDate(_date)
+  console.log(date)
   let sWhere1 = "";
   let sWhere2 = "";
 
@@ -1091,6 +1272,7 @@ export function AbstractCollections(
     GROUP BY Journal.GL_Acct, Chart_Account.Acct_Title 
     HAVING Journal.GL_Acct <> ''
   `;
+  console.log(queryJournal);
 
   return {
     queryCollection,
@@ -1100,13 +1282,15 @@ export function AbstractCollections(
 export function DepositedCollections(
   reportType: string,
   subAcct: string,
-  date: Date,
+  _date: Date,
   order: string
 ) {
   let sWhere1 = "";
   let sWhere2 = "";
+  const date = parseDate(_date)
 
   const formattedDate = format(date, "yyyy-MM-dd");
+  console.log(formattedDate)
   const firstDayOfMonth = format(
     new Date(date.getFullYear(), date.getMonth(), 1),
     "yyyy-MM-dd"
@@ -1116,10 +1300,10 @@ export function DepositedCollections(
   if (reportType === "Daily") {
     if (subAcct === "ALL") {
       sWhere1 = `WHERE CAST(Deposit.Temp_SlipDate AS DATE) = '${formattedDate}'`;
-      sWhere2 = `WHERE Journal.Source_Type = 'DC' AND Journal.Date_Entry = '${formattedDate}'`;
+      sWhere2 = `WHERE Journal.Source_Type = 'DC' AND str_to_date(Journal.Date_Entry ,'%Y-%m-%d') = '${formattedDate}'`;
     } else {
       sWhere1 = `WHERE CAST(Deposit.Temp_SlipDate AS DATE) = '${formattedDate}' AND LTRIM(RTRIM(Deposit.Type)) = '${subAcct.trim()}'`;
-      sWhere2 = `WHERE Journal.Source_Type = 'DC' AND Journal.Date_Entry = '${formattedDate}' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
+      sWhere2 = `WHERE Journal.Source_Type = 'DC' AND str_to_date(Journal.Date_Entry ,'%Y-%m-%d') = '${formattedDate}' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
     }
   } else if (reportType === "Monthly") {
     if (subAcct === "ALL") {
@@ -1148,8 +1332,7 @@ export function DepositedCollections(
         Deposit.Type, 
         Deposit.Check_Date, 
         'Monthly' AS Rpt ,
-        chart_account.Short as Account_Name,
-        ifnull(concat(Deposit.Account_ID,' ',chart_account.Short),'') as acct_name
+        chart_account.Short as Account_Name
     FROM (
       SELECT 
           a.*, b.BankAccount
@@ -1160,8 +1343,7 @@ export function DepositedCollections(
     LEFT JOIN chart_account on Acct_Code = Deposit. Account_ID
     LEFT JOIN bankaccounts c ON Deposit.BankAccount = c.Account_No
     ${sWhere1}
-    ORDER BY Deposit.Temp_SlipCntr, Ref_No ${
-      order === "Ascending" ? "ASC" : "DESC"
+    ORDER BY Deposit.Temp_SlipCntr, Ref_No ${order === "Ascending" ? "ASC" : "DESC"
     }
   `;
 

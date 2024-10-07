@@ -9,6 +9,7 @@ import {
 } from "date-fns";
 import { qryJournal } from "../../../model/db/views";
 import { PrismaList } from "../../../model/connection";
+import { parseDate } from "../../../model/db/stored-procedured";
 
 const ScheduleAccounts = express.Router();
 
@@ -497,10 +498,13 @@ FROM
 FROM
     entry_supplier aa) id_entry
     `
+
+
+
     const _qryJournal = qryJournal();
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
     const { account, report, subsi, date, sort, order, subsiText,insurance } = req.body
-    const dateFormatted = format(new Date(date), 'yyyy-MM-dd')
+    const dateFormatted = format(parseDate(date), 'yyyy-MM-dd')
     let qry = "";
 
     if (parseInt(subsi) === 0) {
