@@ -17,13 +17,13 @@ PostDatedCheckRegister.post(
       const type = ["All", "Rent", "Loan"];
       const field = ["Check Date", "Date Received"];
       const qry = PostDatedCheckRegistered(
-        sort[req.body.sort],
-        order[req.body.order],
-        type[req.body.type],
-        field[req.body.field],
+        sort[parseInt(req.body.sort)],
+        order[parseInt(req.body.order)],
+        type[parseInt(req.body.type)],
+        field[parseInt(req.body.field)],
         req.body.sub_acct,
-        new Date(req.body.datefrom),
-        new Date(req.body.dateto)
+        req.body.datefrom,
+        req.body.dateto
       );
       console.log(req.body);
       console.log(qry);

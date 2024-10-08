@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import express from "express";
-import { CashDisbursementBook_CDB_GJB } from "../../../model/db/stored-procedured";
+import { CashDisbursementBook_CDB } from "../../../model/db/stored-procedured";
 import { PrismaList } from "../../../model/connection";
 import { createsampleData } from "../../../model/StoredProcedure";
 const { CustomPrismaClient } = PrismaList();
@@ -12,8 +12,7 @@ CashDisbursementBookCDB.post(
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
     console.log(req.body);
     try {
-      const qry = CashDisbursementBook_CDB_GJB(
-        "Cash Disbursement Book - CDB",
+      const qry = CashDisbursementBook_CDB(
         req.body.sub_acct.toUpperCase(),
         new Date(req.body.date),
         req.body.dateFormat,
@@ -246,12 +245,11 @@ CashDisbursementBookCDB.post(
   async (req, res) => {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
     try {
-      const qry = CashDisbursementBook_CDB_GJB(
-        "Cash Disbursement Book - CDB",
-        req.body.sub_acct.toUpperCase(),
-        new Date(req.body.date),
+      const qry = CashDisbursementBook_CDB(
+        req.body.sub_acct,
+        req.body.date,
         req.body.dateFormat,
-        "ASC"
+        req.body.order
       );
 
 

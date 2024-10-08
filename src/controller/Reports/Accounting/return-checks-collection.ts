@@ -249,8 +249,8 @@ ReturnChecksCollection.post("/return-checks-collection-desk", async (req, res) =
     const qry = ReturnedChecksCollection(
       req.body.dateFormat,
       req.body.sub_acct.toUpperCase(),
-      new Date(req.body.date),
-      "Ascending"
+      req.body.date,
+      req.body.order
     );
 
     const data: any = await prisma.$queryRawUnsafe(qry.queryReturned);

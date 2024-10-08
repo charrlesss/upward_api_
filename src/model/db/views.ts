@@ -111,51 +111,9 @@ FROM
 }
 
 export function qryJournal() {
-  const selectClient = clients_view();
-
-
-const qry = `
-SELECT 
-    DISTINCT 
-    Journal.Branch_Code, 
-    CASE 
-        WHEN Journal.Source_Type = 'BFD' OR Journal.Source_Type = 'AB' OR Journal.Source_Type = 'BF' OR Journal.Source_Type = 'BFS' 
-        THEN DATE_ADD(Journal.Date_Entry, INTERVAL 1 DAY) 
-        ELSE Journal.Date_Entry 
-    END AS Date_Query, 
-    Journal.Date_Entry, 
-    Journal.Source_Type, 
-    Journal.Source_No, 
-    Journal.Explanation, 
-    Journal.Payto, 
-    Journal.GL_Acct, 
-    \`Chart Account\`.Acct_Title AS mShort, 
-    \`Chart Account\`.Short, 
-    Journal.ID_No, 
-    Journal.Check_Collect, 
-    Journal.Check_Date, 
-    Journal.Check_No AS \`Checked\`, 
-    Journal.Check_Bank AS Bank, 
-    Journal.Check_Return, 
-    Journal.Check_Deposit, 
-    Journal.Check_Reason, 
-    Journal.Debit AS mDebit, 
-    Journal.Credit AS mCredit, 
-    Journal.TC, 
-    Journal.Remarks, 
-    Books.\`Books_Desc\`, 
-    Books.\`Hide_Code\`, 
-    Books.Number, 
-    Books.\`Book_Code\`, 
-    Journal.Sub_Acct, 
-    IFNULL(Sub_Account.ShortName, '') AS mSub_Acct, 
-    IFNULL(\`ID Entry\`.Shortname, '') AS mID, 
-    Journal.AutoNo AS Auto, 
-    Journal.Check_No
-FROM 
-    Chart_Account as \`Chart Account\`
-    RIGHT OUTER JOIN (
-    select * from (SELECT 
+  const selectClient = `
+  select * from (
+  SELECT 
     if(aa.option = "individual", CONCAT(IF(aa.lastname is not null and trim(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''),aa.firstname), aa.company) as ShortName,
     aa.entry_client_id AS IDNo,
     aa.firstname,
@@ -262,10 +220,58 @@ FROM
     aa.VAT_Type,
     aa.tin_no
 FROM
-    entry_supplier aa) id_entry
-    ) \`ID Entry\` 
+    entry_supplier aa) id_entry`
+
+
+const qry = `
+SELECT 
+    DISTINCT 
+    Journal.Branch_Code, 
+    CASE 
+        WHEN Journal.Source_Type = 'BFD' OR Journal.Source_Type = 'AB' OR Journal.Source_Type = 'BF' OR Journal.Source_Type = 'BFS' 
+        THEN DATE_ADD(Journal.Date_Entry, INTERVAL 1 DAY) 
+        ELSE Journal.Date_Entry 
+    END AS Date_Query, 
+    Journal.Date_Entry, 
+    Journal.Source_Type, 
+    Journal.Source_No, 
+    Journal.Explanation, 
+    Journal.Payto, 
+    Journal.GL_Acct, 
+    \`Chart Account\`.Acct_Title AS mShort, 
+    \`Chart Account\`.Short, 
+    Journal.ID_No, 
+    Journal.Check_Collect, 
+    Journal.Check_Date, 
+    Journal.Check_No AS \`Checked\`, 
+    Journal.Check_Bank AS Bank, 
+    Journal.Check_Return, 
+    Journal.Check_Deposit, 
+    Journal.Check_Reason, 
+    Journal.Debit AS mDebit, 
+    Journal.Credit AS mCredit, 
+    Journal.TC, 
+    Journal.Remarks, 
+    Books.\`Books_Desc\`, 
+    Books.\`Hide_Code\`, 
+    Books.Number, 
+    Books.\`Book_Code\`, 
+    Journal.Sub_Acct, 
+    IFNULL(Sub_Account.ShortName, '') AS mSub_Acct, 
+    IFNULL(\`ID Entry\`.Shortname, Policy.PShortName) AS mID, 
+    Journal.AutoNo AS Auto, 
+    Journal.Check_No
+FROM 
+    Chart_Account as \`Chart Account\`
+    RIGHT OUTER JOIN (${selectClient}) \`ID Entry\` 
     RIGHT OUTER JOIN Journal 
-    LEFT OUTER JOIN Policy ON Journal.ID_No = Policy.PolicyNo 
+    LEFT OUTER JOIN (
+     select 
+        a.* ,
+        id_entry.ShortName as PShortName  
+     from Policy a
+     left join (${selectClient}) id_entry on a.IDNo = id_entry.IDNo 
+    ) Policy ON Journal.ID_No = Policy.PolicyNo 
     ON \`ID Entry\`.IDNo = Journal.ID_No 
     LEFT OUTER JOIN Sub_Account ON Journal.Sub_Acct = Sub_Account.Acronym 
     ON \`Chart Account\`.Acct_Code = Journal.GL_Acct 

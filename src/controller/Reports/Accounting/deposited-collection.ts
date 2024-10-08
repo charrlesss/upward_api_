@@ -290,7 +290,7 @@ DepositedCollection.post(
         req.body.dateFormat,
         req.body.sub_acct,
         req.body.date,
-        "Ascending"
+        req.body.order
       );
       console.log(queryDeposit)
       console.log(queryJournal)

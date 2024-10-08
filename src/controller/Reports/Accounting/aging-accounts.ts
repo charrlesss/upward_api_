@@ -83,10 +83,10 @@ AgingAccounts.post("/aging-accounts", async (req, res) => {
 
 AgingAccounts.post("/aging-accounts-desk", async (req, res) => {
   try {
-    console.log(req.cookies["up-dpm-login"])
+    console.log(req.body)
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
     const qry = AgingAccountsReport(
-      new Date(req.body.date),
+      req.body.date,
       req.body.policyType
     );
     const data: Array<any> = await prisma.$queryRawUnsafe(qry);

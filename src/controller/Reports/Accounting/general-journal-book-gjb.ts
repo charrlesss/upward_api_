@@ -12,7 +12,6 @@ GeneralJournalBookGJB.post("/general-journal-book-gjb", async (req, res) => {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
     const qry = CashDisbursementBook_GJB(
-      "General Journal Book - GJB",
       req.body.sub_acct.toUpperCase(),
       new Date(req.body.date),
       req.body.dateFormat,
@@ -247,14 +246,13 @@ GeneralJournalBookGJB.post("/general-journal-book-gjb-desk", async (req, res) =>
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
     const qry = CashDisbursementBook_GJB(
-      "General Journal Book - GJB",
-      req.body.sub_acct.toUpperCase(),
-      new Date(req.body.date),
+      req.body.sub_acct,
+      req.body.date,
       req.body.dateFormat,
-      "ASC"
+      req.body.order
     );
 
-    console.log(qry.strSQL)
+    console.log(qry.strSubSQL)
 
 
     function customReplacer(key: string, value: any) {

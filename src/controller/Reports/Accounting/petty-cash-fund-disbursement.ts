@@ -13,7 +13,7 @@ PettyCashFundDisbursements.post(
       const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
       const qry = PettyCashFundDisbursement(
-        req.body.sub_acct.toUpperCase(),
+        req.body.sub_acct,
         req.body.seriesFrom,
         req.body.seriesTo
       );
@@ -211,7 +211,7 @@ PettyCashFundDisbursements.post(
       const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
       const qry = PettyCashFundDisbursement(
-        req.body.sub_acct.toUpperCase(),
+        req.body.sub_acct,
         req.body.seriesFrom,
         req.body.seriesTo
       );

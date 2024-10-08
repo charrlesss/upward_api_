@@ -18,14 +18,14 @@ GeneralLedger.post("/general-ledger-report-desk", async (req, res) => {
         req.body.date,
         req.body.sub_acct,
         req.body.dateFormat,
-        parseInt(req.body.account),
+        parseInt(req.body.transSumm),
         parseInt(req.body.account)
       );
     } else {
       qry = _GeneralLedgerReportSumm(
         req.body.date, 
         req.body.dateFormat,
-        parseInt(req.body.account),
+        parseInt(req.body.transSumm),
         parseInt(req.body.account))
     }
 

@@ -10,14 +10,8 @@ import {
 import { clients_view, qryJournal } from "./views";
 
 export function parseDate(vbDate: any) {
-  console.log(vbDate)
-  let datePart = '';
-
-  if (vbDate.includes(' ')) {
-    datePart = vbDate.split(' ');
-  } else {
-    datePart = vbDate
-  }
+  const datePart = vbDate.slice(0, 10); // Extracts first 10 characters
+  console.log(datePart)
   const [day, month, year] = datePart.split('/');
 
   // Create a new Date object (ensure to create it in local time)
@@ -1235,11 +1229,11 @@ export function AbstractCollections(
 
   if (reportType === "Daily") {
     if (subAcct === "ALL") {
-      sWhere1 = `WHERE Collection.Date_OR = '${formattedDateCollection}'`;
-      sWhere2 = `WHERE Journal.Source_Type = 'OR' AND Journal.Date_Entry = '${formattedDateJournal}'`;
+      sWhere1 = `WHERE str_to_date(Collection.Date_OR ,'%Y-%m-%d')  = '${formattedDateCollection}'`;
+      sWhere2 = `WHERE Journal.Source_Type = 'OR' AND str_to_date(Journal.Date_Entry ,'%Y-%m-%d') = '${formattedDateJournal}'`;
     } else {
-      sWhere1 = `WHERE Collection.Date_OR = '${formattedDateCollection}' AND LTRIM(RTRIM(Collection.Status)) = '${subAcct.trim()}'`;
-      sWhere2 = `WHERE Journal.Source_Type = 'OR' AND Journal.Date_Entry = '${formattedDateJournal}' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
+      sWhere1 = `WHERE str_to_date(Collection.Date_OR ,'%Y-%m-%d')  = '${formattedDateCollection}' AND LTRIM(RTRIM(Collection.Status)) = '${subAcct.trim()}'`;
+      sWhere2 = `WHERE Journal.Source_Type = 'OR' AND str_to_date(Journal.Date_Entry ,'%Y-%m-%d') = '${formattedDateJournal}' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
     }
   } else if (reportType === "Monthly") {
     if (subAcct === "ALL") {
@@ -1365,9 +1359,11 @@ export function DepositedCollections(
 export function ReturnedChecksCollection(
   reportType: string,
   subAcct: string,
-  date: Date,
+  _date: Date,
   order: string
 ) {
+  const date = parseDate(_date)
+
   let sWhere1 = "";
   let sWhere2 = "";
 
@@ -1380,11 +1376,11 @@ export function ReturnedChecksCollection(
 
   if (reportType === "Daily") {
     if (subAcct === "ALL") {
-      sWhere1 = `WHERE Journal.Date_Entry = '${formattedDate}' AND Journal.Source_Type = 'RC'`;
-      sWhere2 = `WHERE Journal.Source_Type = 'RC' AND Journal.Date_Entry = '${formattedDate}'`;
+      sWhere1 = `WHERE str_to_date(Journal.Date_Entry ,'%Y-%m-%d') = '${formattedDate}' AND Journal.Source_Type = 'RC'`;
+      sWhere2 = `WHERE Journal.Source_Type = 'RC' AND  str_to_date(Journal.Date_Entry ,'%Y-%m-%d') = '${formattedDate}'`;
     } else {
-      sWhere1 = `WHERE Journal.Date_Entry = '${formattedDate}' AND Journal.Source_Type = 'RC' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
-      sWhere2 = `WHERE Journal.Source_Type = 'RC' AND Journal.Date_Entry = '${formattedDate}' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
+      sWhere1 = `WHERE str_to_date(Journal.Date_Entry ,'%Y-%m-%d') = '${formattedDate}' AND Journal.Source_Type = 'RC' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
+      sWhere2 = `WHERE Journal.Source_Type = 'RC' AND str_to_date(Journal.Date_Entry ,'%Y-%m-%d') = '${formattedDate}' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
     }
   } else if (reportType === "Monthly") {
     if (subAcct === "ALL") {
@@ -1410,25 +1406,15 @@ export function ReturnedChecksCollection(
             DATE_FORMAT(STR_TO_DATE(Check_Return, '%m/%d/%Y'),'%m/%d/%Y') as Check_Return, 
             Journal.Check_Deposit, 
             Journal.Check_Reason, 
-            format(Journal.Debit,2) as Debit, 
-            format(Journal.Credit,2) as Credit, 
+            Journal.Debit as Debit, 
+            Journal.Credit as Credit, 
             'Monthly' AS Rpt 
     FROM Journal 
     ${sWhere1}
     ORDER BY Journal.Source_No ${order === "Ascending" ? "ASC" : "DESC"}
   `;
 
-  queryReturned = `
-  select 
-        *,
-        CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE a.Source_No END AS nSource_No,
-        CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE a.Date_Entry END AS nDate_Entry,
 
-        @prev_source_no := a.Source_No AS prev_source_no
-    from ( 
-      ${queryReturned}
-    ) a
-  `;
   const queryJournal = `
     SELECT 
           Journal.GL_Acct, 
@@ -1525,12 +1511,12 @@ export function PettyCashFundDisbursement(
   if (subAcct === "ALL") {
     dtPettyCashQuery = `
       SELECT 
-          concat(DATE_FORMAT(PC_Date, '%m/%d/%y'),'  ',PC_No) as DT,
+          concat(DATE_FORMAT(PC_Date, '%m/%d/%y'),'  ',PC_No) as RefNo,
           Payee,
-          Explanation as particulars,
-          DRPurpose as transaction,
-          concat( IDNo,'\n',
-          ShortName) as identity,
+          Explanation ,
+          DRPurpose ,
+          IDNo,
+          ShortName,
           DRShort,
           Debit,
           CRShort,
@@ -1548,12 +1534,12 @@ export function PettyCashFundDisbursement(
   } else {
     dtPettyCashQuery = `
       SELECT
-          concat(DATE_FORMAT(PC_Date, '%m/%d/%y'),'  ',PC_No) as DT,
+          concat(DATE_FORMAT(PC_Date, '%m/%d/%y'),'  ',PC_No) as RefNo,
           Payee,
-          Explanation as particulars,
-          DRPurpose as transaction,
-          concat( IDNo,'\n',
-          ShortName) as identity,
+          Explanation,
+          DRPurpose,
+          IDNo,
+          ShortName,
           DRShort,
           Debit,
           CRShort,
@@ -1578,237 +1564,35 @@ export function PettyCashFundDisbursement(
 
   return { dtPettyCashQuery, dtSummaryQuery };
 }
-export function CashDisbursementBook_CDB_GJB(
-  reportType: string,
+export function CashDisbursementBook_CDB(
   subAccount: string,
-  reportDate: Date,
-  dateFilterType: string,
+  _reportDate: Date,
+  dateFormat: string,
   sortOrder: string
 ) {
   let sourceType = "CV";
   let strSQL = "";
   let strSubSQL = "";
-  let qryJournals = "";
+  const qryJournals = qryJournal();
 
-  qryJournals = `
-      SELECT
-        date_format(a.Date_Entry,'%Y-%m-%d') as Date_Entry,
-        concat(a.Source_Type,' - ',a.Source_No) as nST,
-        a.Source_Type,
-        a.Source_No,
-        a.Explanation,
-        b.Acct_Code,
-        b.Acct_Title,
-        concat(c.Acronym,' - ',c.ShortName) as subAcct,
-        d.IDNo,
-        d.Shortname as Name,
-        format(a.Debit,2) as Debit,
-        format(a.Credit,2) as Credit,
-        a.TC,
-        a.Payto
-        FROM 
-          cash_disbursement a 
-            left join chart_account b on a.GL_Acct = b.Acct_Code
-            left join sub_account c  on a.Sub_Acct = c.Sub_Acct
-            left join ( SELECT 
-            *
-        FROM
-            (
-              SELECT 
-              *
-          FROM
-              (SELECT 
-                "Client" as IDType,
-                aa.entry_client_id AS IDNo,
-                aa.sub_account,
-                if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                aa.entry_client_id as client_id  
-                FROM
-                  entry_client aa
-                union all
-                SELECT 
-                "Agent" as IDType,
-                aa.entry_agent_id AS IDNo,
-                aa.sub_account,
-                CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                aa.entry_agent_id as client_id  
-                FROM
-                  entry_agent aa
-                union all
-                SELECT 
-                "Employee" as IDType,
-                aa.entry_employee_id AS IDNo,
-                aa.sub_account,
-                CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                aa.entry_employee_id as client_id
-                FROM
-                  entry_employee aa
-                union all
-                SELECT 
-                "Supplier" as IDType,
-                aa.entry_supplier_id AS IDNo,
-                aa.sub_account,
-                if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                aa.entry_supplier_id as client_id
-                FROM
-                  entry_supplier aa
-                union all
-                SELECT 
-                "Fixed Assets" as IDType,
-                aa.entry_fixed_assets_id AS IDNo,
-                aa.sub_account,
-                aa.fullname AS Shortname,
-                aa.entry_fixed_assets_id as client_id
-                FROM
-                  entry_fixed_assets aa
-                union all
-                SELECT 
-                "Others" as IDType,
-                aa.entry_others_id AS IDNo,
-                aa.sub_account,
-                aa.description AS Shortname,
-                aa.entry_others_id as client_id
-                FROM
-                  entry_others aa) a
-          WHERE
-              a.IDNo NOT IN 
-              (SELECT IDNo FROM   policy GROUP BY IDNo) 
-          UNION ALL SELECT 
-                  'Policy' AS IDType,
-                  a.PolicyNo AS IDNo,
-                  b.sub_account,
-                  b.Shortname,
-                  a.IDNo AS client_id
-          FROM
-                policy a
-          LEFT JOIN (SELECT 
-                "Client" as IDType,
-                aa.entry_client_id AS IDNo,
-                aa.sub_account,
-                if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                aa.entry_client_id as client_id  
-                FROM
-                  entry_client aa
-                union all
-                SELECT 
-                "Agent" as IDType,
-                aa.entry_agent_id AS IDNo,
-                aa.sub_account,
-                CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                aa.entry_agent_id as client_id  
-                FROM
-                  entry_agent aa
-                union all
-                SELECT 
-                "Employee" as IDType,
-                aa.entry_employee_id AS IDNo,
-                aa.sub_account,
-                CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                aa.entry_employee_id as client_id
-                FROM
-                  entry_employee aa
-                union all
-                SELECT 
-                "Supplier" as IDType,
-                aa.entry_supplier_id AS IDNo,
-                aa.sub_account,
-                if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                aa.entry_supplier_id as client_id
-                FROM
-                  entry_supplier aa
-                union all
-                SELECT 
-                "Fixed Assets" as IDType,
-                aa.entry_fixed_assets_id AS IDNo,
-                aa.sub_account,
-                aa.fullname AS Shortname,
-                aa.entry_fixed_assets_id as client_id
-                FROM
-                  entry_fixed_assets aa
-                union all
-                SELECT 
-                "Others" as IDType,
-                aa.entry_others_id AS IDNo,
-                aa.sub_account,
-                aa.description AS Shortname,
-                aa.entry_others_id as client_id
-                FROM
-                  entry_others aa) b ON a.IDNo = b.IDNo
-          WHERE
-              a.PolicyNo NOT IN 
-              (SELECT a.IDNo FROM (SELECT 
-                "Client" as IDType,
-                aa.entry_client_id AS IDNo,
-                aa.sub_account,
-                if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                aa.entry_client_id as client_id  
-                FROM
-                  entry_client aa
-                union all
-                SELECT 
-                "Agent" as IDType,
-                aa.entry_agent_id AS IDNo,
-                aa.sub_account,
-                CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                aa.entry_agent_id as client_id  
-                FROM
-                  entry_agent aa
-                union all
-                SELECT 
-                "Employee" as IDType,
-                aa.entry_employee_id AS IDNo,
-                aa.sub_account,
-                CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                aa.entry_employee_id as client_id
-                FROM
-                  entry_employee aa
-                union all
-                SELECT 
-                "Supplier" as IDType,
-                aa.entry_supplier_id AS IDNo,
-                aa.sub_account,
-                if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                aa.entry_supplier_id as client_id
-                FROM
-                  entry_supplier aa
-                union all
-                SELECT 
-                "Fixed Assets" as IDType,
-                aa.entry_fixed_assets_id AS IDNo,
-                aa.sub_account,
-                aa.fullname AS Shortname,
-                aa.entry_fixed_assets_id as client_id
-                FROM
-                  entry_fixed_assets aa
-                union all
-                SELECT 
-                "Others" as IDType,
-                aa.entry_others_id AS IDNo,
-                aa.sub_account,
-                aa.description AS Shortname,
-                aa.entry_others_id as client_id
-                FROM
-                  entry_others aa) a)
-          ) a) d on a.ID_No = d.IDNo
-            order by   a.Source_No ,RIGHT(b.Acct_Code, 2) asc 
-      `;
+  const reportDate = parseDate(_reportDate)
   const formattedDate = format(reportDate, "yyyy-MM-dd");
   const formattedMonthStart = format(startOfMonth(reportDate), "yyyy-MM-dd");
   const formattedMonthEnd = format(endOfMonth(reportDate), "yyyy-MM-dd");
 
-  if (dateFilterType === "Daily") {
+  if (dateFormat === "Daily") {
     if (subAccount === "ALL") {
       strSQL = `
         SELECT qryJournal.* 
         FROM (${qryJournals}) qryJournal
-        WHERE qryJournal.Source_Type = '${sourceType}' AND qryJournal.Date_Entry = '${formattedDate}'
+        WHERE qryJournal.Source_Type = '${sourceType}' AND  str_to_date(qryJournal.Date_Entry ,'%Y-%m-%d')  = '${formattedDate}'
        
       `;
       strSubSQL = `
         SELECT Journal.GL_Acct, ChartAccount.Acct_Title AS Title, format(SUM(IFNULL(Debit, 0)),2) AS mDebit, format(SUM(IFNULL(Credit, 0)),2) AS mCredit 
         FROM Journal 
         LEFT JOIN Chart_Account ChartAccount ON Journal.GL_Acct = ChartAccount.Acct_Code 
-        WHERE Journal.Source_Type = '${sourceType}' AND Journal.Date_Entry = '${formattedDate}'
+        WHERE Journal.Source_Type = '${sourceType}' AND str_to_date(Journal.Date_Entry ,'%Y-%m-%d')  = '${formattedDate}'
         GROUP BY Journal.GL_Acct, ChartAccount.Acct_Title 
         HAVING Journal.GL_Acct <> ''
         ORDER BY Journal.GL_Acct
@@ -1817,14 +1601,14 @@ export function CashDisbursementBook_CDB_GJB(
       strSQL = `
         SELECT qryJournal.* 
         FROM (${qryJournals}) qryJournal
-        WHERE qryJournal.Source_Type = '${sourceType}' AND qryJournal.Date_Entry = '${formattedDate}' AND TRIM(qryJournal.Area) = '${subAccount}'
+        WHERE qryJournal.Source_Type = '${sourceType}' AND str_to_date(qryJournal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(qryJournal.Area) = '${subAccount}'
        
       `;
       strSubSQL = `
         SELECT Journal.GL_Acct, ChartAccount.Acct_Title AS Title, SUM(IFNULL(Debit, 0)) AS mDebit, format(SUM(IFNULL(Credit, 0)),2) AS mCredit 
         FROM Journal 
         LEFT JOIN Chart_Account ChartAccount ON Journal.GL_Acct = ChartAccount.Acct_Code 
-        WHERE Journal.Source_Type = '${sourceType}' AND Journal.Date_Entry = '${formattedDate}' AND TRIM(Journal.Area) = '${subAccount}'
+        WHERE Journal.Source_Type = '${sourceType}' AND str_to_date(Journal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(Journal.Area) = '${subAccount}'
         GROUP BY Journal.GL_Acct, ChartAccount.Acct_Title 
         HAVING Journal.GL_Acct <> ''
         ORDER BY Journal.GL_Acct
@@ -1865,232 +1649,21 @@ export function CashDisbursementBook_CDB_GJB(
     }
   }
 
-  strSQL = `
-    select 
-        *,
-      CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE a.Source_No END AS nSource_No,
-      CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE a.Source_Type END AS nSource_Type,
-      CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE a.Date_Entry END AS nDate_Entry,
-      CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE a.Explanation END AS nExplanation,
-      CASE WHEN @prev_source_no = a.Source_No THEN '0' ELSE '1' END AS nHeader,
-      @prev_source_no := a.Source_No AS prev_source_no
-    from
-    (SELECT @prev_source_no := NULL) AS init
-    JOIN (${strSQL}) a
-  `;
   return { strSQL, strSubSQL };
 }
 export function CashDisbursementBook_GJB(
-  reportType: string,
   subAccount: string,
-  reportDate: Date,
+  _reportDate: Date,
   dateFilterType: string,
   sortOrder: string
 ) {
+  console.log(_reportDate)
   let strSQL = "";
   let strSubSQL = "";
   const sourceType = "GL";
-  const qryJournals = `
-      SELECT 
-        DATE_FORMAT(a.Date_Entry , '%Y-%m-%d') as Date_Entry,
-        a.Source_Type,
-        a.Source_No,
-        a.Explanation,
-        b.Acct_Code,
-        b.Acct_Title,
-        concat(e.Acronym,' - ',e.ShortName) as subAcct,	
-        d.IDNo,
-        d.Shortname as Name,
-        format(a.Debit,2) as Debit,
-        format(a.Credit,2) as Credit,
-        a.TC,
-        a.Payto
-      FROM (
-      select * from journal
-      ) a 
-      left join chart_account b on a.GL_Acct = b.Acct_Code
-      left join ( SELECT 
-              *
-          FROM
-              (
-                SELECT 
-                *
-            FROM
-                (SELECT 
-                  "Client" as IDType,
-                  aa.entry_client_id AS IDNo,
-                  aa.sub_account,
-                  if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                  aa.entry_client_id as client_id  
-                  FROM
-                    entry_client aa
-                  union all
-                  SELECT 
-                  "Agent" as IDType,
-                  aa.entry_agent_id AS IDNo,
-                  aa.sub_account,
-                  CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                  aa.entry_agent_id as client_id  
-                  FROM
-                    entry_agent aa
-                  union all
-                  SELECT 
-                  "Employee" as IDType,
-                  aa.entry_employee_id AS IDNo,
-                  aa.sub_account,
-                  CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                  aa.entry_employee_id as client_id
-                  FROM
-                    entry_employee aa
-                  union all
-                  SELECT 
-                  "Supplier" as IDType,
-                  aa.entry_supplier_id AS IDNo,
-                  aa.sub_account,
-                  if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                  aa.entry_supplier_id as client_id
-                  FROM
-                    entry_supplier aa
-                  union all
-                  SELECT 
-                  "Fixed Assets" as IDType,
-                  aa.entry_fixed_assets_id AS IDNo,
-                  aa.sub_account,
-                  aa.fullname AS Shortname,
-                  aa.entry_fixed_assets_id as client_id
-                  FROM
-                    entry_fixed_assets aa
-                  union all
-                  SELECT 
-                  "Others" as IDType,
-                  aa.entry_others_id AS IDNo,
-                  aa.sub_account,
-                  aa.description AS Shortname,
-                  aa.entry_others_id as client_id
-                  FROM
-                    entry_others aa) a
-            WHERE
-                a.IDNo NOT IN 
-                (SELECT IDNo FROM   policy GROUP BY IDNo) 
-            UNION ALL SELECT 
-                    'Policy' AS IDType,
-                    a.PolicyNo AS IDNo,
-                    b.sub_account,
-                    b.Shortname,
-                    a.IDNo AS client_id
-            FROM
-                  policy a
-            LEFT JOIN (SELECT 
-                  "Client" as IDType,
-                  aa.entry_client_id AS IDNo,
-                  aa.sub_account,
-                  if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                  aa.entry_client_id as client_id  
-                  FROM
-                    entry_client aa
-                  union all
-                  SELECT 
-                  "Agent" as IDType,
-                  aa.entry_agent_id AS IDNo,
-                  aa.sub_account,
-                  CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                  aa.entry_agent_id as client_id  
-                  FROM
-                    entry_agent aa
-                  union all
-                  SELECT 
-                  "Employee" as IDType,
-                  aa.entry_employee_id AS IDNo,
-                  aa.sub_account,
-                  CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                  aa.entry_employee_id as client_id
-                  FROM
-                    entry_employee aa
-                  union all
-                  SELECT 
-                  "Supplier" as IDType,
-                  aa.entry_supplier_id AS IDNo,
-                  aa.sub_account,
-                  if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                  aa.entry_supplier_id as client_id
-                  FROM
-                    entry_supplier aa
-                  union all
-                  SELECT 
-                  "Fixed Assets" as IDType,
-                  aa.entry_fixed_assets_id AS IDNo,
-                  aa.sub_account,
-                  aa.fullname AS Shortname,
-                  aa.entry_fixed_assets_id as client_id
-                  FROM
-                    entry_fixed_assets aa
-                  union all
-                  SELECT 
-                  "Others" as IDType,
-                  aa.entry_others_id AS IDNo,
-                  aa.sub_account,
-                  aa.description AS Shortname,
-                  aa.entry_others_id as client_id
-                  FROM
-                    entry_others aa) b ON a.IDNo = b.IDNo
-            WHERE
-                a.PolicyNo NOT IN 
-                (SELECT a.IDNo FROM (SELECT 
-                  "Client" as IDType,
-                  aa.entry_client_id AS IDNo,
-                  aa.sub_account,
-                  if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                  aa.entry_client_id as client_id  
-                  FROM
-                    entry_client aa
-                  union all
-                  SELECT 
-                  "Agent" as IDType,
-                  aa.entry_agent_id AS IDNo,
-                  aa.sub_account,
-                  CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                  aa.entry_agent_id as client_id  
-                  FROM
-                    entry_agent aa
-                  union all
-                  SELECT 
-                  "Employee" as IDType,
-                  aa.entry_employee_id AS IDNo,
-                  aa.sub_account,
-                  CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
-                  aa.entry_employee_id as client_id
-                  FROM
-                    entry_employee aa
-                  union all
-                  SELECT 
-                  "Supplier" as IDType,
-                  aa.entry_supplier_id AS IDNo,
-                  aa.sub_account,
-                  if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
-                  aa.entry_supplier_id as client_id
-                  FROM
-                    entry_supplier aa
-                  union all
-                  SELECT 
-                  "Fixed Assets" as IDType,
-                  aa.entry_fixed_assets_id AS IDNo,
-                  aa.sub_account,
-                  aa.fullname AS Shortname,
-                  aa.entry_fixed_assets_id as client_id
-                  FROM
-                    entry_fixed_assets aa
-                  union all
-                  SELECT 
-                  "Others" as IDType,
-                  aa.entry_others_id AS IDNo,
-                  aa.sub_account,
-                  aa.description AS Shortname,
-                  aa.entry_others_id as client_id
-                  FROM
-                    entry_others aa) a)
-            ) a) d on a.ID_No = d.IDNo
-      left join sub_account e on e.Sub_Acct = d.sub_account
-      `;
+  const qryJournals = qryJournal();
+  const reportDate =  parseDate(_reportDate.toString())
+  console.log(reportDate)
 
   const formattedDate = format(reportDate, "yyyy-MM-dd");
   const formattedMonthStart = format(startOfMonth(reportDate), "yyyy-MM-dd");
@@ -2108,7 +1681,7 @@ export function CashDisbursementBook_GJB(
         SELECT Journal.GL_Acct, ChartAccount.Acct_Title AS Title, format(SUM(IFNULL(Debit, 0)),2) AS mDebit, format(SUM(IFNULL(Credit, 0)),2) AS mCredit 
         FROM Journal 
         LEFT JOIN Chart_Account ChartAccount ON Journal.GL_Acct = ChartAccount.Acct_Code 
-        WHERE Journal.Source_Type = '${sourceType}' AND Journal.Date_Entry = '${formattedDate}'
+        WHERE Journal.Source_Type = '${sourceType}' AND date_format(Journal.Date_Entry,'%Y-%m-%d') = '${formattedDate}'
         GROUP BY Journal.GL_Acct, ChartAccount.Acct_Title 
         HAVING Journal.GL_Acct <> ''
         ORDER BY Journal.GL_Acct
@@ -2124,7 +1697,7 @@ export function CashDisbursementBook_GJB(
         SELECT Journal.GL_Acct, ChartAccount.Acct_Title AS Title, SUM(IFNULL(Debit, 0)) AS mDebit, format(SUM(IFNULL(Credit, 0)),2) AS mCredit 
         FROM Journal 
         LEFT JOIN Chart_Account ChartAccount ON Journal.GL_Acct = ChartAccount.Acct_Code 
-        WHERE Journal.Source_Type = '${sourceType}' AND Journal.Date_Entry = '${formattedDate}' AND TRIM(Journal.Area) = '${subAccount}'
+        WHERE Journal.Source_Type = '${sourceType}' AND date_format(Journal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(Journal.Area) = '${subAccount}'
         GROUP BY Journal.GL_Acct, ChartAccount.Acct_Title 
         HAVING Journal.GL_Acct <> ''
         ORDER BY Journal.GL_Acct
@@ -2165,30 +1738,17 @@ export function CashDisbursementBook_GJB(
     }
   }
 
-  strSQL = `
-    select 
-        *,
-      CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE a.Source_No END AS nSource_No,
-      CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE 'JV' END AS nSource_Type,
-      CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE date_format( a.Date_Entry,'%m-%d-%Y') END AS nDate_Entry,
-      CASE WHEN @prev_source_no = a.Source_No THEN '' ELSE a.Explanation END AS nExplanation,
-      CASE WHEN @prev_source_no = a.Source_No THEN '0' ELSE '1' END AS nHeader,
-      @prev_source_no := a.Source_No AS prev_source_no
-    from 
-    (SELECT @prev_source_no := NULL) AS init
-    JOIN (${strSQL}) a
-    ORDER BY 
-  a.Date_Entry, a.Source_No, a.Debit
-  `;
   return { strSQL, strSubSQL };
 }
 export function ProductionBook(
   sortType: string,
   sortOrder: string,
   reportType: string,
-  reportDate: Date,
+  _reportDate: Date,
   subAccount: string
 ) {
+  const reportDate =  parseDate(_reportDate)
+
   let sSort = "";
   let sWhere = "";
 
@@ -2416,19 +1976,7 @@ export function ProductionBook(
       WHERE Source_Type IN ('PL') AND b.cID_No <> 'S P O I L T' 
       ${sWhere} ${sSort}`;
 
-  strSQL = `
-    select 
-        *,
-      CASE WHEN @prev_source_no = a.PolicyNo THEN '' ELSE a.DateIssued END AS nDate_Entry,
-      CASE WHEN @prev_source_no = a.PolicyNo THEN '' ELSE a.PolicyNo END AS nSource_No,
-      CASE WHEN @prev_source_no = a.PolicyNo THEN '' ELSE a.Explanation END AS nExplanation,
-      CASE WHEN @prev_source_no = a.PolicyNo THEN '0' ELSE '1' END AS nHeader,
-      @prev_source_no := a.PolicyNo AS prev_source_no
-    from 
-     (SELECT @prev_source_no := NULL) AS init
-    JOIN (${strSQL}) a
-    
-    `;
+
 
   const strSubSQL = `
       SELECT 
@@ -2503,7 +2051,9 @@ export function VATBook(
   return { strSQL, strSubSQL };
 }
 export function AgingAccountsReport(date: Date, type: string) {
-  const formattedDate = format(new Date(date), "yyyy-MM-dd");
+
+  const formattedDate = format(new Date(parseDate(date)), "yyyy-MM-dd");
+  console.log(formattedDate)
   let query = "";
 
   const ID_Entry = `
@@ -2511,7 +2061,7 @@ export function AgingAccountsReport(date: Date, type: string) {
       "Client" as IDType,
       aa.entry_client_id AS IDNo,
       aa.sub_account,
-      if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
+      if(aa.company = "", CONCAT(ifnull(aa.lastname,concat(aa.lastname,',')), aa.firstname), aa.company) as Shortname,
       aa.entry_client_id as client_id  
     FROM
       entry_client aa
@@ -2520,7 +2070,7 @@ export function AgingAccountsReport(date: Date, type: string) {
       "Agent" as IDType,
       aa.entry_agent_id AS IDNo,
       aa.sub_account,
-      CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
+      CONCAT(ifnull(aa.lastname,concat(aa.lastname,',')), aa.firstname) AS Shortname,
       aa.entry_agent_id as client_id  
     FROM
       entry_agent aa
@@ -2529,7 +2079,7 @@ export function AgingAccountsReport(date: Date, type: string) {
       "Employee" as IDType,
       aa.entry_employee_id AS IDNo,
       aa.sub_account,
-      CONCAT(aa.lastname, ",", aa.firstname) AS Shortname,
+      CONCAT(ifnull(aa.lastname,concat(aa.lastname,',')), aa.firstname) AS Shortname,
       aa.entry_employee_id as client_id
     FROM
       entry_employee aa
@@ -2538,7 +2088,7 @@ export function AgingAccountsReport(date: Date, type: string) {
       "Supplier" as IDType,
       aa.entry_supplier_id AS IDNo,
       aa.sub_account,
-      if(aa.company = "", CONCAT(aa.lastname, ",", aa.firstname), aa.company) as Shortname,
+      if(aa.company = "", CONCAT(ifnull(aa.lastname,concat(aa.lastname,',')), aa.firstname), aa.company) as Shortname,
       aa.entry_supplier_id as client_id
     FROM
       entry_supplier aa
@@ -2673,7 +2223,7 @@ export function AgingAccountsReport(date: Date, type: string) {
         `;
   }
 
-  query = `
+ const final_query = `
     select 
         a.*,
         date_format(a.DateIssued,'%d/%m/%Y') as _DateIssued,
@@ -2693,5 +2243,6 @@ export function AgingAccountsReport(date: Date, type: string) {
    
   `;
 
-  return query;
+  console.log(final_query)
+  return final_query;
 }
