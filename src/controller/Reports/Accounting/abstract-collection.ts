@@ -319,9 +319,23 @@ AbstractCollection.get('/get-report-policy-types', async (req, res) => {
   try {
 
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-    const data = await prisma.$queryRawUnsafe(`select 'Bonds' union 
-    select distinct PolicyType from Policy where PolicyType not in (select SublineName from subline where line = 'Bonds') group by PolicyType having PolicyType <> ''`)
-
+    const data = await prisma.$queryRawUnsafe(`
+      SELECT 'Bonds' AS PolicyType 
+    UNION SELECT DISTINCT
+        PolicyType
+    FROM
+        Policy
+    WHERE
+        PolicyType NOT IN (SELECT 
+                SublineName
+            FROM
+                subline
+            WHERE
+                line = 'Bonds')
+    GROUP BY PolicyType
+    HAVING PolicyType <> ''
+    ORDER BY PolicyType ASC
+      `)
     res.send({
       message: "SuccessFully Get Policy Types",
       success: true,

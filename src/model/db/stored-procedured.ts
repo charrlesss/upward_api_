@@ -593,15 +593,15 @@ export function ProductionReport(
   return `${sql_query} ${whr_query}`;
 }
 export function RenewalNoticeReport(
-  DateFrom: string,
-  PolicyType: string,
-  Regular: string,
-  PAccount: string
+  policy: string,
+  account: string,
+  _type: string,
+  _date: string
 ) {
+  const date = format(parseDate(_date), 'yyyy-MM-dd')
   const selectClient = clients_view();
   let select_query = "";
-
-  if (PolicyType === "COM" && Regular === "Regular") {
+  if (policy === "ALL") {
     select_query = `
     SELECT 
         a.Shortname as AssuredName,
@@ -614,22 +614,45 @@ export function RenewalNoticeReport(
         VPolicy.ChassisNo,
         VPolicy.MotorNo,
         Policy.TotalPremium,
-        VPolicy.Mortgagee
-        Mortgagee,
+        VPolicy.Mortgagee,
         VPolicy.Account
     FROM Policy 
     LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
     LEFT JOIN  (${selectClient}) a ON Policy.IDNo = a.IDNo
     where 
-    Policy.PolicyType = '${PolicyType}' AND
     SUBSTRING(Policy.PolicyNo, 1, 3)  <> 'TP-' AND
-    month(VPolicy.DateTo) = month('${DateFrom}') AND
-    year(VPolicy.DateTo) = year('${DateFrom}') 
-    ${PAccount === "All" ? "" : ` AND VPolicy.Account =${PAccount} `}
+    month(VPolicy.DateTo) = month('${date}') AND
+    year(VPolicy.DateTo) = year('${date}') 
+    ${account === "ALL" ? "" : ` AND VPolicy.Account =${account} `}
     ORDER BY date(VPolicy.DateTo) asc`;
   }
-
-  if (PolicyType === "COM" && Regular !== "Regular") {
+  else if (policy === "COM" && _type === "Regular") {
+    select_query = `
+    SELECT 
+        a.Shortname as AssuredName,
+        Policy.PolicyNo,
+        DATE_FORMAT(VPolicy.DateTo, '%m-%d-%Y')as Expiration,
+        VPolicy.EstimatedValue as InsuredValue,
+        VPolicy.Make,
+        VPolicy.BodyType,
+        VPolicy.PlateNo,
+        VPolicy.ChassisNo,
+        VPolicy.MotorNo,
+        Policy.TotalPremium,
+        VPolicy.Mortgagee,
+        VPolicy.Account
+    FROM Policy 
+    LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
+    LEFT JOIN  (${selectClient}) a ON Policy.IDNo = a.IDNo
+    where 
+    Policy.PolicyType = '${policy}' AND
+    SUBSTRING(Policy.PolicyNo, 1, 3)  <> 'TP-' AND
+    month(VPolicy.DateTo) = month('${date}') AND
+    year(VPolicy.DateTo) = year('${date}') 
+    ${account === "ALL" ? "" : ` AND VPolicy.Account =${account} `}
+    ORDER BY date(VPolicy.DateTo) asc`;
+  }
+  else if  (policy === "COM" && _type !== "Regular") {
     select_query = `
     SELECT
       a.Shortname as AssuredName,
@@ -642,23 +665,21 @@ export function RenewalNoticeReport(
       VPolicy.ChassisNo,
       VPolicy.MotorNo,
       Policy.TotalPremium,
-      VPolicy.Mortgagee
-      Mortgagee,
+      VPolicy.Mortgagee,
       VPolicy.Account
     FROM Policy
     LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo
     LEFT JOIN  (${selectClient}) a ON Policy.IDNo = a.IDNo 
     where
-    Policy.PolicyType = '${PolicyType}' AND
+    Policy.PolicyType = '${policy}' AND
     SUBSTRING(Policy.PolicyNo, 1, 3)  = 'TP-' AND
-    month(VPolicy.DateTo) = month('${DateFrom}') AND
-    year(VPolicy.DateTo) = year('${DateFrom}')
-    ${PAccount === "All" ? "" : ` AND VPolicy.Account =${PAccount} `}
+    month(VPolicy.DateTo) = month('${date}') AND
+    year(VPolicy.DateTo) = year('${date}')
+    ${account === "ALL" ? "" : ` AND VPolicy.Account =${account} `}
     ORDER BY date(VPolicy.DateTo) asc
   `;
   }
-
-  if (PolicyType === "FIRE") {
+  else if (policy === "FIRE") {
     select_query = `
     SELECT
       a.Shortname as AssuredName,
@@ -672,15 +693,14 @@ export function RenewalNoticeReport(
     LEFT JOIN FPolicy ON Policy.PolicyNo = FPolicy.PolicyNo
     LEFT JOIN  (${selectClient}) a ON Policy.IDNo = a.IDNo
     where
-    Policy.PolicyType = '${PolicyType}' AND
-    month(FPolicy.DateTo) = month('${DateFrom}') AND
-    year(FPolicy.DateTo) = year('${DateFrom}') 
-    ${PAccount === "All" ? "" : ` AND FPolicy.Account = '${PAccount}' `}
+    Policy.PolicyType = '${policy}' AND
+    month(FPolicy.DateTo) = month('${date}') AND
+    year(FPolicy.DateTo) = year('${date}') 
+    ${account === "ALL" ? "" : ` AND FPolicy.Account = '${account}' `}
     ORDER BY date(FPolicy.DateTo) asc
    `;
   }
-
-  if (PolicyType === "MAR") {
+  else if (policy === "MAR") {
     select_query = `
       SELECT
           a.Shortname as AssuredName,
@@ -693,30 +713,30 @@ export function RenewalNoticeReport(
       LEFT JOIN MPolicy ON Policy.PolicyNo = MPolicy.PolicyNo
       LEFT JOIN  (${selectClient}) a ON Policy.IDNo = a.IDNo
       where
-      Policy.PolicyType = '${PolicyType}' AND
-      month(MPolicy.DateTo) = month('${DateFrom}') AND
-      year(MPolicy.DateTo) = year('${DateFrom}') 
-      ${PAccount === "All" ? "" : ` AND MPolicy.Account = '${PAccount}' `}
-      "ORDER BY date(MPolicy.DateTo) asc
+      Policy.PolicyType = '${policy}' AND
+      month(MPolicy.DateTo) = month('${date}') AND
+      year(MPolicy.DateTo) = year('${date}') 
+      ${account === "ALL" ? "" : ` AND MPolicy.Account = '${account}' `}
+      ORDER BY date(MPolicy.DateTo) asc
   `;
   }
-
-  if (PolicyType === "PA") {
+  else if (policy === "PA") {
     select_query = `
       SELECT
           a.Shortname as AssuredName,
           Policy.PolicyNo,
           DATE_FORMAT(PAPolicy.PeriodTo, '%m-%d-%Y')as Expiration,
+          Location,
           Policy.TotalPremium,
           PAPolicy.Account
       FROM Policy
       LEFT JOIN PAPolicy ON Policy.PolicyNo = PAPolicy.PolicyNo
       LEFT JOIN  (${selectClient}) a ON Policy.IDNo = a.IDNo
       where
-      Policy.PolicyType = '${PolicyType}' AND
-      month(PAPolicy.PeriodTo) = month('${DateFrom}') AND
-      year(PAPolicy.PeriodTo) = year('${DateFrom}') 
-      ${PAccount === "All" ? "" : ` AND PAPolicy.Account = '${PAccount}' `}
+      Policy.PolicyType = '${policy}' AND
+      month(PAPolicy.PeriodTo) = month('${date}') AND
+      year(PAPolicy.PeriodTo) = year('${date}') 
+      ${account === "ALL" ? "" : ` AND PAPolicy.Account = '${account}' `}
       ORDER BY date(PAPolicy.PeriodTo) asc
   `;
   }
@@ -1662,7 +1682,7 @@ export function CashDisbursementBook_GJB(
   let strSubSQL = "";
   const sourceType = "GL";
   const qryJournals = qryJournal();
-  const reportDate =  parseDate(_reportDate.toString())
+  const reportDate = parseDate(_reportDate.toString())
   console.log(reportDate)
 
   const formattedDate = format(reportDate, "yyyy-MM-dd");
@@ -1747,7 +1767,7 @@ export function ProductionBook(
   _reportDate: Date,
   subAccount: string
 ) {
-  const reportDate =  parseDate(_reportDate)
+  const reportDate = parseDate(_reportDate)
 
   let sSort = "";
   let sWhere = "";
@@ -2223,7 +2243,7 @@ export function AgingAccountsReport(date: Date, type: string) {
         `;
   }
 
- const final_query = `
+  const final_query = `
     select 
         a.*,
         date_format(a.DateIssued,'%d/%m/%Y') as _DateIssued,

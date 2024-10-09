@@ -27,6 +27,7 @@ import {
   startOfYear,
 } from "date-fns";
 import { VerifyToken } from "../../Authentication";
+import { parseDate } from "../../../model/db/stored-procedured";
 const Claim = express.Router();
 
 Claim.post("/claims/save", async (req, res) => {
@@ -434,52 +435,52 @@ Claim.post("/claims/report-claim", async (req, res) => {
 });
 Claim.post("/claims/report-claim-desk", async (req, res) => {
   try {
+    console.log(req.body)
     let whereStatement = "";
-    if (req.body.format === 5) {
-      whereStatement = ` AND claim_type = ${req.body.claim_type}`;
-    } else if (req.body.format === 6) {
-      whereStatement = ` AND PolicyNo = '${req.body.PolicyNo}'`;
+    if (parseInt(req.body.format) === 5) {
+      whereStatement = ` AND claim_type = ${req.body.claim_type} `;
+    } else if (parseInt(req.body.format) === 6) {
+      whereStatement = ` AND PolicyNo = '${req.body.PolicyNo}' `;
     } else {
-      if (req.body.dateFormat === "Monthly") {
-        const date = new Date(req.body.dateFrom);
-        const firstDayOfMonth = startOfMonth(date);
-        const lastDayOfMonth = endOfMonth(date);
-        const formattedFirstDay = format(firstDayOfMonth, "yyyy-MM-dd");
-        const formattedLastDay = format(lastDayOfMonth, "yyyy-MM-dd");
-        whereStatement = selectByDate(formattedFirstDay, formattedLastDay);
-      } else if (req.body.dateFormat === "Yearly") {
-        req.body.dateFrom = new Date(req.body.dateFrom);
-        const firstDayOfFirstMonth = startOfYear(req.body.dateFrom);
-        const formattedFirstDay = format(firstDayOfFirstMonth, "yyyy-MM-dd");
-        const formattedLastDay = format(
-          endOfMonth(
-            endOfYear(addYears(req.body.dateFrom, parseInt(req.body.yearCount)))
-          ),
-          "yyyy-MM-dd"
-        );
-        whereStatement = selectByDate(formattedFirstDay, formattedLastDay);
-      } else {
-        whereStatement = selectByDate(
-          format(new Date(req.body.dateFrom), "yyyy-MM-dd"),
-          format(new Date(req.body.dateTo), "yyyy-MM-dd")
-        );
-      }
-
-      function selectByDate(dateFrom: string, dateTo: string) {
-        let qry = "";
-        if (req.body.format == 0) {
-          qry = ` AND DATE_FORMAT(a.createdAt, '%Y-%m-%d') >= '${dateFrom}' AND  DATE_FORMAT(a.createdAt, '%Y-%m-%d') <= '${dateTo}' `;
-        } else if (req.body.format == 1) {
-          qry = ` AND DATE_FORMAT(b.DateClaim, '%Y-%m-%d') >= '${dateFrom}' AND  DATE_FORMAT(b.DateClaim, '%Y-%m-%d') <= '${dateTo}' `;
-        } else if (req.body.format == 2) {
-          qry = ` AND DATE_FORMAT(a.dateInspected, '%Y-%m-%d') >= '${dateFrom}' AND  DATE_FORMAT(a.dateInspected, '%Y-%m-%d') <= '${dateTo}' `;
-        } else {
-          qry = ` AND DATE_FORMAT(b.DateReceived, '%Y-%m-%d') >= '${dateFrom}' AND  DATE_FORMAT(b.DateReceived, '%Y-%m-%d') <= '${dateTo}' `;
-        }
-        return qry;
-      }
+      whereStatement = ""
     }
-    const data = await claimReportDesk(whereStatement, req.body.status, req);
+
+    if (parseInt(req.body.report)=== 1) {
+      const date = new Date( parseDate(req.body.dateFrom));
+      const lastDayOfMonth = endOfMonth(date);
+      const formattedFirstDay = format(date, "yyyy-MM-01");
+      const formattedLastDay = format(lastDayOfMonth, "yyyy-MM-dd");
+      whereStatement += selectByDate(formattedFirstDay, formattedLastDay);
+    }
+     else if (parseInt(req.body.report )=== 0){
+      whereStatement += selectByDate(
+        format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd"),
+        format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd")
+      );
+    }
+    else {
+      whereStatement += selectByDate(
+        format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd"),
+        format(new Date(parseDate(req.body.dateTo) ), "yyyy-MM-dd")
+      );
+    }
+
+    function selectByDate(dateFrom: string, dateTo: string) {
+      let qry = "";
+      if (req.body.format == 0) {
+        qry = ` AND DATE_FORMAT(a.createdAt, '%Y-%m-%d') >= '${dateFrom}' AND  DATE_FORMAT(a.createdAt, '%Y-%m-%d') <= '${dateTo}' `;
+      } else if (req.body.format == 1) {
+        qry = ` AND DATE_FORMAT(b.DateClaim, '%Y-%m-%d') >= '${dateFrom}' AND  DATE_FORMAT(b.DateClaim, '%Y-%m-%d') <= '${dateTo}' `;
+      } else if (req.body.format == 2) {
+        qry = ` AND DATE_FORMAT(a.dateInspected, '%Y-%m-%d') >= '${dateFrom}' AND  DATE_FORMAT(a.dateInspected, '%Y-%m-%d') <= '${dateTo}' `;
+      } else {
+        qry = ` AND DATE_FORMAT(b.DateReceived, '%Y-%m-%d') >= '${dateFrom}' AND  DATE_FORMAT(b.DateReceived, '%Y-%m-%d') <= '${dateTo}' `;
+      }
+      return qry;
+    }
+
+    
+    const data = await claimReportDesk(whereStatement, parseInt(req.body.status), req);
     res.send({
       message: "Successfully generate report",
       success: true,

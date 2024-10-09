@@ -388,6 +388,8 @@ SELECT * FROM (
   '1' AS header
 UNION ALL 
   SELECT 
+   a.dateAccident,
+  a.dateReported,
   b.AssuredName,
   IF(b.Model = '' AND b.Make = ''
           AND b.BodyType = '',
@@ -421,43 +423,7 @@ FROM
   `;
 }
 
-function reportQryDesk(header: string, where: string) {
-  return `
-SELECT * FROM (
-  SELECT 
-  '${header}' as G,
-  b.AssuredName,
-  IF(b.Model = '' AND b.Make = ''
-          AND b.BodyType = '',
-      '---',
-      CONCAT(b.Model, ' ', b.Make, ' ', b.BodyType)) AS UnitInsured,
-  b.PolicyNo,
-  IF(b.ChassisNo = '', '---', b.ChassisNo) AS ChassisNo,
-  IF(b.PlateNo = '', '---', b.PlateNo) AS PlateNo,
-  IF(b.DateReceived IS NULL,
-      '---',
-      DATE_FORMAT(b.DateReceived, '%m/%d/%Y')) AS DateReceived,
-  IF(b.DateClaim IS NULL,
-      '---',
-      DATE_FORMAT(b.DateClaim, '%m/%d/%Y')) AS DateClaim,
-  b.claim_type,
-  b.AmountClaim,
-  b.AmountApproved,
-  IF(a.dateInspected IS NULL,
-      '---',
-      DATE_FORMAT(a.dateInspected, '%m/%d/%Y')) AS dateInspected,
-  IF(b.NameTPPD = '', '---', b.NameTPPD) AS NameTPPD,
-  b.status,
-  '0' AS header
-FROM
-  claims a
-      LEFT JOIN
-  claims_details b ON a.claims_id = b.claims_id
-  ${where}
-  order by PolicyNo asc
-) a 
-  `;
-}
+
 export async function claimReport(
   addWhere: string,
   status: number,
@@ -497,6 +463,8 @@ export async function claimReport(
   console.log(qry);
   return await prisma.$queryRawUnsafe(qry);
 }
+
+
 export async function claimReportDesk(
   addWhere: string,
   status: number,
@@ -535,4 +503,44 @@ export async function claimReportDesk(
 
   console.log(qry);
   return await prisma.$queryRawUnsafe(qry);
+}
+
+function reportQryDesk(header: string, where: string) {
+  return `
+    SELECT * FROM (
+      SELECT 
+      '${header}' as G,
+      b.AssuredName,
+       a.dateAccident,
+      a.dateReported,
+      IF(b.Model = '' AND b.Make = ''
+              AND b.BodyType = '',
+          '---',
+          CONCAT(b.Model, ' ', b.Make, ' ', b.BodyType)) AS UnitInsured,
+      b.PolicyNo,
+      IF(b.ChassisNo = '', '---', b.ChassisNo) AS ChassisNo,
+      IF(b.PlateNo = '', '---', b.PlateNo) AS PlateNo,
+      IF(b.DateReceived IS NULL,
+          '---',
+          DATE_FORMAT(b.DateReceived, '%m/%d/%Y')) AS DateReceived,
+      IF(b.DateClaim IS NULL,
+          '---',
+          DATE_FORMAT(b.DateClaim, '%m/%d/%Y')) AS DateClaim,
+      b.claim_type,
+      b.AmountClaim,
+      b.AmountApproved,
+      IF(a.dateInspected IS NULL,
+          '---',
+          DATE_FORMAT(a.dateInspected, '%m/%d/%Y')) AS dateInspected,
+      IF(b.NameTPPD = '', '---', b.NameTPPD) AS NameTPPD,
+      b.status,
+      '0' AS header
+    FROM
+      claims a
+          LEFT JOIN
+      claims_details b ON a.claims_id = b.claims_id
+      ${where}
+      order by PolicyNo asc
+    ) a 
+  `;
 }

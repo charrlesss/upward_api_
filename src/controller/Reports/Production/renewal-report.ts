@@ -14,27 +14,27 @@ RenewalReport.post("/renewal-notice", async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
-    let { dateFrom, policy, type, account } = req.body;
-    policy = policy.toUpperCase();
+    let { date, policy, type, account } = req.body;
   
     const query = RenewalNoticeReport(
-      format(new Date(dateFrom), "yyyy-MM-dd"),
       policy,
+      account,
       type,
-      account
+      date,
     );
-    console.log(query);
-    const report: any = await prisma.$queryRawUnsafe(query);
-  
+    console.log(query)
+    const data: any = await prisma.$queryRawUnsafe(query);
     res.send({
-      report,
-      query
+      data,
+      message:"Successfully get Data",
+      success:true
     });
   } catch (error:any) {
     console.log(error.message)
     res.send({
       report:[],
-      message:error.message
+      message:error.message,
+      success:false
     });
   }
 });
