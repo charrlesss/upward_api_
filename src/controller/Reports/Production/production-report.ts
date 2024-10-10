@@ -8,7 +8,7 @@ import {
   startOfYear,
 } from "date-fns";
 import { exportToExcel } from "./report-to-excel";
-import { ProductionReport } from "../../../model/db/stored-procedured";
+import { parseDate, ProductionReport } from "../../../model/db/stored-procedured";
 import { PrismaList } from "../../../model/connection";
 
 const ProductionReports = express.Router();
@@ -72,46 +72,46 @@ ProductionReports.post("/get-production-report", async (req, res) => {
 ProductionReports.post("/get-production-report-desk", async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    let  dateFrom = format( parseDate(req.body.FDate), "yyyy-MM-dd");
+     let dateTo = format( parseDate(req.body.TDate), "yyyy-MM-dd");
+    // if (req.body.report === "Daily") {
+    //   dateFrom = format( parseDate(req.body.FDate), "yyyy-MM-dd");
+    //   dateTo = format( parseDate(req.body.FDate), "yyyy-MM-dd");
+    // }
+    // if (req.body.report === "Monthly") {
+    //   const currentDate =  parseDate(req.body.FDate);
+    //   dateFrom = format(startOfMonth(currentDate), "yyyy-MM-dd");
+    //   dateTo = format(endOfMonth(currentDate), "yyyy-MM-dd");
+    // }
+    // if (req.body.report === "Yearly") {
+    //   const currentDate =  parseDate(req.body.FDate);
 
-    let dateFrom = "";
-    let dateTo = "";
-    if (req.body.report === "Daily") {
-      dateFrom = format(new Date(req.body.dateFrom), "yyyy-MM-dd");
-      dateTo = format(new Date(req.body.dateFrom), "yyyy-MM-dd");
-    }
-    if (req.body.report === "Monthly") {
-      const currentDate = new Date(req.body.dateFrom);
-      dateFrom = format(startOfMonth(currentDate), "yyyy-MM-dd");
-      dateTo = format(endOfMonth(currentDate), "yyyy-MM-dd");
-    }
-    if (req.body.report === "Yearly") {
-      const currentDate = new Date(req.body.dateFrom);
-
-      dateFrom = format(startOfYear(startOfMonth(currentDate)), "yyyy-MM-dd");
-      dateTo = format(
-        endOfMonth(
-          endOfYear(addYears(currentDate, parseInt(req.body.yearCount)))
-        ),
-        "yyyy-MM-dd"
-      );
-    }
-    if (req.body.report === "Custom") {
-      dateFrom = format(new Date(req.body.dateFrom), "yyyy-MM-dd");
-      dateTo = format(new Date(req.body.dateTo), "yyyy-MM-dd");
-    }
+    //   dateFrom = format(startOfYear(startOfMonth(currentDate)), "yyyy-MM-dd");
+    //   dateTo = format(
+    //     endOfMonth(
+    //       endOfYear(addYears(currentDate, parseInt(req.body.numYear)))
+    //     ),
+    //     "yyyy-MM-dd"
+    //   );
+    // }
+    // if (req.body.report === "Custom") {
+    //   dateFrom = format( parseDate(req.body.FDate), "yyyy-MM-dd");
+    //   dateTo = format( parseDate(req.body.TDate), "yyyy-MM-dd");
+    // }
     console.log(req.body);
     console.log(dateFrom, dateTo);
 
     const reportString = ProductionReport(
       dateFrom,
       dateTo,
-      req.body.account.toUpperCase(),
-      req.body.policy,
-      req.body.format2 === "All" ? 0 : 1,
-      req.body.mortgagee,
-      req.body.policyType,
-      req.body.sort
+      req.body.cmbOrder,
+      req.body.cmbSubAcct ,
+      parseInt(req.body.cmbType),
+      "",
+      req.body.cmbpolicy ,
+      req.body.cmbSort
     );
+    console.log(reportString)
     const data: Array<any> = await prisma.$queryRawUnsafe(reportString);
 
     res.send({

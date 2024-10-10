@@ -260,6 +260,23 @@ Claim.get("/claims/get-policy", async (req, res) => {
     });
   }
 });
+Claim.get("/claims/get-policy-desk", async (req, res) => {
+  try {
+    const data =  await claimsPolicy(req.query.searchPolicy as string, req)
+    res.send({
+      message: "Successfully get insurance list",
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      insurance: [],
+    });
+  }
+});
 Claim.get("/claims/get-claims-id", async (req, res) => {
   try {
     res.send({
@@ -437,32 +454,43 @@ Claim.post("/claims/report-claim-desk", async (req, res) => {
   try {
     console.log(req.body)
     let whereStatement = "";
-    if (parseInt(req.body.format) === 5) {
-      whereStatement = ` AND claim_type = ${req.body.claim_type} `;
-    } else if (parseInt(req.body.format) === 6) {
+    if (parseInt(req.body.format) === 4) {
+      whereStatement = ` AND claim_type = ${parseInt(req.body.claim_type) -1} `;
+    } else if (parseInt(req.body.format) === 5) {
       whereStatement = ` AND PolicyNo = '${req.body.PolicyNo}' `;
     } else {
       whereStatement = ""
     }
-
-    if (parseInt(req.body.report)=== 1) {
-      const date = new Date( parseDate(req.body.dateFrom));
-      const lastDayOfMonth = endOfMonth(date);
-      const formattedFirstDay = format(date, "yyyy-MM-01");
-      const formattedLastDay = format(lastDayOfMonth, "yyyy-MM-dd");
-      whereStatement += selectByDate(formattedFirstDay, formattedLastDay);
-    }
-     else if (parseInt(req.body.report )=== 0){
-      whereStatement += selectByDate(
-        format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd"),
-        format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd")
-      );
-    }
-    else {
-      whereStatement += selectByDate(
-        format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd"),
-        format(new Date(parseDate(req.body.dateTo) ), "yyyy-MM-dd")
-      );
+    if(parseInt(req.body.format) !== 5 && parseInt(req.body.format) !== 4){
+      if (parseInt(req.body.report)=== 1) {
+        const date = new Date( parseDate(req.body.dateFrom));
+        const lastDayOfMonth = endOfMonth(date);
+        const formattedFirstDay = format(date, "yyyy-MM-01");
+        const formattedLastDay = format(lastDayOfMonth, "yyyy-MM-dd");
+        whereStatement += selectByDate(formattedFirstDay, formattedLastDay);
+      }
+       else if (parseInt(req.body.report )=== 0){
+        whereStatement += selectByDate(
+          format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd"),
+          format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd")
+        );
+      }
+      else {
+        whereStatement += selectByDate(
+          format(new Date(parseDate(req.body.dateFrom)), "yyyy-MM-dd"),
+          format(new Date(parseDate(req.body.dateTo) ), "yyyy-MM-dd")
+        );
+      }
+    }else{
+      if(parseInt(req.body.format) === 4){
+        const dateFrom = new Date( parseDate(req.body.dateFrom));
+        const date = new Date( parseDate(req.body.dateTo));
+        const dateTo = new Date(endOfMonth(date))
+        whereStatement += selectByDate(
+          format(dateFrom, "yyyy-MM-01"),
+          format(dateTo, "yyyy-MM-dd")
+        );
+      }
     }
 
     function selectByDate(dateFrom: string, dateTo: string) {

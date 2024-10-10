@@ -61,7 +61,7 @@ export function FinancialStatement(
           SUM(IFNULL(Debit, 0)) - SUM(IFNULL(Credit, 0)) as Balance
         FROM journal
         WHERE Source_Type NOT IN ('AB', 'BF', 'BFS', 'BFD')
-        AND Sub_Acct = SubAcctParam
+        AND Sub_Acct = '${SubAcctParam}'
         AND Date_Entry <= '${DateFrom}'
         GROUP BY GL_Acct`;
   }
@@ -85,7 +85,7 @@ export function FinancialStatement(
           SUM(IFNULL(Debit, 0)) - SUM(IFNULL(Credit, 0)) as Balance
             FROM journal
             WHERE Source_Type NOT IN ('AB', 'BF', 'BFS', 'BFD')
-            AND Sub_Acct = SubAcctParam
+            AND Sub_Acct = '${SubAcctParam}'
             AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'
             GROUP BY GL_Acct`;
   }
@@ -1621,14 +1621,14 @@ export function CashDisbursementBook_CDB(
       strSQL = `
         SELECT qryJournal.* 
         FROM (${qryJournals}) qryJournal
-        WHERE qryJournal.Source_Type = '${sourceType}' AND str_to_date(qryJournal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(qryJournal.Area) = '${subAccount}'
+        WHERE qryJournal.Source_Type = '${sourceType}' AND str_to_date(qryJournal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(qryJournal.Sub_Acct) = '${subAccount}'
        
       `;
       strSubSQL = `
         SELECT Journal.GL_Acct, ChartAccount.Acct_Title AS Title, SUM(IFNULL(Debit, 0)) AS mDebit, format(SUM(IFNULL(Credit, 0)),2) AS mCredit 
         FROM Journal 
         LEFT JOIN Chart_Account ChartAccount ON Journal.GL_Acct = ChartAccount.Acct_Code 
-        WHERE Journal.Source_Type = '${sourceType}' AND str_to_date(Journal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(Journal.Area) = '${subAccount}'
+        WHERE Journal.Source_Type = '${sourceType}' AND str_to_date(Journal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(Journal.Sub_Acct) = '${subAccount}'
         GROUP BY Journal.GL_Acct, ChartAccount.Acct_Title 
         HAVING Journal.GL_Acct <> ''
         ORDER BY Journal.GL_Acct
@@ -1655,13 +1655,13 @@ export function CashDisbursementBook_CDB(
       strSQL = `
         SELECT qryJournal.* 
         FROM (${qryJournals}) qryJournal
-        WHERE qryJournal.Source_Type = '${sourceType}' AND qryJournal.Date_Entry BETWEEN '${formattedMonthStart}' AND '${formattedMonthEnd}' AND TRIM(qryJournal.Area) = '${subAccount}'
+        WHERE qryJournal.Source_Type = '${sourceType}' AND qryJournal.Date_Entry BETWEEN '${formattedMonthStart}' AND '${formattedMonthEnd}' AND TRIM(qryJournal.Sub_Acct) = '${subAccount}'
       `;
       strSubSQL = `
         SELECT Journal.GL_Acct, ChartAccount.Acct_Title AS Title, format(SUM(IFNULL(Debit, 0)),2) AS mDebit, format(SUM(IFNULL(Credit, 0)),2) AS mCredit 
         FROM Journal 
         LEFT JOIN Chart_Account ChartAccount ON Journal.GL_Acct = ChartAccount.Acct_Code 
-        WHERE Journal.Source_Type = '${sourceType}' AND Journal.Date_Entry BETWEEN '${formattedMonthStart}' AND '${formattedMonthEnd}' AND TRIM(Journal.Area) = '${subAccount}'
+        WHERE Journal.Source_Type = '${sourceType}' AND Journal.Date_Entry BETWEEN '${formattedMonthStart}' AND '${formattedMonthEnd}' AND TRIM(Journal.Sub_Acct) = '${subAccount}'
         GROUP BY Journal.GL_Acct, ChartAccount.Acct_Title 
         HAVING Journal.GL_Acct <> ''
         ORDER BY Journal.GL_Acct
@@ -1710,14 +1710,14 @@ export function CashDisbursementBook_GJB(
       strSQL = `
         SELECT qryJournal.* 
         FROM (${qryJournals}) qryJournal
-        WHERE qryJournal.Source_Type = '${sourceType}' AND date_format(qryJournal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(qryJournal.Area) = '${subAccount}'
+        WHERE qryJournal.Source_Type = '${sourceType}' AND date_format(qryJournal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(qryJournal.Sub_Acct) = '${subAccount}'
        
       `;
       strSubSQL = `
         SELECT Journal.GL_Acct, ChartAccount.Acct_Title AS Title, SUM(IFNULL(Debit, 0)) AS mDebit, format(SUM(IFNULL(Credit, 0)),2) AS mCredit 
         FROM Journal 
         LEFT JOIN Chart_Account ChartAccount ON Journal.GL_Acct = ChartAccount.Acct_Code 
-        WHERE Journal.Source_Type = '${sourceType}' AND date_format(Journal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(Journal.Area) = '${subAccount}'
+        WHERE Journal.Source_Type = '${sourceType}' AND date_format(Journal.Date_Entry,'%Y-%m-%d') = '${formattedDate}' AND TRIM(Journal.Sub_Acct) = '${subAccount}'
         GROUP BY Journal.GL_Acct, ChartAccount.Acct_Title 
         HAVING Journal.GL_Acct <> ''
         ORDER BY Journal.GL_Acct
@@ -1744,13 +1744,13 @@ export function CashDisbursementBook_GJB(
       strSQL = `
         SELECT qryJournal.* 
         FROM (${qryJournals}) qryJournal
-        WHERE qryJournal.Source_Type = '${sourceType}' AND date_format(qryJournal.Date_Entry,'%Y-%m-%d') >= '${formattedMonthStart}' AND  date_format(qryJournal.Date_Entry,'%Y-%m-%d') <= '${formattedMonthEnd}' AND TRIM(qryJournal.Area) = '${subAccount}'
+        WHERE qryJournal.Source_Type = '${sourceType}' AND date_format(qryJournal.Date_Entry,'%Y-%m-%d') >= '${formattedMonthStart}' AND  date_format(qryJournal.Date_Entry,'%Y-%m-%d') <= '${formattedMonthEnd}' AND TRIM(qryJournal.Sub_Acct) = '${subAccount}'
       `;
       strSubSQL = `
         SELECT Journal.GL_Acct, ChartAccount.Acct_Title AS Title, format(SUM(IFNULL(Debit, 0)),2) AS mDebit, format(SUM(IFNULL(Credit, 0)),2) AS mCredit 
         FROM Journal 
         LEFT JOIN Chart_Account ChartAccount ON Journal.GL_Acct = ChartAccount.Acct_Code 
-        WHERE Journal.Source_Type = '${sourceType}' AND Journal.Date_Entry BETWEEN '${formattedMonthStart}' AND '${formattedMonthEnd}' AND TRIM(Journal.Area) = '${subAccount}'
+        WHERE Journal.Source_Type = '${sourceType}' AND Journal.Date_Entry BETWEEN '${formattedMonthStart}' AND '${formattedMonthEnd}' AND TRIM(Journal.Sub_Acct) = '${subAccount}'
         GROUP BY Journal.GL_Acct, ChartAccount.Acct_Title 
         HAVING Journal.GL_Acct <> ''
         ORDER BY Journal.GL_Acct
