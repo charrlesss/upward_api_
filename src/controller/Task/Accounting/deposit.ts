@@ -27,14 +27,17 @@ import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { format } from "date-fns";
+import { qry_id_policy_sub } from "../../../model/db/views";
+import { executeQuery } from "../../../model/Task/Production/policy";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 const Deposit = express.Router();
 
-Deposit.get("/getCashCollection", async (req, res) => {
+Deposit.get("/get-cash-collection", async (req, res) => {
   try {
     res.send({
       message: "Successfully Get Cash Collection.",
       success: true,
-      cash: await getCashCollection("", req),
+      cash: await getCashCollection("",req.body.IsNew, req),
     });
   } catch (error: any) {
     console.log(error.message);
@@ -45,12 +48,12 @@ Deposit.get("/getCashCollection", async (req, res) => {
     });
   }
 });
-Deposit.get("/getCheckCollection", async (req, res) => {
+Deposit.get("/get-check-collection", async (req, res) => {
   try {
     res.send({
       message: "Successfully Get Check Collection.",
       success: true,
-      check: await getCheckCollection("", req),
+      check: await getCheckCollection("",req.body.IsNew, req),
     });
   } catch (error: any) {
     console.log(error.message);
@@ -190,12 +193,12 @@ Deposit.post("/search-cash-check", async (req, res) => {
           value3:
             items[1] !== ""
               ? (
-                  parseFloat(cashKeys[items[0]].replace(/,/g, "")) *
-                  parseInt(items[1])
-                ).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })
+                parseFloat(cashKeys[items[0]].replace(/,/g, "")) *
+                parseInt(items[1])
+              ).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })
               : "0.00",
         };
         return newItems;
@@ -269,6 +272,8 @@ Deposit.post("/update-deposit", async (req, res) => {
 });
 
 async function addDeposit(req: any) {
+  const { IDEntryWithPolicy } = qry_id_policy_sub()
+
   const selectedCollection = JSON.parse(req.body.selectedCollection);
   const tableRowsInputValue = JSON.parse(req.body.tableRowsInputValue);
   const cashTotal = selectedCollection.reduce(
@@ -291,13 +296,17 @@ async function addDeposit(req: any) {
     },
     0.0
   );
+  console.log(cashTotal)
+  console.log(checkTotal)
+  console.log(selectedCollection)
+  console.log(tableRowsInputValue)
   await addDepositSlip(
     {
-      Date: req.body.depositdate,
+      Date: defaultFormat(new Date(req.body.depositdate)),
       SlipCode: req.body.depositSlip,
-      Slip: req.body.Desc,
-      BankAccount: req.body.Account_No,
-      AccountName: req.body.Account_Name,
+      Slip: req.body.BankAcctCodeTag,
+      BankAccount: req.body.BankAcctCode,
+      AccountName: req.body.BankAcctName,
       CheckDeposit: checkTotal.toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -306,27 +315,29 @@ async function addDeposit(req: any) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }),
-      IDNo: req.body.IDNo,
+      IDNo: req.body.BankAcctCodeTag,
     },
     req
   );
   let Cnt = 0;
   const Amount = [checkTotal, cashTotal];
-  for (let i = 0; i < 2; i++) {
+
+  for (let i = 0; i <= 1; i++) {
     if (Amount[i] !== 0) {
       Cnt++;
+
       await addCashCheckInDeposit(
         {
-          Date_Deposit: Cnt > 1 ? null : req.body.depositdate,
-          Slip_Code: Cnt > 1 ? null : req.body.depositSlip,
-          Account_ID: req.body.Account_ID,
-          Account_Name: req.body.Account_Name,
+          Date_Deposit: Cnt > 1 ? null : defaultFormat(new Date(req.body.depositdate)),
+          Slip_Code: Cnt > 1 ? null : defaultFormat(new Date(req.body.depositdate)),
+          Account_ID: req.body.AcctID,
+          Account_Name: req.body.AcctName,
           Debit: Amount[i].toFixed(2),
           Temp_SlipCode: req.body.depositSlip,
           Temp_SlipCntr: `${req.body.depositSlip}-${("000" + Cnt).slice(-3)}`,
-          Temp_SlipDate: req.body.depositdate,
+          Temp_SlipDate: defaultFormat(new Date(req.body.depositdate)),
           Type: "HO",
-          IDNo: req.body.Identity,
+          IDNo: req.body.ShortName,
         },
         req
       );
@@ -335,10 +346,10 @@ async function addDeposit(req: any) {
   for (let i = 0; i < selectedCollection.length; i++) {
     const selectedCollectionValue = selectedCollection[i];
     let Check_Date = ''
-    if(selectedCollectionValue.Check_No !== '' && selectedCollectionValue.Check_No !== null && selectedCollectionValue.Check_No !== undefined ){
-      Check_Date =  format(
-        new Date(selectedCollectionValue.Check_Date),
-        "yyyy-MM-dd HH:mm:ss.SSS"
+    if (selectedCollectionValue.Check_No !== '' && selectedCollectionValue.Check_No !== null && selectedCollectionValue.Check_No !== undefined) {
+      Check_Date = defaultFormat(
+        new Date(selectedCollectionValue.Check_Date)
+
       )
 
     }
@@ -350,19 +361,19 @@ async function addDeposit(req: any) {
         Credit: parseFloat(
           selectedCollectionValue.Amount.toString().replace(/,/, "")
         ).toFixed(2),
-        Check_Date ,
+        Check_Date,
         Check_No: selectedCollectionValue.Check_No,
         Bank: selectedCollectionValue.Bank,
         Temp_SlipCode: req.body.depositSlip,
         Temp_SlipCntr: `${req.body.depositSlip}-${("000" + Cnt).slice(-3)}`,
-        Temp_SlipDate: req.body.depositdate,
+        Temp_SlipDate: defaultFormat(new Date(req.body.depositdate)),
         IDNo: selectedCollectionValue.Name,
         Type: "HO",
         Ref_No: selectedCollectionValue.ORNo,
       },
       req
     );
-   
+
   }
   await addCashBreakDown(
     {
@@ -388,48 +399,54 @@ async function addDeposit(req: any) {
   );
 
   for (let i = 0; i < 2; i++) {
+
+    const getClientSubAccount: any = await executeQuery(IDEntryWithPolicy, req.body.BankAcctCodeTag, req)
+
     if (Amount[i] !== 0) {
       addJournal(
         {
           Branch_Code: "HO",
-          Date_Entry: req.body.depositdate,
+          Date_Entry: defaultFormat(new Date(req.body.depositdate)),
           Source_Type: "DC",
           Source_No: req.body.depositSlip,
           Particulars: i === 0 ? req.body.ShortName : "",
           Payto: i === 1 ? req.body.ShortName : "",
           GL_Acct: req.body.Account_ID,
           cGL_Acct: req.body.Short,
-          Sub_Acct: "HO",
-          cSub_Acct: req.body.Sub_ShortName,
+          Sub_Acct: getClientSubAccount[0].Sub_Acct,
+          cSub_Acct: getClientSubAccount[0].ShortName,
           ID_No: req.body.IDNo,
           cID_No: req.body.ShortName,
           Debit: i == 0 ? checkTotal : cashTotal,
-          Source_No_Ref_ID: "",
+          Source_No_Ref_ID: "ff",
         },
         req
       );
     }
   }
-  for (let i = 0; i < selectedCollection.length; i++) {
-    const selectedCollectionValue = selectedCollection[i];
+  //let i = 0; i < selectedCollection.length; i++
+  for (const selectedCollectionValue of selectedCollection) {
+    // const selectedCollectionValue = selectedCollection[i];
     const IsCheck = selectedCollectionValue.Check_No !== "";
-    console.log(selectedCollectionValue);
+    const __getClientSubAccount: any = await executeQuery(IDEntryWithPolicy, selectedCollectionValue.IDNo, req)
+
+    console.log(selectedCollectionValue)
     addJournal(
       {
         Branch_Code: "HO",
-        Date_Entry: req.body.depositdate,
+        Date_Entry: defaultFormat( new Date(req.body.depositdate)),
         Source_Type: "DC",
         Source_No: req.body.depositSlip,
         Explanation: "",
-        Check_Date: IsCheck ? selectedCollectionValue.Check_Date : "",
+        Check_Date: IsCheck ? defaultFormat(new Date(selectedCollectionValue.Check_Date)) : "",
         Check_No: IsCheck ? selectedCollectionValue.Check_No : "",
         Check_Bank: IsCheck ? selectedCollectionValue.Bank : "",
         Remarks: IsCheck ? selectedCollectionValue.DRRemarks : "",
         Payto: selectedCollectionValue.Name,
         GL_Acct: selectedCollectionValue.DRCode,
         cGL_Acct: selectedCollectionValue.Short,
-        Sub_Acct: "HO",
-        cSub_Acct: req.body.Sub_ShortName,
+        Sub_Acct: __getClientSubAccount[0].Sub_Acct,
+        cSub_Acct: __getClientSubAccount[0].ShortName,
         ID_No: selectedCollectionValue.IDNo,
         cID_No: selectedCollectionValue.Name,
         Credit: selectedCollectionValue.Amount.replace(/,/g, ""),
@@ -443,10 +460,11 @@ async function addDeposit(req: any) {
       selectedCollectionValue.TempOR,
       req
     );
+
     if (IsCheck)
       await updatePDCSlipCode(
         req.body.depositSlip,
-        req.body.depositdate,
+        defaultFormat(new Date(req.body.depositdate)),
         selectedCollectionValue.IDNo,
         selectedCollectionValue.Check_No,
         req

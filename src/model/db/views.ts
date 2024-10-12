@@ -1,5 +1,5 @@
 export function clients_view() {
-  return `
+    return `
   select * from (SELECT 
     if(aa.option = "individual", CONCAT(IF(aa.lastname is not null and trim(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''),aa.firstname), aa.company) as ShortName,
     aa.entry_client_id AS IDNo,
@@ -111,7 +111,7 @@ FROM
 }
 
 export function qryJournal() {
-  const selectClient = `
+    const selectClient = `
   select * from (
   SELECT 
     if(aa.option = "individual", CONCAT(IF(aa.lastname is not null and trim(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''),aa.firstname), aa.company) as ShortName,
@@ -223,7 +223,7 @@ FROM
     entry_supplier aa) id_entry`
 
 
-const qry = `
+    const qry = `
 SELECT 
     DISTINCT 
     Journal.Branch_Code, 
@@ -278,11 +278,11 @@ FROM
     LEFT OUTER JOIN Books ON Journal.Source_Type = Books.Code
 `
 
-  return qry;
+    return qry;
 }
 
 
-export function xID_Sub_Entry(){
+export function xID_Sub_Entry() {
 
     return `
     select * from (
@@ -328,4 +328,69 @@ export function xID_Sub_Entry(){
             sub_account b ON id_entry.sub_account = b.Sub_Acct
         ) xID_Sub_Entry
     `
+}
+
+
+export function qry_id_policy_sub() {
+    const IDEntry = `
+            SELECT 
+            id_entry.IDNo,
+            IFNULL(b.Acronym, 'HO') AS Sub_Acct,
+            IFNULL(b.ShortName, 'Head Office') AS ShortName,
+            id_entry.ShortName as client_name
+        FROM
+            (SELECT 
+                IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                        AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS ShortName,
+                    aa.entry_client_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_client aa UNION ALL SELECT 
+                CONCAT(IF(aa.lastname IS NOT NULL
+                        AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS ShortName,
+                    aa.entry_agent_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_agent aa UNION ALL SELECT 
+                CONCAT(IF(aa.lastname IS NOT NULL
+                        AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS ShortName,
+                    aa.entry_employee_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_employee aa UNION ALL SELECT 
+                aa.fullname AS ShortName,
+                    aa.entry_fixed_assets_id AS IDNo,
+                    sub_account
+            FROM
+                entry_fixed_assets aa UNION ALL SELECT 
+                aa.description AS ShortName,
+                    aa.entry_others_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_others aa UNION ALL SELECT 
+                IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                        AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS ShortName,
+                    aa.entry_supplier_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_supplier aa) id_entry
+                LEFT JOIN
+            sub_account b ON id_entry.sub_account = b.Sub_Acct
+            
+    `
+    const IDEntryWithPolicy = `
+        SELECT * from  (${IDEntry}) id_entry 
+       union all
+             SELECT 
+                 a.PolicyNo, 
+                 id_entry.Sub_Acct, 
+                 id_entry.ShortName,
+                 id_entry.client_name
+            FROM
+                policy a
+            LEFT JOIN
+                (${IDEntry}) id_entry ON a.IDNo = id_entry.IDNo
+
+    `
+    return { IDEntryWithPolicy, IDEntry }
 }

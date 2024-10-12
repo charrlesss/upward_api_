@@ -28,6 +28,7 @@ import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
 import { format } from "date-fns";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const MarinePolicy = express.Router();
 
@@ -166,8 +167,6 @@ MarinePolicy.post("/update-marine-policy", async (req, res) => {
     const cStrArea = subAccount.ShortName;
 
 
-    req.body.DateIssued = new Date(req.body.DateIssued)
-
     //delete policy
     await deletePolicyFromMarine(PolicyNo, req);
     //delete m policy
@@ -257,6 +256,13 @@ async function insertMarinePolicy(
   }: any,
   req: Request
 ) {
+
+  
+  DateFrom = defaultFormat(new Date(DateFrom))
+  DateTo = defaultFormat(new Date(DateTo))
+  DateIssued = defaultFormat(new Date(DateIssued))
+  
+  
   await createPolicy(
     {
       IDNo: client_id,
@@ -317,7 +323,7 @@ async function insertMarinePolicy(
   await createJournal(
     {
       Branch_Code: sub_account,
-      Date_Entry: format(new Date(DateIssued),'yyyy-MM-dd'),
+      Date_Entry: DateIssued,
       Source_Type: "PL",
       Source_No: PolicyNo,
       Explanation: "Marine Production",
@@ -339,7 +345,7 @@ async function insertMarinePolicy(
   await createJournal(
     {
       Branch_Code: sub_account,
-      Date_Entry: format(new Date(DateIssued),'yyyy-MM-dd'),
+      Date_Entry: DateIssued,
       Source_Type: "PL",
       Source_No: PolicyNo,
       Explanation: "Marine Production",

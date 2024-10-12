@@ -1,6 +1,7 @@
 import { Request } from "express";
 import { PrismaList } from "../../connection";
 import { clients_view } from "../../db/views";
+import { sanitizeInput } from "../../../lib/sanitizeInput";
 const { CustomPrismaClient } = PrismaList();
 
 export async function getPolicySummary(policyNo: string, req: Request) {
@@ -244,4 +245,11 @@ export async function getMortgagee(type: string, req: Request) {
       },
     },
   });
+}
+
+export async function executeQuery(qry:string ,IDNo:string ,req:Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const queryExec = `select * from (${qry}) a where a.IDNo = '${sanitizeInput(IDNo)}'`
+  console.log(queryExec)
+  return await prisma.$queryRawUnsafe(queryExec)
 }

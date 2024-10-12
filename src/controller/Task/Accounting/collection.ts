@@ -23,6 +23,9 @@ import { format } from "date-fns";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
+import { qry_id_policy_sub } from "../../../model/db/views";
+import { executeQuery } from "../../../model/Task/Production/policy";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const Collection = express.Router();
 
@@ -247,6 +250,9 @@ Collection.post("/on-print", async (req, res) => {
 });
 
 async function AddCollection(req: any) {
+  const { IDEntryWithPolicy } = qry_id_policy_sub()
+  const getClientSubAccount: any = await executeQuery(IDEntryWithPolicy,req.body.PNo, req)
+
   const debit = JSON.parse(req.body.debit);
   const credit = JSON.parse(req.body.credit);
 
@@ -278,7 +284,7 @@ async function AddCollection(req: any) {
       Payment = debit[i].Payment;
       Debit = debit[i].Amount;
       CheckNo = debit[i].Check_No;
-      CheckDate = debit[i].Check_Date;
+      CheckDate =  debit[i].Check_Date  ?  defaultFormat(new Date( debit[i].Check_Date)) : "";
       Bank = debit[i].Bank_Branch;
       DRCode = debit[i].Acct_Code;
       DRTitle = debit[i].Acct_Title;
@@ -300,7 +306,7 @@ async function AddCollection(req: any) {
 
     const ColDate =
       i === 0
-        ? format(new Date(req.body.Date), "yyyy-MM-dd HH:mm:ss.SSS")
+        ? defaultFormat(new Date(req.body.Date))
         : null;
     const OR = i === 0 ? req.body.ORNo : "";
     const PNo = i === 0 ? req.body.PNo : "";
@@ -331,7 +337,7 @@ async function AddCollection(req: any) {
       Official_Receipt: req.body.ORNo,
       Temp_OR: `${req.body.ORNo}${(i + 1).toString().padStart(2, "0")}`,
       Status: "HO",
-      Date_OR: format(new Date(req.body.Date), "yyyy-MM-dd HH:mm:ss.SSS"),
+      Date_OR: defaultFormat(new Date(req.body.Date)),
       Short: req.body.Name,
       CRVATType: CRVatType,
       CRInvoiceNo: CRInvoiceNo,
@@ -363,7 +369,7 @@ async function AddCollection(req: any) {
     const Payment = debit[i].Payment;
     const Debit = debit[i].Amount;
     const CheckNo = debit[i].Check_No ?? "";
-    const CheckDate = debit[i].Check_Date ?? "";
+    const CheckDate = debit[i].Check_Date ? defaultFormat(new Date( debit[i].Check_Date))  : "";
     const Bank = debit[i].Bank_Branch ?? "";
     const DRCode = transaction.Acct_Code;
     const DRTitle = transaction.Acct_Title;
@@ -372,9 +378,9 @@ async function AddCollection(req: any) {
     await createJournal(
       {
         Branch_Code: "HO",
-        Date_Entry: req.body.Date,
+        Date_Entry: defaultFormat(new Date(req.body.Date)),
         Source_Type: "OR",
-        Source_No: req.body.ORNo.toUpperCase(),
+        Source_No: req.body.ORNo,
         Explanation: `${Payment} Collection at Head Office`,
         Check_No: CheckNo,
         Check_Date: CheckDate,
@@ -382,8 +388,8 @@ async function AddCollection(req: any) {
         Payto: req.body.Name,
         GL_Acct: DRCode,
         cGL_Acct: DRTitle,
-        Sub_Acct: "HO",
-        cSub_Acct: "Upward Insurance Agency",
+        Sub_Acct: getClientSubAccount[0]?.Sub_Acct,
+        cSub_Acct: getClientSubAccount[0]?.ShortName,
         ID_No: req.body.PNo,
         cID_No: req.body.Name,
         Debit: Debit.replaceAll(",", ""),
@@ -410,16 +416,16 @@ async function AddCollection(req: any) {
     await createJournal(
       {
         Branch_Code: "HO",
-        Date_Entry: req.body.Date,
+        Date_Entry: defaultFormat(new Date(req.body.Date)) ,
         Source_Type: "OR",
-        Source_No: req.body.ORNo.toUpperCase(),
+        Source_No: req.body.ORNo,
         GL_Acct: CRCode,
         cGL_Acct: CRTitle,
         ID_No: CRLoanID,
         cID_No: CRLoanName,
         Explanation: Purpose,
-        Sub_Acct: "HO",
-        cSub_Acct: "Upward Insurance Agency",
+        Sub_Acct: getClientSubAccount[0]?.Sub_Acct,
+        cSub_Acct: getClientSubAccount[0]?.ShortName,
         Credit: Credit.replaceAll(",", ""),
         Remarks: CRRemarks,
         TC: TC,

@@ -24,6 +24,7 @@ import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const MSPRPolicy = express.Router();
 
@@ -164,7 +165,6 @@ MSPRPolicy.post("/update-mspr-policy", async (req, res) => {
     // //delete journal
     await deleteJournalBySource(PolicyNo, "PL", req);
 
-    req.body.DateIssued = new Date(req.body.DateIssued).toISOString();
 
     // insert fire policy
     await insertMSPRPolicy({ ...req.body, cStrArea, strArea }, req);
@@ -247,6 +247,11 @@ async function insertMSPRPolicy(
   }: any,
   req: Request
 ) {
+
+  DateFrom = defaultFormat(new Date(DateFrom))
+  DateTo = defaultFormat(new Date(DateTo))
+  DateIssued = defaultFormat(new Date(DateIssued))
+  
   //create  Policy
   await createPolicy(
     {

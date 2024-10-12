@@ -25,6 +25,7 @@ import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const BondPolicy = express.Router();
 BondPolicy.get("/get-bond-acc-type", async (req, res) => {
@@ -193,7 +194,6 @@ BondPolicy.post("/update-bonds-policy", async (req, res) => {
     // //delete journal
     await deleteJournalBySource(PolicyNo, "PL", req);
 
-    req.body.DateIssued = new Date(req.body.DateIssued).toISOString();
     // insert fire policy
     await insertBondsPolicy({ ...req.body, cStrArea, strArea }, req);
 
@@ -277,7 +277,10 @@ async function insertBondsPolicy(
   req: Request
 ) {
   //create  Policy
-
+  biddingDate = defaultFormat(new Date(biddingDate))
+  time = defaultFormat(new Date(time))
+  DateIssued = defaultFormat(new Date(DateIssued))
+  
   await createPolicy(
     {
       IDNo: client_id,

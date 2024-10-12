@@ -94,8 +94,8 @@ model vpolicy {
   PolicyType          String?   @db.VarChar(255)
   CoverNo             String?   @db.VarChar(255)
   ORNo                String?   @db.VarChar(255)
-  DateFrom            DateTime? @db.DateTime(6)
-  DateTo              DateTime? @db.DateTime(6)
+  DateFrom             String?  @db.VarChar(255)
+  DateTo               String?  @db.VarChar(255)
   Model               String?   @db.VarChar(255)
   Make                String?   @db.VarChar(255)
   BodyType            String?   @db.VarChar(255)
@@ -364,7 +364,7 @@ model books {
 
 model cash_disbursement {
   Branch_Code   String?   @db.VarChar(255)
-  Date_Entry    DateTime? @db.DateTime(6)
+  Date_Entry     String?  @db.VarChar(255)
   Source_Type   String?   @db.VarChar(255)
   Source_No     String?   @db.VarChar(255)
   Explanation   String?   @db.LongText
@@ -374,9 +374,9 @@ model cash_disbursement {
   Check_Date    String?   @db.VarChar(255)
   Check_No      String?   @db.VarChar(255)
   Check_Bank    String?   @db.VarChar(255)
-  Check_Return  DateTime? @db.DateTime(6)
-  Check_Collect DateTime? @db.DateTime(6)
-  Check_Deposit DateTime? @db.DateTime(6)
+  Check_Return   String?  @db.VarChar(255)
+  Check_Collect  String?  @db.VarChar(255)
+  Check_Deposit  String?  @db.VarChar(255)
   Check_Reason  String?   @db.VarChar(255)
   GL_Acct       String?   @db.VarChar(255)
   Sub_Acct      String?   @db.VarChar(255)
@@ -475,7 +475,7 @@ model company_list {
 }
 
 model deposit {
-  Date_Deposit  DateTime? @db.DateTime(6)
+  Date_Deposit   String?  @db.VarChar(255)
   Slip_Code     String?   @db.VarChar(250)
   Account_ID    String?   @db.VarChar(250)
   Account_Name  String?   @db.VarChar(250)
@@ -491,12 +491,12 @@ model deposit {
   IDNo          String?   @db.VarChar(250)
   Temp_SlipCode String?   @db.VarChar(250)
   Temp_SlipCntr String?   @db.VarChar(250)
-  Temp_SlipDate DateTime? @db.DateTime(6)
+  Temp_SlipDate  String?  @db.VarChar(255)
   Deposit_ID    Int       @id @default(autoincrement())
 }
 
 model deposit_slip {
-  Date         DateTime? @db.DateTime(6)
+  Date          String?  @db.VarChar(255)
   SlipCode     String    @id @db.VarChar(50)
   Slip         String?   @db.VarChar(250)
   BankAccount  String?   @db.VarChar(250)
@@ -583,19 +583,19 @@ model id_entry {
 
 model journal_partial {
   Branch_Code   String?   @db.VarChar(3)
-  Date_Entry    DateTime? @db.DateTime(6)
+  Date_Entry     String?  @db.VarChar(255)
   Source_Type   String?   @db.VarChar(3)
   Source_No     String?   @db.VarChar(10)
   Explanation   String?   @db.VarChar(255)
   Particulars   String?   @db.LongText
   Payto         String?   @db.VarChar(100)
   Address       String?   @db.VarChar(255)
-  Check_Date    DateTime? @db.DateTime(6)
+  Check_Date     String?  @db.VarChar(255)
   Check_No      String?   @db.VarChar(100)
   Check_Bank    String?   @db.VarChar(100)
-  Check_Return  DateTime? @db.DateTime(6)
-  Check_Collect DateTime? @db.DateTime(6)
-  Check_Deposit DateTime? @db.DateTime(6)
+  Check_Return   String?  @db.VarChar(255)
+  Check_Collect  String?  @db.VarChar(255)
+  Check_Deposit  String?  @db.VarChar(255)
   Check_Reason  String?   @db.VarChar(255)
   GL_Acct       String?   @db.VarChar(10)
   Sub_Acct      String?   @db.VarChar(3)
@@ -646,19 +646,19 @@ model journal_voucher {
 
 model journal_voucher2 {
   Branch_Code   String?   @db.VarChar(3)
-  Date_Entry    DateTime? @db.DateTime(6)
+  Date_Entry     String?  @db.VarChar(255)
   Source_Type   String?   @db.VarChar(3)
   Source_No     String?   @db.VarChar(20)
   Explanation   String?   @db.VarChar(255)
   Particulars   String?   @db.LongText
   Payto         String?   @db.VarChar(100)
   Address       String?   @db.VarChar(255)
-  Check_Date    DateTime? @db.DateTime(6)
+  Check_Date     String?  @db.VarChar(255)
   Check_No      String?   @db.VarChar(100)
   Check_Bank    String?   @db.VarChar(100)
-  Check_Return  DateTime? @db.DateTime(6)
-  Check_Collect DateTime? @db.DateTime(6)
-  Check_Deposit DateTime? @db.DateTime(6)
+  Check_Return   String?  @db.VarChar(255)
+  Check_Collect  String?  @db.VarChar(255)
+  Check_Deposit  String?  @db.VarChar(255)
   Check_Reason  String?   @db.VarChar(255)
   GL_Acct       String?   @db.VarChar(10)
   Sub_Acct      String?   @db.VarChar(3)
@@ -675,19 +675,19 @@ model journal_voucher2 {
 
 model journal2 {
   Branch_Code   String?   @db.VarChar(3)
-  Date_Entry    DateTime? @db.DateTime(6)
+  Date_Entry     String?  @db.VarChar(255)
   Source_Type   String?   @db.VarChar(3)
   Source_No     String?   @db.VarChar(20)
   Explanation   String?   @db.VarChar(255)
   Particulars   String?   @db.LongText
   Payto         String?   @db.VarChar(100)
   Address       String?   @db.VarChar(255)
-  Check_Date    DateTime? @db.DateTime(6)
+  Check_Date     String?  @db.VarChar(255)
   Check_No      String?   @db.VarChar(100)
   Check_Bank    String?   @db.VarChar(100)
-  Check_Return  DateTime? @db.DateTime(6)
-  Check_Collect DateTime? @db.DateTime(6)
-  Check_Deposit DateTime? @db.DateTime(6)
+  Check_Return   String?  @db.VarChar(255)
+  Check_Collect  String?  @db.VarChar(255)
+  Check_Deposit  String?  @db.VarChar(255)
   Check_Reason  String?   @db.VarChar(255)
   GL_Acct       String?   @db.VarChar(10)
   Sub_Acct      String?   @db.VarChar(3)
@@ -704,19 +704,19 @@ model journal2 {
 
 model journal3 {
   Branch_Code   String?   @db.VarChar(3)
-  Date_Entry    DateTime? @db.DateTime(6)
+  Date_Entry     String?  @db.VarChar(255)
   Source_Type   String?   @db.VarChar(3)
   Source_No     String?   @db.VarChar(20)
   Explanation   String?   @db.LongText
   Particulars   String?   @db.LongText
   Payto         String?   @db.VarChar(500)
   Address       String?   @db.VarChar(255)
-  Check_Date    DateTime? @db.DateTime(6)
+  Check_Date     String?  @db.VarChar(255)
   Check_No      String?   @db.VarChar(100)
   Check_Bank    String?   @db.VarChar(100)
-  Check_Return  DateTime? @db.DateTime(6)
-  Check_Collect DateTime? @db.DateTime(6)
-  Check_Deposit DateTime? @db.DateTime(6)
+  Check_Return   String?  @db.VarChar(255)
+  Check_Collect  String?  @db.VarChar(255)
+  Check_Deposit  String?  @db.VarChar(255)
   Check_Reason  String?   @db.VarChar(255)
   GL_Acct       String?   @db.VarChar(10)
   Sub_Acct      String?   @db.VarChar(3)
@@ -745,22 +745,22 @@ model pdc {
   Ref_No          String    @db.VarChar(50)
   PNo             String?   @db.VarChar(50)
   IDNo            String?   @db.VarChar(50)
-  Date            DateTime? @db.DateTime(6)
+  Date             String?  @db.VarChar(255)
   Name            String?   @db.VarChar(250)
   Remarks         String?   @db.VarChar(250)
   Bank            String?   @db.VarChar(250)
   Branch          String?   @db.VarChar(50)
-  Check_Date      DateTime? @db.DateTime(6)
+  Check_Date       String?  @db.VarChar(255)
   Check_No        String?   @db.VarChar(50)
   Check_Amnt      String?   @db.VarChar(250)
   Check_Remarks   String?   @db.VarChar(50)
   SlipCode        String?   @db.VarChar(50)
-  DateDepo        DateTime? @db.DateTime(6)
+  DateDepo         String?  @db.VarChar(255)
   ORNum           String?   @db.VarChar(50)
   PDC_Status      String?   @db.VarChar(150)
-  Date_Stored     DateTime? @db.DateTime(6)
-  Date_Endorsed   DateTime? @db.DateTime(6)
-  Date_Pulled_Out DateTime? @db.DateTime(6)
+  Date_Stored      String?  @db.VarChar(255)
+  Date_Endorsed    String?  @db.VarChar(255)
+  Date_Pulled_Out  String?  @db.VarChar(255)
   PDC_Remarks     String?   @db.VarChar(250)
   mark            String?   @db.VarChar(50)
 }
@@ -773,7 +773,7 @@ model pdc_uploads {
 
 model petty_cash {
   Branch_Code String?   @db.VarChar(250)
-  PC_Date     DateTime? @db.DateTime(6)
+  PC_Date      String?  @db.VarChar(255)
   PC_No       String    @db.VarChar(250)
   Explanation String?   @db.LongText
   Payee       String?   @db.VarChar(250)
@@ -808,9 +808,9 @@ model postponement {
   ClientBranch   String?   @db.VarChar(250)
   Prepared_by    String?   @db.VarChar(250)
   Requested_By   String?   @db.VarChar(30)
-  Requested_Date DateTime? @db.DateTime(6)
+  Requested_Date  String?  @db.VarChar(255)
   Approved_By    String?   @db.VarChar(30)
-  Approved_Date  DateTime? @db.DateTime(6)
+  Approved_Date   String?  @db.VarChar(255)
 }
 
 model postponement_auth_codes {
@@ -858,9 +858,9 @@ model pullout_request {
   Status         String?   @db.VarChar(30)
   Branch         String?   @db.VarChar(30)
   Requested_By   String?   @db.VarChar(30)
-  Requested_Date DateTime? @db.DateTime(6)
+  Requested_Date  String?  @db.VarChar(255)
   Approved_By    String?   @db.VarChar(30)
-  Approved_Date  DateTime? @db.DateTime(6)
+  Approved_Date   String?  @db.VarChar(255)
 }
 
 model pullout_request_details {
@@ -885,12 +885,12 @@ model resavelog {
 
 model return_checks {
   Area         String?   @db.VarChar(255)
-  RC_Date      DateTime? @db.DateTime(6)
+  RC_Date       String?  @db.VarChar(255)
   RC_No        String    @db.VarChar(255)
   Explanation  String?   @db.Text
   Check_No     String?   @db.VarChar(255)
-  Date_Deposit DateTime? @db.DateTime(6)
-  Date_Collect DateTime? @db.DateTime(6)
+  Date_Deposit  String?  @db.VarChar(255)
+  Date_Collect  String?  @db.VarChar(255)
   Amount       Decimal?  @db.Decimal(19, 4)
   Reason       String?   @db.VarChar(255)
   Bank         String?   @db.VarChar(255)
@@ -941,10 +941,10 @@ model tbl_accrual_request {
   VAT           String?   @db.VarChar(50)
   C_ID          String?   @db.VarChar(50)
   Req_By        String?   @db.VarChar(50)
-  Req_Date      DateTime? @db.DateTime(6)
+  Req_Date       String?  @db.VarChar(255)
   Req_Status    String?   @db.VarChar(50)
   Approved_By   String?   @db.VarChar(50)
-  Approved_Date DateTime? @db.DateTime(6)
+  Approved_Date  String?  @db.VarChar(255)
 
   @@ignore
 }
@@ -961,10 +961,10 @@ model tbl_accrual_request_income {
   VAT           String?   @db.VarChar(50)
   C_ID          String?   @db.VarChar(50)
   Req_By        String?   @db.VarChar(50)
-  Req_Date      DateTime? @db.DateTime(6)
+  Req_Date       String?  @db.VarChar(255)
   Req_Status    String?   @db.VarChar(50)
   Approved_By   String?   @db.VarChar(50)
-  Approved_Date DateTime? @db.DateTime(6)
+  Approved_Date  String?  @db.VarChar(255)
 
   @@ignore
 }
@@ -992,7 +992,7 @@ model xid_entry {
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model xsubsidiary {
-  Date_Entry     DateTime? @db.DateTime(6)
+  Date_Entry      String?  @db.VarChar(255)
   Sort_Number    Int?
   Source_Type    String?   @db.VarChar(500)
   Source_No      String?   @db.VarChar(500)
@@ -1000,7 +1000,7 @@ model xsubsidiary {
   Particulars    String?   @db.VarChar(500)
   Payto          String?   @db.VarChar(500)
   Address        String?   @db.VarChar(500)
-  Check_Date     DateTime? @db.DateTime(6)
+  Check_Date      String?  @db.VarChar(255)
   Check_No       String?   @db.VarChar(500)
   Check_Bank     String?   @db.VarChar(500)
   GL_Acct        String?   @db.VarChar(500)

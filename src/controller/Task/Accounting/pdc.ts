@@ -20,7 +20,8 @@ import { generateUniqueFilename } from "../Claims/claims";
 import { v4 as uuidV4 } from "uuid";
 import { IDGenerator, UpdateId } from "../../../model/Reference/id-entry.model";
 import { VerifyToken } from "../../Authentication";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 const PDC = express.Router();
 
 PDC.post("/add-pdc", async (req, res) => {
@@ -52,19 +53,23 @@ PDC.post("/add-pdc", async (req, res) => {
     checks.forEach(async (check: any) => {
       newId = "chk-" + num.toString().padStart(count.length, "0");
       num++;
+      const pdcDate = req.body.Date
+      const Check_Date = req.body.Check_Date
+
       if (check.DateDeposit === "") {
+
         await createPDC(
           {
             PDC_ID: newId,
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
-            Date: new Date(req.body.Date),
+            Date: pdcDate,
             Name: req.body.Name,
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: new Date(check.Check_Date),
+            Check_Date: Check_Date,
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
@@ -80,12 +85,12 @@ PDC.post("/add-pdc", async (req, res) => {
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
-            Date: new Date(req.body.Date),
+            Date: pdcDate,
             Name: req.body.Name,
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: new Date(check.Check_Date),
+            Check_Date: Check_Date,
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
@@ -99,7 +104,7 @@ PDC.post("/add-pdc", async (req, res) => {
       }
     });
     await UpdateId("pdc-chk", newId.split("-")[1], month, year, req);
-    await UpdateId("pdc", req.body.Ref_No.split(".")[1],  month,year, req);
+    await UpdateId("pdc", req.body.Ref_No.split(".")[1], month, year, req);
     const uploadDir = path.join("./static/pdc", `${req.body.Ref_No}`);
     if (fs.existsSync(uploadDir)) {
       fs.rmSync(uploadDir, { recursive: true });
@@ -162,6 +167,9 @@ PDC.post("/update-pdc", async (req, res) => {
     num = parseInt(count, 10);
     let newId = "";
     checks.forEach(async (check: any) => {
+      const pdcDate = req.body.Date
+      const Check_Date = req.body.Check_Date
+
       newId = num.toString().padStart(count.length, "0");
       num++;
 
@@ -172,12 +180,12 @@ PDC.post("/update-pdc", async (req, res) => {
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
-            Date: new Date(req.body.Date),
+            Date: pdcDate,
             Name: req.body.Name,
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: new Date(check.Check_Date),
+            Check_Date: Check_Date,
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt.replaceAll(",", ""),
             Check_Remarks: check.Check_Remarks,
@@ -193,19 +201,19 @@ PDC.post("/update-pdc", async (req, res) => {
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
-            Date: new Date(req.body.Date),
+            Date: pdcDate,
             Name: req.body.Name,
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: new Date(check.Check_Date),
+            Check_Date: Check_Date,
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt.replaceAll(",", ""),
             Check_Remarks: check.Check_Remarks,
             SlipCode: req.body.Deposit_Slip,
             DateDepo:
               req.body.DateDeposit && req.body.DateDeposit !== ""
-                ? new Date(req.body.DateDeposit)
+                ? req.body.DateDeposit
                 : undefined,
             ORNum: check.OR_No,
             PDC_Status: "Received",

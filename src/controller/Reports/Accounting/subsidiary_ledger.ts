@@ -4,6 +4,7 @@ import { v4 as uuidV4 } from "uuid";
 import { qryJournal, xID_Sub_Entry } from "../../../model/db/views";
 import { PrismaList } from "../../../model/connection";
 import { sanitizeInput } from "../../../lib/sanitizeInput";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const SubsidiaryLedger = express.Router();
 let dt: any = [];
@@ -1019,7 +1020,7 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
         // Execute the insert query
         await prisma.xsubsidiary.create({
           data: {
-            Date_Entry: new Date(row.Date_Entry),
+            Date_Entry: defaultFormat(new Date(row.Date_Entry)),
             Sort_Number: parseInt(row.Number),
             Source_Type: row["Hide_Code"],
             Source_No: row.Source_No,
@@ -1036,7 +1037,7 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
             Bal: parseFloat(row.mDebit) - parseFloat(row.mCredit),
             Balance: Balance,
             Check_Date: row.Check_Date !== "" && row.Check_Date !== null
-              ? new Date(row.Check_Date)
+              ? defaultFormat(new Date(row.Check_Date)) 
               : null,
             Check_No: row.Checked,
             Check_Bank: clrStr(row.Bank),

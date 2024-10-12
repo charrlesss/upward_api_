@@ -25,6 +25,7 @@ import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const PAPolicy = express.Router();
 
@@ -159,7 +160,6 @@ PAPolicy.post("/update-pa-policy", async (req, res) => {
       subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
 
-    req.body.DateIssued = new Date(req.body.DateIssued).toISOString();
 
     //delete policy
     await deletePolicyByPAPolicy(PolicyNo, req);
@@ -240,6 +240,11 @@ async function insertPaPolicy(
   }: any,
   req: Request
 ) {
+
+  DateFrom = defaultFormat(new Date(DateFrom))
+  DateTo = defaultFormat(new Date(DateTo))
+  DateIssued = defaultFormat(new Date(DateIssued))
+  
   //   create  Policy
   await createPolicy(
     {

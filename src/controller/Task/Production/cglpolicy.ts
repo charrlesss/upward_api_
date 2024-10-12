@@ -23,6 +23,7 @@ import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const CGLPolicy = express.Router();
 
@@ -162,7 +163,6 @@ CGLPolicy.post("/update-cgl-policy", async (req, res) => {
     req.body.sumInsured = parseFloat(
       req.body.sumInsured.toString().replace(/,/, "")
     ).toFixed(2);
-    req.body.DateIssued = new Date(req.body.DateIssued).toISOString();
 
     // insert CGL policy
     await insertCGLPolicy({ ...req.body, cStrArea, strArea }, req);
@@ -234,6 +234,11 @@ async function insertCGLPolicy(
   }: any,
   req: Request
 ) {
+
+  DateFrom = defaultFormat(new Date(DateFrom))
+  DateTo = defaultFormat(new Date(DateTo))
+  DateIssued = defaultFormat(new Date(DateIssued))
+  
   //   create  Policy
   await createPolicy(
     {

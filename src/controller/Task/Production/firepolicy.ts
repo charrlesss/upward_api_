@@ -29,6 +29,7 @@ import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
 import { format } from "date-fns";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const FirePolicy = express.Router();
 FirePolicy.get("/get-fire-policy", async (req: Request, res: Response) => {
@@ -153,6 +154,11 @@ async function insertFirePolicy(
   }: any,
   req: Request
 ) {
+
+  DateFrom = defaultFormat(new Date(DateFrom))
+  DateTo = defaultFormat(new Date(DateTo))
+  DateIssued = defaultFormat(new Date(DateIssued))
+  
   await createPolicy(
     {
       IDNo: client_id,
@@ -200,7 +206,7 @@ async function insertFirePolicy(
   await createJournal(
     {
       Branch_Code: sub_account,
-      Date_Entry: format(new Date(DateIssued),'yyyy-MM-dd'),
+      Date_Entry: DateIssued,
       Source_No: PolicyNo,
       Source_Type: "PL",
       Explanation: "Fire Production",
@@ -222,7 +228,7 @@ async function insertFirePolicy(
   await createJournal(
     {
       Branch_Code: sub_account,
-      Date_Entry: format(new Date(DateIssued),'yyyy-MM-dd'),
+      Date_Entry: DateIssued,
       Source_No: PolicyNo,
       Source_Type: "PL",
       Explanation: "Fire Production",
@@ -326,7 +332,7 @@ FirePolicy.post("/update-fire-policy", async (req, res) => {
       subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
 
-    req.body.DateIssued = new Date(req.body.DateIssued)
+
     //delete policy
     await deletePolicyFromFire(PolicyNo, req);
     //delete v policy

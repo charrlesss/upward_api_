@@ -1,10 +1,10 @@
 import { Request } from "express";
 import { PrismaList } from "../../connection";
+import { qry_id_policy_sub } from "../../db/views";
 const { CustomPrismaClient } = PrismaList();
 
-export async function getCashCollection(SlipCode: string, req: Request) {
+export async function getCashCollection(SlipCode: string, IsNew: boolean = true, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const sql = `
     SELECT 
         a.Official_Receipt AS OR_No,
@@ -22,13 +22,13 @@ export async function getCashCollection(SlipCode: string, req: Request) {
               chart_account b ON a.DRCode = b.Acct_Code
     WHERE
         Payment = 'Cash'
-            AND (a.SlipCode = '' OR a.SlipCode = '${SlipCode}')
+            AND (SlipCode IS NULL OR SlipCode = '' ${!IsNew ? ` OR SlipCode = '${SlipCode}' ` : ""}) 
     ORDER BY a.Date_OR DESC , a.Check_Date 
     `;
 
   return await prisma.$queryRawUnsafe(sql);
 }
-export async function getCheckCollection(SlipCode: string, req: Request) {
+export async function getCheckCollection(SlipCode: string, IsNew: boolean = true, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const sql = `
@@ -36,7 +36,7 @@ export async function getCheckCollection(SlipCode: string, req: Request) {
         a.Official_Receipt AS OR_No,
         DATE_FORMAT(a.Date_OR, '%m/%d/%Y') AS OR_Date,
         a.Check_No AS Check_No,
-        a.Check_Date,
+        DATE_FORMAT(a.Check_Date, '%m/%d/%Y') AS Check_Date ,
         a.Debit AS Amount,
         a.Bank AS Bank_Branch,
         a.Short AS Client_Name,
@@ -52,7 +52,7 @@ export async function getCheckCollection(SlipCode: string, req: Request) {
               chart_account b ON a.DRCode = b.Acct_Code
       WHERE
         a.Payment = 'Check'
-            AND (a.SlipCode IS NULL OR a.SlipCode = '${SlipCode}')
+            AND (a.SlipCode IS NULL OR a.SlipCode = '${SlipCode}' ${!IsNew ? ` OR SlipCode = '${SlipCode}' ` : ""})
       ORDER BY a.Date_OR DESC , a.Check_Date
     `;
 
@@ -60,6 +60,8 @@ export async function getCheckCollection(SlipCode: string, req: Request) {
 }
 export async function getBanksFromDeposit(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+  const { IDEntryWithPolicy } = qry_id_policy_sub()
 
   const sql = `
       SELECT 
@@ -70,60 +72,14 @@ export async function getBanksFromDeposit(search: string, req: Request) {
       a.Desc,
       a.Account_ID,
       b.Short,
-      c.Shortname as ShortName,
-      d.ShortName as Sub_ShortName,
-      d.Acronym as Sub_Acct,
-      a.Identity
+      id_entry.client_name,
+      id_entry.Sub_Acct,
+      id_entry.ShortName
     FROM
             bankaccounts a
           LEFT JOIN
             chart_account b ON a.Account_ID = b.Acct_Code
-          LEFT JOIN
-      (
-        SELECT 
-            aa.entry_client_id AS IDNo,
-        aa.sub_account,
-        CONCAT(aa.lastname, ', ', aa.firstname) AS Shortname
-        FROM
-                  entry_client aa
-            union all
-      SELECT 
-            aa.entry_agent_id AS IDNo,
-        Null as sub_account,
-        CONCAT(aa.lastname, ', ', aa.firstname) AS Shortname
-        FROM
-                  entry_agent aa
-            union all
-      SELECT 
-            aa.entry_employee_id AS IDNo,
-        aa.sub_account,
-        CONCAT(aa.lastname, ', ', aa.firstname) AS Shortname
-        FROM
-                  entry_employee aa
-      union all
-      SELECT 
-            aa.entry_supplier_id AS IDNo,
-        null as sub_account,
-        CONCAT(aa.lastname, ', ', aa.firstname) AS Shortname
-        FROM
-                  entry_supplier aa
-            union all
-      SELECT 
-            aa.entry_fixed_assets_id AS IDNo,
-        null as sub_account,
-        aa.fullname AS Shortname
-        FROM
-                  entry_fixed_assets aa
-            union all
-      SELECT 
-            aa.entry_others_id AS IDNo,
-        null as sub_account,
-        aa.description AS Shortname
-        FROM
-                  entry_others aa
-            ) c ON c.IDNo = a.IDNo
-            LEFT JOIN
-              sub_account d ON c.sub_account = d.Sub_Acct
+          LEFT JOIN (${IDEntryWithPolicy}) id_entry  on a.IDNo = id_entry.IDNo
         WHERE
             a.Inactive = 0
             AND (a.Account_Type LIKE '%${search}%'
@@ -132,7 +88,7 @@ export async function getBanksFromDeposit(search: string, req: Request) {
       ORDER BY a.Account_Name
       LIMIT 100;
       `;
-
+  console.log(sql)
   return await prisma.$queryRawUnsafe(sql);
 }
 export async function depositIDSlipCodeGenerator(req: Request) {
