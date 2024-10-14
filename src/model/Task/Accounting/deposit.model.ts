@@ -52,7 +52,7 @@ export async function getCheckCollection(SlipCode: string, IsNew: boolean = true
               chart_account b ON a.DRCode = b.Acct_Code
       WHERE
         a.Payment = 'Check'
-            AND (a.SlipCode IS NULL OR a.SlipCode = '${SlipCode}' ${!IsNew ? ` OR SlipCode = '${SlipCode}' ` : ""})
+            AND (a.SlipCode IS NULL OR a.SlipCode = '' ${!IsNew ? ` OR SlipCode = '${SlipCode}' ` : ""})
       ORDER BY a.Date_OR DESC , a.Check_Date
     `;
 
