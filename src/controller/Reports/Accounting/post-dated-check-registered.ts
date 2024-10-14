@@ -213,14 +213,15 @@ PostDatedCheckRegister.post(
       const type = ["All", "Rent", "Loan"];
       const field = ["Check Date", "Date Received"];
       const qry = PostDatedCheckRegistered(
-        sort[req.body.sort],
-        order[req.body.order],
-        type[req.body.type],
-        field[req.body.field],
+        sort[parseInt(req.body.sort)],
+        order[parseInt(req.body.order)],
+        type[parseInt(req.body.type)],
+        field[parseInt(req.body.type)],
         req.body.sub_acct,
-        new Date(req.body.datefrom),
-        new Date(req.body.dateto)
+        req.body.datefrom,
+        req.body.dateto
       );
+      console.log(qry)
       const data = await prisma.$queryRawUnsafe(qry);
 
       res.send({

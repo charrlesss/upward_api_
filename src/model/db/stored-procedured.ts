@@ -11,7 +11,6 @@ import { clients_view, qryJournal } from "./views";
 
 export function parseDate(vbDate: any) {
   const datePart = vbDate.slice(0, 10); // Extracts first 10 characters
-  console.log(datePart)
   const [day, month, year] = datePart.split('/');
 
   // Create a new Date object (ensure to create it in local time)
@@ -1459,9 +1458,11 @@ export function PostDatedCheckRegistered(
   type: string,
   pdcField: string,
   pdcBranch: string,
-  dateFrom: Date,
-  dateTo: Date
+  _dateFrom: string,
+  _dateTo: string
 ) {
+  const dateFrom = parseDate(_dateFrom)
+  const dateTo = parseDate(_dateTo)
   let sSort = "";
   let sWhere = "";
   const formattedDateFrom = format(

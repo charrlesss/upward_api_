@@ -20,8 +20,9 @@ import { generateUniqueFilename } from "../Claims/claims";
 import { v4 as uuidV4 } from "uuid";
 import { IDGenerator, UpdateId } from "../../../model/Reference/id-entry.model";
 import { VerifyToken } from "../../Authentication";
-import { format, parseISO } from "date-fns";
+import { format, formatDate, parseISO } from "date-fns";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
+import { parseDate } from "../../../model/db/stored-procedured";
 const PDC = express.Router();
 
 PDC.post("/add-pdc", async (req, res) => {
@@ -54,7 +55,9 @@ PDC.post("/add-pdc", async (req, res) => {
       newId = "chk-" + num.toString().padStart(count.length, "0");
       num++;
       const pdcDate = req.body.Date
-      const Check_Date = req.body.Check_Date
+      const datePart = check.Check_Date.slice(0, 10); // Extracts first 10 characters
+      const [month, day, year] = datePart.split('/');
+      const Check_Date = defaultFormat(new Date(`${year}-${month}-${day}`));
 
       if (check.DateDeposit === "") {
 
@@ -123,7 +126,7 @@ PDC.post("/add-pdc", async (req, res) => {
     res.send({
       message: "Create New PDC Successfully.",
       success: true,
-      PdcId: newPdcId,
+      // PdcId: newPdcId,
     });
   } catch (error: any) {
     console.log(error.message);
