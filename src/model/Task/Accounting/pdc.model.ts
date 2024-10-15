@@ -68,43 +68,159 @@ export async function getPdcPolicyIdAndCLientId(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const qry = `
-    select * from (
-    SELECT 
-      a.IDType as Type,
-      a.IDNo,
-      a.sub_account,
-      a.Shortname as Name,
-      a.client_id,
-      a.ShortName as sub_shortname,
-      b.ShortName,
-      b.Acronym,
-      if(a.IDType = 'Policy' and c.PolicyType = "COM" OR c.PolicyType = "TPL",concat('C: ',c.ChassisNo,'  ','E: ',c.MotorNo),'') as remarks,
-      ifnull(c.ChassisNo,'') as chassis
+ SELECT 
+    *
+FROM
+    (SELECT 
+        a.IDType AS Type,
+            a.IDNo,
+            a.sub_account,
+            a.Shortname AS Name,
+            a.client_id,
+            a.ShortName AS sub_shortname,
+            b.ShortName,
+            b.Acronym,
+            IF(a.IDType = 'Policy'
+                AND c.PolicyType = 'COM'
+                OR c.PolicyType = 'TPL', CONCAT('C: ', d.ChassisNo, '  ', 'E: ', d.MotorNo), '') AS remarks,
+            IFNULL(d.ChassisNo, '') AS chassis
     FROM
-        (
-         ${selectClient}
-        union all
-        select 
-          'Policy' AS IDType,
-          a.PolicyNo AS IDNo,
-          b.sub_account,
-          IF(b.option = 'individual', CONCAT(IF(b.lastname is not null AND b.lastname <> '', CONCAT(b.lastname, ', '), ''), b.firstname), b.company) AS Shortname,
-          a.IDNo AS client_id,
-          b.address
-        FROM
-            policy a
-        LEFT JOIN entry_client b ON a.IDNo = b.entry_client_id
-      ) a
-      left join sub_account b on a.sub_account = b.Sub_Acct
-      left join vpolicy c on a.IDNo = c.PolicyNo
-    ) a
+        (SELECT 
+        *
+    FROM
+        (SELECT 
+        'Client' AS IDType,
+            a.entry_client_id AS IDNo,
+            sub_account,
+            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS Shortname,
+            a.entry_client_id AS client_id,
+            a.address
+    FROM
+        entry_client a UNION ALL SELECT 
+        'Supplier' AS IDType,
+            a.entry_supplier_id AS IDNo,
+            sub_account,
+            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS Shortname,
+            a.entry_supplier_id AS client_id,
+            a.address
+    FROM
+        entry_supplier a UNION ALL SELECT 
+        'Employee' AS IDType,
+            a.entry_employee_id AS IDNo,
+            sub_account,
+            IF(a.lastname IS NOT NULL
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS Shortname,
+            a.entry_employee_id AS client_id,
+            a.address
+    FROM
+        entry_employee a UNION ALL SELECT 
+        'Fixed Assets' AS IDType,
+            a.entry_fixed_assets_id AS IDNo,
+            sub_account,
+            a.fullname AS Shortname,
+            a.entry_fixed_assets_id AS client_id,
+            a.description AS address
+    FROM
+        entry_fixed_assets a UNION ALL SELECT 
+        'Others' AS IDType,
+            a.entry_others_id AS IDNo,
+            sub_account,
+            a.description AS cID_No,
+            a.entry_others_id AS client_id,
+            a.remarks AS address
+    FROM
+        entry_others a UNION ALL SELECT 
+        'Agent' AS IDType,
+            a.entry_agent_id AS IDNo,
+            sub_account,
+            IF(a.lastname IS NOT NULL
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS Shortname,
+            a.entry_agent_id AS client_id,
+            a.address
+    FROM
+        entry_agent a) id_entry UNION ALL SELECT 
+        'Policy' AS IDType,
+            a.PolicyNo AS IDNo,
+            b.sub_account,
+            b.Shortname,
+            a.IDNo AS client_id,
+            b.address
+    FROM
+        policy a
+    LEFT JOIN (SELECT 
+        *
+    FROM
+        (SELECT 
+        'Client' AS IDType,
+            a.entry_client_id AS IDNo,
+            sub_account,
+            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS Shortname,
+            a.entry_client_id AS client_id,
+            a.address
+    FROM
+        entry_client a UNION ALL SELECT 
+        'Supplier' AS IDType,
+            a.entry_supplier_id AS IDNo,
+            sub_account,
+            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS Shortname,
+            a.entry_supplier_id AS client_id,
+            a.address
+    FROM
+        entry_supplier a UNION ALL SELECT 
+        'Employee' AS IDType,
+            a.entry_employee_id AS IDNo,
+            sub_account,
+            IF(a.lastname IS NOT NULL
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS Shortname,
+            a.entry_employee_id AS client_id,
+            a.address
+    FROM
+        entry_employee a UNION ALL SELECT 
+        'Fixed Assets' AS IDType,
+            a.entry_fixed_assets_id AS IDNo,
+            sub_account,
+            a.fullname AS Shortname,
+            a.entry_fixed_assets_id AS client_id,
+            a.description AS address
+    FROM
+        entry_fixed_assets a UNION ALL SELECT 
+        'Others' AS IDType,
+            a.entry_others_id AS IDNo,
+            sub_account,
+            a.description AS cID_No,
+            a.entry_others_id AS client_id,
+            a.remarks AS address
+    FROM
+        entry_others a UNION ALL SELECT 
+        'Agent' AS IDType,
+            a.entry_agent_id AS IDNo,
+            sub_account,
+            IF(a.lastname IS NOT NULL
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS Shortname,
+            a.entry_agent_id AS client_id,
+            a.address
+    FROM
+        entry_agent a) id_entry) b ON a.IDNo = b.IDNo) a
+    LEFT JOIN sub_account b ON a.sub_account = b.Sub_Acct
+    LEFT JOIN policy c ON a.IDNo = c.PolicyNo
+    LEFT JOIN vpolicy d ON c.PolicyNo = d.PolicyNo) a
+WHERE
+    a.Name IS NOT NULL AND a.IDNo LIKE '%${search}%'
+        OR a.chassis LIKE '%${search}%'
+        OR a.Name LIKE '%${search}%'
+ORDER BY CASE
+    WHEN name REGEXP '^[A-Za-z]' THEN 1
+    WHEN name LIKE 'APARES%' THEN 0
+    ELSE 2
+END , name ASC
+limit 100      
 
-    WHERE
-     a.Name is not null and
-      a.IDNo LIKE '%${search}%'
-      OR a.Name LIKE '%${search}%'
-    ORDER BY a.Name
-    LIMIT 50`;
+
+  `;
 
   console.log(qry);
 
