@@ -11,6 +11,7 @@ import {
   pdcUploads,
   pdcUploadsUpdate,
   getPdcUpload,
+  checkClientID,
 } from "../../../model/Task/Accounting/pdc.model";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
@@ -34,6 +35,15 @@ PDC.post("/add-pdc", async (req, res) => {
     return res.send({
       message: `CAN'T SAVE, ADMIN IS FOR VIEWING ONLY!`,
       success: false,
+    });
+  }
+
+  const client = await checkClientID(req.body.PNo, req) as Array<any>
+  if (client.length <= 0) {
+    return res.send({
+      message: `${req.body.PNo} is not Found!`,
+      success: false,
+      collectionID: null,
     });
   }
 
@@ -146,6 +156,16 @@ PDC.post("/update-pdc", async (req, res) => {
     return res.send({
       message: `CAN'T UPDATE, ADMIN IS FOR VIEWING ONLY!`,
       success: false,
+    });
+  }
+
+
+  const client = await checkClientID(req.body.PNo, req) as Array<any>
+  if (client.length <= 0) {
+    return res.send({
+      message: `${req.body.PNo} is not Found!`,
+      success: false,
+      collectionID: null,
     });
   }
 

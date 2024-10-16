@@ -26,6 +26,7 @@ import { VerifyToken } from "../../Authentication";
 import { qry_id_policy_sub } from "../../../model/db/views";
 import { executeQuery } from "../../../model/Task/Production/policy";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
+import { checkClientID } from "../../../model/Task/Accounting/pdc.model";
 
 const Collection = express.Router();
 
@@ -101,6 +102,14 @@ Collection.post("/add-collection", async (req, res) => {
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
+  const client = await checkClientID(req.body.PNo, req) as Array<any>
+  if (client.length <= 0) {
+    return res.send({
+      message: `${req.body.PNo} is not Found!`,
+      success: false,
+      collectionID: null,
+    });
+  }
   if (userAccess.includes("ADMIN")) {
     return res.send({
       message: `CAN'T SAVE, ADMIN IS FOR VIEWING ONLY!`,
@@ -192,6 +201,15 @@ Collection.post("/update-collection", async (req, res) => {
     });
   }
 
+  const client = await checkClientID(req.body.PNo, req) as Array<any>
+  if (client.length <= 0) {
+    return res.send({
+      message: `${req.body.PNo} is not Found!`,
+      success: false,
+      collectionID: null,
+    });
+  }
+
   try {
     if (!(await saveUserLogsCode(req, "edit", req.body.ORNo, "Collection"))) {
       return res.send({ message: "Invalid User Code", success: false });
@@ -251,13 +269,17 @@ Collection.post("/on-print", async (req, res) => {
 
 async function AddCollection(req: any) {
   const { IDEntryWithPolicy } = qry_id_policy_sub()
-  const getClientSubAccount: any = await executeQuery(IDEntryWithPolicy,req.body.PNo, req)
+  const getClientSubAccount: any = await executeQuery(IDEntryWithPolicy, req.body.PNo, req)
+
 
   const debit = JSON.parse(req.body.debit);
   const credit = JSON.parse(req.body.credit);
 
+
   const TotalRows =
     debit.length >= credit.length ? debit.length : credit.length;
+
+
 
   for (let i = 0; i <= TotalRows - 1; i++) {
     let Payment = "";
@@ -284,7 +306,7 @@ async function AddCollection(req: any) {
       Payment = debit[i].Payment;
       Debit = debit[i].Amount;
       CheckNo = debit[i].Check_No;
-      CheckDate =  debit[i].Check_Date  ?  defaultFormat(new Date( debit[i].Check_Date)) : "";
+      CheckDate = debit[i].Check_Date ? defaultFormat(new Date(debit[i].Check_Date)) : "";
       Bank = debit[i].Bank_Branch;
       DRCode = debit[i].Acct_Code;
       DRTitle = debit[i].Acct_Title;
@@ -369,7 +391,7 @@ async function AddCollection(req: any) {
     const Payment = debit[i].Payment;
     const Debit = debit[i].Amount;
     const CheckNo = debit[i].Check_No ?? "";
-    const CheckDate = debit[i].Check_Date ? defaultFormat(new Date( debit[i].Check_Date))  : "";
+    const CheckDate = debit[i].Check_Date ? defaultFormat(new Date(debit[i].Check_Date)) : "";
     const Bank = debit[i].Bank_Branch ?? "";
     const DRCode = transaction.Acct_Code;
     const DRTitle = transaction.Acct_Title;
@@ -416,7 +438,7 @@ async function AddCollection(req: any) {
     await createJournal(
       {
         Branch_Code: "HO",
-        Date_Entry: defaultFormat(new Date(req.body.Date)) ,
+        Date_Entry: defaultFormat(new Date(req.body.Date)),
         Source_Type: "OR",
         Source_No: req.body.ORNo,
         GL_Acct: CRCode,

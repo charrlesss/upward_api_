@@ -64,14 +64,9 @@ FROM
   entry_others aa
 `;
 
-export async function getPdcPolicyIdAndCLientId(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
-  const qry = `
- SELECT 
-    *
-FROM
-    (SELECT 
+export const withPolicy = `
+SELECT 
         a.IDType AS Type,
             a.IDNo,
             a.sub_account,
@@ -207,7 +202,21 @@ FROM
         entry_agent a) id_entry) b ON a.IDNo = b.IDNo) a
     LEFT JOIN sub_account b ON a.sub_account = b.Sub_Acct
     LEFT JOIN policy c ON a.IDNo = c.PolicyNo
-    LEFT JOIN vpolicy d ON c.PolicyNo = d.PolicyNo) a
+    LEFT JOIN vpolicy d ON c.PolicyNo = d.PolicyNo
+`
+export async function checkClientID(id: string, req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  return await prisma.$queryRawUnsafe(` SELECT * FROM (${withPolicy}) a where a.IDNo = '${id}'`);
+}
+
+export async function getPdcPolicyIdAndCLientId(search: string, req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+  const qry = `
+ SELECT 
+    *
+FROM
+    (${withPolicy}) a
 WHERE
     a.Name IS NOT NULL AND a.IDNo LIKE '%${search}%'
         OR a.chassis LIKE '%${search}%'

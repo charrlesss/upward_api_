@@ -105,12 +105,21 @@ Deposit.post("/add-deposit", async (req, res) => {
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
+  const BankAcctCode = await __executeQuery(`SELECT * FROM upward_test.bankaccounts where Account_No = '${req.body.BankAcctCode}'`, req) as Array<any>
+  if (BankAcctCode.length <= 0) {
+    return res.send({
+      message: `${req.body.BankAcctCode} is not Found!`,
+      success: false,
+      collectionID: null,
+    });
+  }
   if (userAccess.includes("ADMIN")) {
     return res.send({
       message: `CAN'T SAVE, ADMIN IS FOR VIEWING ONLY!`,
       success: false,
     });
   }
+  console.log(req.body)
 
   try {
     if ((await findDepositBySlipCode(req.body.depositSlip, req)).length > 0) {
@@ -289,6 +298,15 @@ Deposit.post("/update-deposit", async (req, res) => {
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
+  const BankAcctCode = await __executeQuery(`SELECT * FROM upward_test.bankaccounts where Account_No = '${req.body.BankAcctCode}'`, req) as Array<any>
+  if (BankAcctCode.length <= 0) {
+    return res.send({
+      message: `${req.body.BankAcctCode} is not Found!`,
+      success: false,
+      collectionID: null,
+    });
+  }
+  
   if (userAccess.includes("ADMIN")) {
     return res.send({
       message: `CAN'T UPDATE, ADMIN IS FOR VIEWING ONLY!`,
@@ -346,10 +364,7 @@ async function addDeposit(req: any) {
     },
     0.0
   );
-  console.log(cashTotal)
-  console.log(checkTotal)
-  console.log(selectedCollection)
-  console.log(tableRowsInputValue)
+
   await addDepositSlip(
     {
       Date: defaultFormat(new Date(req.body.depositdate)),
@@ -480,7 +495,6 @@ async function addDeposit(req: any) {
     const IsCheck = selectedCollectionValue.Check_No !== "";
     const __getClientSubAccount: any = await executeQuery(IDEntryWithPolicy, selectedCollectionValue.IDNo, req)
 
-    console.log(selectedCollectionValue)
     addJournal(
       {
         Branch_Code: "HO",
