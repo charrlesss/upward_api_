@@ -1489,9 +1489,30 @@ export function PostDatedCheckRegistered(
 
   if (pdcField === "Check Date") {
     query = `
-      SELECT PDC.* ,
-      date_format(PDC.Check_Date,'%m/%d/%Y') as cCheck_Date,
-      date_format(PDC.Date,'%m/%d/%Y') as dDate
+      SELECT  
+          PDC.PDC_ID,
+          PDC.Ref_No,
+          PDC.PNo,
+          PDC.IDNo,
+          DATE_FORMAT(PDC.Date, '%m/%d/%Y') AS Date,
+          PDC.Name,
+          PDC.Remarks,
+          PDC.Bank,
+          PDC.Branch,
+          DATE_FORMAT(PDC.Check_Date, '%m/%d/%Y') AS Check_Date,
+          PDC.Check_No,
+          PDC.Check_Amnt,
+          PDC.Check_Remarks,
+          PDC.SlipCode,
+          PDC.DateDepo,
+          PDC.ORNum,
+          PDC.PDC_Status,
+          PDC.Date_Stored,
+          PDC.Date_Endorsed,
+          PDC.Date_Pulled_Out,
+          PDC.PDC_Remarks,
+          PDC.PDC_Remarks,
+          PDC.mark
       FROM PDC 
       WHERE (PDC.Check_Date >= '${formattedDateFrom}' AND PDC.Check_Date <= '${formattedDateTo}')
         AND ((PDC.PDC_Remarks <> 'Fully Paid' AND PDC.PDC_Remarks <> 'Foreclosed') 
@@ -1504,9 +1525,29 @@ export function PostDatedCheckRegistered(
   } else if (pdcField === "Date Received") {
     query = `
       SELECT 
-      PDC.* ,
-      date_format(PDC.Check_Date,'%m/%d/%Y') as cCheck_Date,
-      date_format(PDC.Date,'%m/%d/%Y') as dDate
+          PDC.PDC_ID,
+          PDC.Ref_No,
+          PDC.PNo,
+          PDC.IDNo,
+          DATE_FORMAT(PDC.Date, '%m/%d/%Y') AS Date,
+          PDC.Name,
+          PDC.Remarks,
+          PDC.Bank,
+          PDC.Branch,
+          DATE_FORMAT(PDC.Check_Date, '%m/%d/%Y') AS Check_Date,
+          PDC.Check_No,
+          PDC.Check_Amnt,
+          PDC.Check_Remarks,
+          PDC.SlipCode,
+          PDC.DateDepo,
+          PDC.ORNum,
+          PDC.PDC_Status,
+          PDC.Date_Stored,
+          PDC.Date_Endorsed,
+          PDC.Date_Pulled_Out,
+          PDC.PDC_Remarks,
+          PDC.PDC_Remarks,
+          PDC.mark
       FROM PDC 
       WHERE (PDC.Date >= '${formattedDateFrom}' AND PDC.Date <= '${formattedDateTo}')
         AND ((PDC.PDC_Remarks <> 'Fully Paid' AND PDC.PDC_Remarks <> 'Foreclosed') 

@@ -4,7 +4,7 @@ import { Request } from "express";
 const { CustomPrismaClient } = PrismaList();
 
 export async function GenerateGeneralJournalID(req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -17,7 +17,7 @@ export async function GenerateGeneralJournalID(req: Request) {
 }
 
 export async function getChartOfAccount(search: string, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -37,7 +37,7 @@ export async function getChartOfAccount(search: string, req: Request) {
 }
 
 export async function getPolicyIdClientIdRefId(search: string, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -146,7 +146,7 @@ FROM
 }
 
 export async function getTransactionAccount(search: string, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -163,20 +163,20 @@ export async function getTransactionAccount(search: string, req: Request) {
 }
 
 export async function addJournalVoucher(data: any, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return prisma.journal_voucher.create({ data });
 }
 export async function addJournalFromJournalVoucher(data: any, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return prisma.journal.create({ data });
 }
 
 export async function updateGeneralJournalID(last_count: string, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -190,7 +190,7 @@ export async function updateGeneralJournalID(last_count: string, req: Request) {
       `);
 }
 export async function deleteGeneralJournal(Source_No: string, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -207,7 +207,7 @@ export async function deleteJournalFromGeneralJournal(
   Source_No: string,
   req: Request
 ) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -220,7 +220,7 @@ export async function deleteJournalFromGeneralJournal(
         `);
 }
 export async function findeGeneralJournal(Source_No: string, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(
@@ -228,7 +228,7 @@ export async function findeGeneralJournal(Source_No: string, req: Request) {
   );
 }
 export async function voidGeneralJournal(Source_No: string, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -245,7 +245,7 @@ export async function insertVoidGeneralJournal(
   dateEntry: string,
   req: Request
 ) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -263,7 +263,7 @@ export async function voidJournalFromGeneralJournal(
   Source_No: string,
   req: Request
 ) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -281,7 +281,7 @@ export async function insertVoidJournalFromGeneralJournal(
   dateEntry: string,
   req: Request
 ) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -296,10 +296,8 @@ export async function insertVoidJournalFromGeneralJournal(
 }
 
 export async function searchGeneralJournal(search: string, req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
-
-  return await prisma.$queryRawUnsafe(`
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const sql = `
     SELECT 
         date_format(Date_Entry , '%m/%d/%Y') as Date_Entry,
          Source_No, Explanation
@@ -312,14 +310,16 @@ export async function searchGeneralJournal(search: string, req: Request) {
     GROUP BY Date_Entry , Source_No , Explanation
     ORDER BY Date_Entry DESC , Source_No DESC
 
-      `);
+      `
+  console.log(sql)
+  return await prisma.$queryRawUnsafe(sql);
 }
 
 export async function getSelectedSearchGeneralJournal(
   Source_No: string,
   req: Request
 ) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return await prisma.$queryRawUnsafe(`
@@ -347,7 +347,7 @@ export async function getSelectedSearchGeneralJournal(
 }
 
 export async function doRPTTransactionLastRow(req: Request) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return prisma.$queryRawUnsafe(`
@@ -367,7 +367,7 @@ export async function doMonthlyProduction(
   year: number,
   req: Request
 ) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return prisma.$queryRawUnsafe(`
@@ -392,7 +392,7 @@ export async function doRPTTransaction(
   Mortgagee: string,
   req: Request
 ) {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
 
   return prisma.$queryRawUnsafe(`

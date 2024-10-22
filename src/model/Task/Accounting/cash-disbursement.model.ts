@@ -114,7 +114,8 @@ export async function findSearchSelectedCashDisbursement(
         TC as TC_Code,
         VAT_Type as vatType,
         OR_Invoice_No as invoice,
-        VATItemNo as TempID
+        VATItemNo,
+         CAST(ROW_NUMBER() OVER () AS CHAR) as TempID
     FROM 
       cash_disbursement 
       where 
