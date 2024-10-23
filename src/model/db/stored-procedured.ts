@@ -11,7 +11,7 @@ import { clients_view, qryJournal } from "./views";
 
 export function parseDate(vbDate: any) {
   const datePart = vbDate.slice(0, 10); // Extracts first 10 characters
-  const [day, month, year] = datePart.split('/');
+  const [month , day, year] = datePart.split('/');
 
   // Create a new Date object (ensure to create it in local time)
   const localDate = new Date(`${year}-${month}-${day}`);

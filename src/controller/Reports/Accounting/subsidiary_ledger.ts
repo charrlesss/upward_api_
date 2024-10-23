@@ -628,7 +628,7 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
   function parseDate(dateStr: string) {
     // Expected format: 'DD/MM/YYYY HH:mm:ss am/pm'
     let [datePart, timePart] = dateStr.split(' ');
-    let [day, month, year] = datePart.split('/');
+    let [month , day, , year] = datePart.split('/');
     return new Date(`${year}-${month}-${day}`);
   }
 

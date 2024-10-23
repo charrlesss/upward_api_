@@ -7,7 +7,7 @@ import {
   endOfYear,
   startOfYear,
 } from "date-fns";
-import { qryJournal } from "../../../model/db/views";
+import { qry_id_policy_sub, qryJournal } from "../../../model/db/views";
 import { PrismaList } from "../../../model/connection";
 import { parseDate } from "../../../model/db/stored-procedured";
 
@@ -388,122 +388,14 @@ ScheduleAccounts.post("/schedule-account-report", async (req, res) => {
 });
 ScheduleAccounts.post("/schedule-account-report-desk", async (req, res) => {
   try {
+    const { IDEntryWithPolicy } = qry_id_policy_sub()
     const id_entry = `
-     select * from (SELECT 
-    if(aa.option = "individual", CONCAT(IF(aa.lastname is not null and trim(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''),aa.firstname), aa.company) as ShortName,
-    aa.entry_client_id AS IDNo,
-    aa.firstname,
-    aa.middlename,
-    aa.company,
-    aa.address,
-    aa.option AS options,
-    aa.sub_account,
-    aa.createdAt,
-    aa.update AS updatedAt,
-    aa.client_contact_details_id AS contact_details_id,
-    NULL AS description,
-    NULL AS remarks,
-	NULL AS VAT_Type,
-    NULL AS tin_no
-FROM
-    entry_client aa 
-UNION ALL SELECT 
-    CONCAT(IF(aa.lastname is not null and trim(aa.lastname) <> '', CONCAT(aa.lastname, ', '),''), aa.firstname) AS ShortName,
-    aa.entry_agent_id AS IDNo,
-    aa.firstname,
-    aa.middlename,
-    NULL AS company,
-    aa.address,
-    NULL AS options,
-    NULL AS sub_account,
-    aa.createdAt,
-    aa.update AS updatedAt,
-    aa.agent_contact_details_id AS contact_details_id,
-    NULL AS description,
-    NULL AS remarks,
-	NULL AS VAT_Type,
-    NULL AS tin_no
-FROM
-    entry_agent aa 
-UNION ALL SELECT 
-    CONCAT(IF(aa.lastname is not null and trim(aa.lastname) <> '', CONCAT(aa.lastname, ', '),''), aa.firstname) AS ShortName,
-    aa.entry_employee_id AS IDNo,
-    aa.firstname,
-    aa.middlename,
-    NULL AS company,
-    aa.address,
-    NULL AS options,
-    aa.sub_account,
-    aa.createdAt,
-    aa.update AS updatedAt,
-    NULL AS contact_details_id,
-    NULL AS description,
-    NULL AS remarks,
-	NULL AS VAT_Type,
-    NULL AS tin_no
-FROM
-    entry_employee aa 
-UNION ALL SELECT 
-    aa.fullname AS ShortName,
-    aa.entry_fixed_assets_id AS IDNo,
-    NULL AS firstname,
-    NULL AS middlename,
-    NULL AS company,
-    NULL AS address,
-    NULL AS options,
-    NULL AS sub_account,
-    aa.createdAt,
-    aa.update AS updatedAt,
-    NULL AS contact_details_id,
-    aa.description,
-    aa.remarks,
-	NULL AS VAT_Type,
-    NULL AS tin_no
-FROM
-    entry_fixed_assets aa 
-UNION ALL SELECT 
-    aa.description AS ShortName,
-    aa.entry_others_id AS IDNo,
-    NULL AS firstname,
-    NULL AS middlename,
-    NULL AS company,
-    NULL AS address,
-    NULL AS options,
-    NULL AS sub_account,
-    aa.createdAt,
-    aa.update AS updatedAt,
-    NULL AS contact_details_id,
-    NULL AS description,
-    NULL AS remarks,
-	NULL AS VAT_Type,
-    NULL AS tin_no
-FROM
-    entry_others aa
- UNION ALL SELECT 
-    if(aa.option = "individual", CONCAT(IF(aa.lastname is not null and trim(aa.lastname) <> '',  CONCAT(aa.lastname, ', '), ''),aa.firstname), aa.company) as ShortName,
-    aa.entry_supplier_id AS IDNo,
-    aa.firstname,
-    aa.middlename,
-    aa.company,
-    aa.address,
-    aa.option as options,
-    NULL AS sub_account,
-    aa.createdAt,
-    aa.update AS updatedAt,
-    aa.supplier_contact_details_id as  contact_details_id,
-    NULL AS description,
-    NULL AS remarks,
-    aa.VAT_Type,
-    aa.tin_no
-FROM
-    entry_supplier aa) id_entry
+      select a.IDNo, a.Sub_Acct, a.ShortName as _Shortname , a.client_name as ShortName from (${IDEntryWithPolicy}) a
     `
-
-
-
+    console.log(id_entry)
     const _qryJournal = qryJournal();
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-    const { account, report, subsi, date, sort, order, subsiText,insurance } = req.body
+    const { account, report, subsi, date, sort, order, subsiText, insurance } = req.body
     const dateFormatted = format(parseDate(date), 'yyyy-MM-dd')
     let qry = "";
 
@@ -523,9 +415,9 @@ FROM
               WHERE (((qryJournal.Source_Type) <>'BF' And (qryJournal.Source_Type) <>'BFD' And (qryJournal.Source_Type) <>'BFS') AND ((qryJournal.Date_Entry) <='${dateFormatted}')) 
               GROUP BY qryJournal.GL_Acct, qryJournal.Sub_Acct, qryJournal.mSub_Acct 
               HAVING (qryJournal.GL_Acct='${account.trim()}') ${subsiText.toUpperCase() === 'ALL' ? "" : ` AND (qryJournal.Sub_Acct='${subsiText}')) `} 
-              ORDER BY  ${parseInt(sort) === 0 ? "qryJournal.mSub_Acct": "qryJournal.Sub_Acct"}  ${parseInt(order) === 0 ? "ASC" : "DESC"}
+              ORDER BY  ${parseInt(sort) === 0 ? "qryJournal.mSub_Acct" : "qryJournal.Sub_Acct"}  ${parseInt(order) === 0 ? "ASC" : "DESC"}
         `
-      }else{
+      } else {
         qry = `
         SELECT 
               qryJournal.GL_Acct, 
@@ -539,12 +431,12 @@ FROM
               From (${_qryJournal}) QryJournal 
               WHERE (((qryJournal.Source_Type) <>'BF' And (qryJournal.Source_Type) <>'BFD' And (qryJournal.Source_Type) <>'BFS') AND ((qryJournal.Date_Entry) <='${dateFormatted}')) 
               GROUP BY qryJournal.GL_Acct, qryJournal.Sub_Acct, qryJournal.mSub_Acct 
-              ORDER BY  ${parseInt(sort) === 0 ? "qryJournal.mSub_Acct": "qryJournal.Sub_Acct"}  ${parseInt(order) === 0 ? "ASC" : "DESC"}
+              ORDER BY  ${parseInt(sort) === 0 ? "qryJournal.mSub_Acct" : "qryJournal.Sub_Acct"}  ${parseInt(order) === 0 ? "ASC" : "DESC"}
         `
       }
-    }else if(parseInt(subsi) === 1){
-      if(subsiText.trim().toUpperCase() !== 'ALL'){  
-        if(report === "GL Account (Detailed)"){
+    } else if (parseInt(subsi) === 1) {
+      if (subsiText.trim().toUpperCase() !== 'ALL') {
+        if (report === "GL Account (Detailed)") {
           qry = `
           SELECT * FROM (
              SELECT 
@@ -569,8 +461,8 @@ FROM
           HAVING (((qryJournal.GL_Acct)='${account.trim()}')) 
           ) tmp WHERE Balance <> 0 ORDER BY ${parseInt(sort) === 0 ? "mID" : "ID_No"} ${parseInt(order) === 0 ? "ASC" : "DESC"}
           `
-        }else{
-          qry =     `
+        } else {
+          qry = `
          select * from ( SELECT 
             Left(GL.GL_Acct,1) AS 'Group Header', 
             Left(GL.GL_Acct,4) AS Header,GL.GL_Acct,CA.Short AS 'mShort',
@@ -592,12 +484,12 @@ FROM
            GL.GL_Acct ='${account.trim()}' 
           GROUP BY GL_Acct,ca.Short,gl.ID_No,IfNULL(ID.Shortname,'')  ) a
           where Balance <> 0 
-          ORDER BY 'Group Header',Header,GL_Acct,${ parseInt(sort) === 0 ? "mID": "ID_No"} ${parseInt(order) === 0 ? "ASC" : "DESC"}
+          ORDER BY 'Group Header',Header,GL_Acct,${parseInt(sort) === 0 ? "mID" : "ID_No"} ${parseInt(order) === 0 ? "ASC" : "DESC"}
           `
         }
-      }else{
-        if(report.trim() === "GL Account (Detailed)"){
-          qry  = `
+      } else {
+        if (report.trim() === "GL Account (Detailed)") {
+          qry = `
             select * from (
             
             SELECT 
@@ -619,8 +511,8 @@ FROM
             ) a
              WHERE Balance <> 0 ORDER BY ${parseInt(sort) === 0 ? "mID" : "ID_No"} ${parseInt(order) === 0 ? "ASC" : "DESC"}
               `
-        }else{
-        qry =  `
+        } else {
+          qry = `
         select * from ( 
         SELECT 
             Left(GL.GL_Acct,1) AS 'Group Header',
@@ -644,9 +536,9 @@ FROM
         ORDER BY 'Group Header',Header,GL_Acct,${parseInt(sort) === 0 ? "mID" : "ID_No"} ${parseInt(order) === 0 ? "ASC" : "DESC"}`
         }
       }
-    }else{
-      if(insurance.trim() !== 'ALL'){
-        qry =   `
+    } else {
+      if (insurance.trim() !== 'ALL') {
+        qry = `
         select * from (
           SELECT 
         qryJournal.GL_Acct, 
@@ -664,10 +556,10 @@ FROM
         WHERE qryJournal.Date_Entry <='${dateFormatted}' 
         GROUP BY Account.AccountCode, qryJournal.Sub_Acct, qryJournal.GL_Acct, qryJournal.ID_No 
         ) a
-         where Balance <> 0 ${report === "GL Account (Detailed)" ? ` AND a.GL_Acct='${account.trim()}' ` :``} AND a.mID = '${insurance}'
+         where Balance <> 0 ${report === "GL Account (Detailed)" ? ` AND a.GL_Acct='${account.trim()}' ` : ``} AND a.mID = '${insurance}'
         `
-      }else{
-         qry =   `
+      } else {
+        qry = `
         select * from (
           SELECT 
         qryJournal.GL_Acct, 
@@ -685,7 +577,7 @@ FROM
         WHERE qryJournal.Date_Entry <='${dateFormatted}' 
         GROUP BY Account.AccountCode, qryJournal.Sub_Acct, qryJournal.GL_Acct, qryJournal.ID_No 
         ) a
-         where Balance <> 0 ${report === "GL Account (Detailed)" ? ` AND a.GL_Acct='${account.trim()}' ` :``}
+         where Balance <> 0 ${report === "GL Account (Detailed)" ? ` AND a.GL_Acct='${account.trim()}' ` : ``}
         `
       }
     }
@@ -765,6 +657,6 @@ function FormatGroupArray(data: Array<any>) {
   const rr = result.flat();
   return rr;
 }
-    
+
 
 export default ScheduleAccounts;
