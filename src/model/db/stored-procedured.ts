@@ -2188,7 +2188,7 @@ export function AgingAccountsReport(date: Date, type: string) {
                     WHEN CGLPolicy.Location IS NOT NULL THEN CGLPolicy.Location
                     ELSE (concat(VPolicy.Make,' ',VPolicy.BodyType))
                 END AS UnitInssured,
-                Policy.DateIssued,
+                date_format(Policy.DateIssued,'%d/%m/%Y') as DateIssued,
                 CASE 
                     WHEN MPolicy.InsuredValue IS NOT NULL THEN MPolicy.InsuredValue
                     WHEN FPolicy.InsuredValue IS NOT NULL THEN FPolicy.InsuredValue
@@ -2243,7 +2243,7 @@ export function AgingAccountsReport(date: Date, type: string) {
                     WHEN CGLPolicy.Location IS NOT NULL THEN CGLPolicy.Location
                     ELSE (concat(VPolicy.Make,' ',VPolicy.BodyType))
                 END AS UnitInssured,
-                Policy.DateIssued,
+                date_format(Policy.DateIssued,'%d/%m/%Y') as DateIssued,
                 CASE 
                     WHEN MPolicy.InsuredValue IS NOT NULL THEN MPolicy.InsuredValue
                     WHEN FPolicy.InsuredValue IS NOT NULL THEN FPolicy.InsuredValue
