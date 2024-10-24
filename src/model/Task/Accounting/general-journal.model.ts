@@ -298,17 +298,25 @@ export async function insertVoidJournalFromGeneralJournal(
 export async function searchGeneralJournal(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const sql = `
-    SELECT 
-        date_format(Date_Entry , '%m/%d/%Y') as Date_Entry,
+    select 
+    date_format(a.Date_Entry , '%m/%d/%Y') as Date_Entry,
+    a.Source_No,
+    a.Explanation
+   from (
+    SELECT
+         Date_Entry,
          Source_No, Explanation
     FROM
           journal_voucher
+    
+      GROUP BY Date_Entry , Source_No , Explanation
+		ORDER BY Date_Entry DESC
+   ) a 
     WHERE
-        LEFT(Explanation, 7) <> '-- Void'
-            AND (Source_No LIKE '%${search}%'
-            OR Explanation LIKE '%${search}%')
-    GROUP BY Date_Entry , Source_No , Explanation
-    ORDER BY Date_Entry DESC , Source_No DESC
+        LEFT(a.Explanation, 7) <> '-- Void'
+            AND (a.Source_No LIKE '%${search}%'
+            OR a.Explanation LIKE '%${search}%')
+    LIMIT 100
 
       `
   console.log(sql)

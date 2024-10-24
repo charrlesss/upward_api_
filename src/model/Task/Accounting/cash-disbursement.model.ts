@@ -128,19 +128,21 @@ export async function searchCashDisbursement(search: string, req: Request) {
   return await prisma.$queryRawUnsafe(
     `
     SELECT 
-      DATE_FORMAT(Date_Entry, '%m/%d/%Y') AS Date_Entry, 
-          Source_No , 
-          Explanation 
-      FROM 
+        DATE_FORMAT(a.Date_Entry, '%m/%d/%Y') AS Date_Entry,
+        a.Source_No,
+        a.Explanation
+    FROM
+        (SELECT 
+            Date_Entry, Source_No, Explanation
+        FROM
             cash_disbursement
-      WHERE 
-          LEFT(Explanation, 7) <> '-- Void' 
-          AND (Source_No LIKE '%${search}%' OR Explanation LIKE '%${search}%')
-      GROUP BY 
-          Date_Entry, Source_No, Explanation 
-      ORDER BY 
-          Date_Entry DESC, Source_No, Explanation 
-      LIMIT 100;
+        GROUP BY Date_Entry , Source_No , Explanation
+        ORDER BY Date_Entry DESC) a
+    WHERE
+        LEFT(a.Explanation, 7) <> '-- Void'
+            AND (a.Source_No LIKE '%${search}%'
+            OR a.Explanation LIKE '%${search}%')
+    LIMIT 100;
     `
   );
 }

@@ -69,7 +69,7 @@ Dashboard.get("/get-renewal-this-month", async (req, res) => {
         const data = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
         if (data.length > 0) {
           data.unshift({
-            header: el === "COM" ? "COMPREHENSIVE" : el,
+            header: el === "COM" ? "COM" : el,
             AssuredName: "",
             PolicyNo: "",
             unit: "",
