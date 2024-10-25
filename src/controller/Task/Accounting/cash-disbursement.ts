@@ -15,6 +15,7 @@ import {
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
+import { __executeQuery } from "../../../model/Task/Production/policy";
 const CashDisbursement = express.Router();
 
 CashDisbursement.get("/cash-disbursement/generate-id", async (req, res) => {
@@ -43,9 +44,8 @@ CashDisbursement.post(
     );
     if (userAccess.includes("ADMIN")) {
       return res.send({
-        message: `CAN'T ${
-          req.body.hasSelected ? "UPDATE" : "SAVE"
-        }, ADMIN IS FOR VIEWING ONLY!`,
+        message: `CAN'T ${req.body.hasSelected ? "UPDATE" : "SAVE"
+          }, ADMIN IS FOR VIEWING ONLY!`,
         success: false,
       });
     }
@@ -230,6 +230,7 @@ CashDisbursement.post(
   "/cash-disbursement/get-selected-search-cash-disbursement",
   async (req, res) => {
     try {
+
       const selectedCashDisbursement = await findSearchSelectedCashDisbursement(
         req.body.Source_No,
         req
@@ -238,6 +239,7 @@ CashDisbursement.post(
         message: "Successfully get selected search in cash disbursement",
         success: true,
         selectedCashDisbursement,
+
       });
     } catch (error: any) {
       console.log(error.message);
@@ -245,9 +247,78 @@ CashDisbursement.post(
         message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
         success: false,
         selectedCashDisbursement: [],
+        PrintDetails1: [],
+        PrintDetails2: []
       });
     }
   }
 );
+
+CashDisbursement.post('/cash-disbursement/print', async (req, res) => {
+  try {
+    const PrintPayeeDetails = await __executeQuery(`
+      SELECT 
+    cGL_Acct AS Account,
+    cSub_Acct AS SubAccount,
+    cID_No AS Identity,
+    Debit, 
+    Credit, 
+    Source_No AS CvNo, 
+    Date_Entry AS DateApproved, 
+    Payto AS PayeeName,
+    Particulars, 
+    Address,
+    Check_No AS CheckNo,
+    Check_Date AS CheckDate,
+    DebitTotal,
+    CreditTotal 
+    FROM 
+    Journal AS J 
+    INNER JOIN (
+      SELECT 
+      Source_No AS CvNo,
+      SUM(Debit) AS DebitTotal,
+      SUM(Debit) AS CreditTotal 
+      FROM Journal WHERE
+      LEFT(Explanation,7) <> '-- Void' AND 
+      Source_Type = 'CV' AND 
+      Source_No = '${req.body.Source_No}' GROUP BY Source_No 
+    ) AS T ON J.Source_No = T.CvNo 
+    WHERE LEFT(Explanation,7) <> '-- Void' AND 
+      Source_Type = 'CV' AND 
+      Source_No = '${req.body.Source_No}' AND 
+      (Check_No IS NOT NUll AND Check_No <> '') 
+    ORDER BY debit Desc, credit
+    `, req)
+    const PrintTable = await __executeQuery(`
+    SELECT 
+      cGL_Acct AS Account,
+      cID_No AS Identity,
+      Debit, 
+      Credit 
+    FROM Journal 
+    WHERE LEFT(Explanation,7) <> '-- Void' AND
+    Source_Type = 'CV' AND 
+    Source_No = '${req.body.Source_No}' 
+    ORDER BY Credit
+    `, req)
+    res.send({
+      message: "Successfully get search cash disbursement",
+      success: true,
+      print: {
+        PrintPayeeDetails,
+        PrintTable
+      },
+    });
+
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      print: {}
+    });
+  }
+})
 
 export default CashDisbursement;

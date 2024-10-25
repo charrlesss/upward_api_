@@ -1,96 +1,176 @@
 import express from "express";
 import { PrismaList } from "../model/connection";
+import { qry_id_policy_sub } from "../model/db/views";
+import { __executeQuery } from "../model/Task/Production/policy";
 const Dashboard = express.Router();
 const { CustomPrismaClient } = PrismaList();
+const { IDEntryWithPolicy } = qry_id_policy_sub()
 
-Dashboard.get("/get-renewal-this-month", async (req, res) => {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
-  try {
-    let qry = "";
-    function table(policy: string) {
-      if (policy === "TPL") {
-        return "vpolicy";
-      } else if (policy === "COM") {
-        return "vpolicy";
-      } else if (policy === "FIRE") {
-        return "fpolicy";
-      } else if (policy === "MAR") {
-        return "mpolicy";
-      } else if (policy === "PA") {
-        return "papolicy";
-      } else if (policy === "CGL") {
-        return "cglpolicy";
-      } else {
-        return "vpolicy";
-      }
-    }
-    const renewalData = ["TPL", "COM", "FIRE", "MAR", "PA", "CGL"].map(
-      async (el) => {
-        qry = `
-        SELECT 
-            if('${el}' = 'COM' OR '${el}' = 'TPL','1' ,'0') as isVPolicy,
-            '${el}' as  header,
-            concat(c.lastname,' ', c.firstname,' ',c.middlename) as AssuredName,
+const cglqry = `
+        SELECT
+            if('CGL' = 'COM' OR 'CGL' = 'TPL','1' ,'0') as isVPolicy,
+            'CGL' as  header,
+            c.client_name as AssuredName,
             a.PolicyNo,
-            ${
-              el === "TPL" || el === "COM"
-                ? "format(b.EstimatedValue,2) as InsuredValue"
-                : el === "PA" || el === "CGL"
-                ? "format(b.sumInsured,2) as InsuredValue"
-                : "format(b.InsuredValue,2) as InsuredValue"
-            },
-            ${
-              el === "COM" || el === "TPL"
-                ? " ifnull(concat(b.Model,' ',b.Make,' ',b.BodyType),'') as unit "
-                : "'' as unit "
-            },
-            ${
-              el === "COM" || el === "TPL"
-                ? "ifnull(b.ChassisNo,'') as ChassisNo"
-                : "'' as ChassisNo"
-            },
-            date_format(${
-              el === "PA" || el === "CGL" ? "b.PeriodTo " : "b.DateTo"
-            },'%m/%d/%Y') as DateExpired
+            format(b.sumInsured,2) as InsuredValue,
+            '' as unit ,
+            '' as ChassisNo,
+            date_format(b.PeriodTo ,'%m/%d/%Y') as DateExpired
         FROM
               policy a
             LEFT JOIN
-              ${table(el)} b ON a.PolicyNo = b.PolicyNo
+              cglpolicy b ON a.PolicyNo = b.PolicyNo
             LEFT JOIN
-              entry_client c ON a.IDNo = c.entry_client_id
+              (${IDEntryWithPolicy}) c ON a.IDNo = c.IDNo
             where
-            a.PolicyType = '${el}' and 
-            date_format(${
-              el === "PA" || el === "CGL" ? "b.PeriodTo " : "b.DateTo"
-            },'%Y-%m-%d') between DATE_SUB(LAST_DAY(now()), INTERVAL DAY(LAST_DAY(now())) - 1 DAY) and LAST_DAY(DATE_ADD(now(), INTERVAL 1 MONTH)) 
-            ${el === "TPL" ? " and  b.Mortgagee = 'N I L' " : ""}
-        `;
-        const data = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
-        if (data.length > 0) {
-          data.unshift({
-            header: el === "COM" ? "COM" : el,
-            AssuredName: "",
-            PolicyNo: "",
-            unit: "",
-            ChassisNo: "",
-            DateExpired: "",
-            isHeader: true,
-            isVPolicy: el === "COM" || el === "TPL" ? "1" : "0",
-          });
-        }
+            a.PolicyType = 'CGL' and
+            date_format(b.PeriodTo ,'%Y-%m-%d') between DATE_SUB(LAST_DAY(now()), INTERVAL DAY(LAST_DAY(now())) - 1 DAY) and LAST_DAY(DATE_ADD(now(), INTERVAL 1 MONTH))
+`
 
-        return data;
+const palqry = `
+SELECT
+            if('PA' = 'COM' OR 'PA' = 'TPL','1' ,'0') as isVPolicy,
+            'PA' as  header,
+            c.client_name as AssuredName,
+            a.PolicyNo,
+            format(b.sumInsured,2) as InsuredValue,
+            '' as unit ,
+            '' as ChassisNo,
+            date_format(b.PeriodTo ,'%m/%d/%Y') as DateExpired
+        FROM
+              policy a
+            LEFT JOIN
+              papolicy b ON a.PolicyNo = b.PolicyNo
+            LEFT JOIN
+              (${IDEntryWithPolicy}) c ON a.IDNo = c.IDNo
+            where
+            a.PolicyType = 'PA' and
+            date_format(b.PeriodTo ,'%Y-%m-%d') between DATE_SUB(LAST_DAY(now()), INTERVAL DAY(LAST_DAY(now())) - 1 DAY) and LAST_DAY(DATE_ADD(now(), INTERVAL 1 MONTH))
+
+`
+
+const marqry = `
+     SELECT
+            if('MAR' = 'COM' OR 'MAR' = 'TPL','1' ,'0') as isVPolicy,
+            'MAR' as  header,
+            c.client_name as AssuredName,
+            a.PolicyNo,
+            format(b.InsuredValue,2) as InsuredValue,
+            '' as unit ,
+            '' as ChassisNo,
+            date_format(b.DateTo,'%m/%d/%Y') as DateExpired
+        FROM
+              policy a
+            LEFT JOIN
+              mpolicy b ON a.PolicyNo = b.PolicyNo
+            LEFT JOIN
+              (${IDEntryWithPolicy}) c ON a.IDNo = c.IDNo
+            where
+            a.PolicyType = 'MAR' and
+            date_format(b.DateTo,'%Y-%m-%d') between DATE_SUB(LAST_DAY(now()), INTERVAL DAY(LAST_DAY(now())) - 1 DAY) and LAST_DAY(DATE_ADD(now(), INTERVAL 1 MONTH))
+`
+
+const fireqry = `
+
+  SELECT
+  if('FIRE' = 'COM' OR 'FIRE' = 'TPL','1' ,'0') as isVPolicy,
+  'FIRE' as  header,
+  c.client_name as AssuredName,
+  a.PolicyNo,
+  format(b.InsuredValue,2) as InsuredValue,
+  '' as unit ,
+  '' as ChassisNo,
+  date_format(b.DateTo,'%m/%d/%Y') as DateExpired
+  FROM
+    policy a
+  LEFT JOIN
+    fpolicy b ON a.PolicyNo = b.PolicyNo
+  LEFT JOIN
+    (${IDEntryWithPolicy}) c ON a.IDNo = c.IDNo
+  where
+  a.PolicyType = 'FIRE' and
+  date_format(b.DateTo,'%Y-%m-%d') between DATE_SUB(LAST_DAY(now()), INTERVAL DAY(LAST_DAY(now())) - 1 DAY) and LAST_DAY(DATE_ADD(now(), INTERVAL 1 MONTH))
+  `
+
+const comqry = `
+     SELECT
+            if('COM' = 'COM' OR 'COM' = 'TPL','1' ,'0') as isVPolicy,
+            'COM' as  header,
+            c.client_name as AssuredName,
+            a.PolicyNo,
+            format(b.EstimatedValue,2) as InsuredValue,
+             ifnull(concat(b.Model,' ',b.Make,' ',b.BodyType),'') as unit ,
+            ifnull(b.ChassisNo,'') as ChassisNo,
+            date_format(b.DateTo,'%m/%d/%Y') as DateExpired
+        FROM
+              policy a
+            LEFT JOIN
+              vpolicy b ON a.PolicyNo = b.PolicyNo
+            LEFT JOIN
+              (${IDEntryWithPolicy}) c ON a.IDNo = c.IDNo
+            where
+            a.PolicyType = 'COM' and
+            date_format(b.DateTo,'%Y-%m-%d') between DATE_SUB(LAST_DAY(now()), INTERVAL DAY(LAST_DAY(now())) - 1 DAY) and LAST_DAY(DATE_ADD(now(), INTERVAL 1 MONTH))
+`
+
+const tplqry = `
+SELECT
+            if('TPL' = 'COM' OR 'TPL' = 'TPL','1' ,'0') as isVPolicy,
+            'TPL' as  header,
+            c.client_name  as AssuredName,
+            a.PolicyNo,
+            format(b.EstimatedValue,2) as InsuredValue,
+             ifnull(concat(b.Model,' ',b.Make,' ',b.BodyType),'') as unit ,
+            ifnull(b.ChassisNo,'') as ChassisNo,
+            date_format(b.DateTo,'%m/%d/%Y') as DateExpired
+        FROM
+              policy a
+            LEFT JOIN
+              vpolicy b ON a.PolicyNo = b.PolicyNo
+            LEFT JOIN
+              (${IDEntryWithPolicy}) c ON a.IDNo = c.IDNo
+            where
+            a.PolicyType = 'TPL' and
+            date_format(b.DateTo,'%Y-%m-%d') between DATE_SUB(LAST_DAY(now()), INTERVAL DAY(LAST_DAY(now())) - 1 DAY) and LAST_DAY(DATE_ADD(now(), INTERVAL 1 MONTH))
+             
+
+`
+Dashboard.get("/get-renewal-this-month", async (req, res) => {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const policy = req.query.policy as string
+  try {
+    let qry = "";
+    const policies = ['TPL', 'COM', 'FIRE', 'MAR', 'PA', 'CGL']
+    if (policies.includes(policy)) {
+      if (policy === "TPL") {
+        qry = tplqry
+      } else if (policy === "COM") {
+        qry = comqry
+      } else if (policy === "FIRE") {
+        qry = fireqry
+      } else if (policy === "MAR") {
+        qry = marqry
+      } else if (policy === "PA") {
+        qry = palqry
+      } else if (policy === "CGL") {
+        qry = cglqry
       }
-    );
 
-    Promise.all(renewalData).then((results) => {
-      res.send({
+      const renewal = await __executeQuery(qry, req)
+      return res.send({
         message: `Successfully Get Renewal This Month`,
         success: true,
-        renewal: results.flat(),
+        renewal
       });
-    });
+    } else {
+      return res.send({
+        message: `Successfully Get Renewal This Month`,
+        success: true,
+        renewal: []
+      });
+
+    }
+
   } catch (err: any) {
     res.send({ message: err.message, success: false });
   }
