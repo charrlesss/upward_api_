@@ -119,7 +119,10 @@ export async function findSearchSelectedCashDisbursement(
     FROM 
       cash_disbursement 
       where 
-      Source_No = '${Source_No}' and Source_Type = 'CV'`
+      Source_No = '${Source_No}' and Source_Type = 'CV'
+      ORDER BY Date_Entry
+      `
+      
   );
 }
 export async function searchCashDisbursement(search: string, req: Request) {
