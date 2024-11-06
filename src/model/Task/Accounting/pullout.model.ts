@@ -135,7 +135,7 @@ export async function pulloutRequestPNoWithName(search: string, req: Request) {
             a.Name LIKE '%${search}%' 
           )
   GROUP BY a.PNo
-  LIMIT 100;
+  LIMIT 50;
 ;`);
 }
 export async function getSelectedRequestCheck(PNNo: string, req: Request) {

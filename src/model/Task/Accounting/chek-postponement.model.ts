@@ -111,7 +111,7 @@ export async function getCheckPostponementPNNo(search: string, req: Request) {
               a.Name LIKE '%${search}%' 
             )
     GROUP BY a.PNo
-    LIMIT 100;
+    LIMIT 50;
     `;
   return await prisma.$queryRawUnsafe(query);
 }

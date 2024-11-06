@@ -11,12 +11,37 @@ import {
   findSearchSelectedCashDisbursement,
   insertVoidJournalFromCashDisbursement,
   insertVoidCashDisbursement,
+  getClientFromPayTo,
 } from "../../../model/Task/Accounting/cash-disbursement.model";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { __executeQuery } from "../../../model/Task/Production/policy";
 const CashDisbursement = express.Router();
+
+
+CashDisbursement.get("/search-payto-clients-name", async (req, res) => {
+  try {
+    const { searchPdcPolicyIds } = req.query;
+    const clientsId = await getClientFromPayTo(
+      searchPdcPolicyIds as string,
+      req
+    );
+    res.send({
+      clientsId,
+      data: clientsId,
+      success: true,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      bondsPolicy: null,
+    });
+  }
+});
+
 
 CashDisbursement.get("/cash-disbursement/generate-id", async (req, res) => {
   try {

@@ -32,7 +32,7 @@ export async function getChartOfAccount(search: string, req: Request) {
             AND a.Inactive = 0
             AND a.Acct_Type = 'Detail'
             ORDER BY a.Acct_Code ASC
-    LIMIT 100;
+    LIMIT 50;
     `);
 }
 
@@ -141,7 +141,7 @@ FROM
     a.IDNo LIKE '%${search}%'
         OR a.Shortname LIKE '%${search}%'
     ORDER BY a.Shortname
-    LIMIT 500;
+    LIMIT 50;
       `);
 }
 
@@ -158,7 +158,7 @@ export async function getTransactionAccount(search: string, req: Request) {
         (a.Code LIKE '%${search}%'
             OR a.Description LIKE '%${search}%')
     ORDER BY a.Description
-    LIMIT 500;
+    LIMIT 50;
     `);
 }
 
@@ -316,7 +316,7 @@ export async function searchGeneralJournal(search: string, req: Request) {
         LEFT(a.Explanation, 7) <> '-- Void'
             AND (a.Source_No LIKE '%${search}%'
             OR a.Explanation LIKE '%${search}%')
-    LIMIT 100
+    LIMIT 50
 
       `
   console.log(sql)

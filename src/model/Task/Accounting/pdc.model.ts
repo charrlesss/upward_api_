@@ -226,8 +226,7 @@ ORDER BY CASE
     WHEN name LIKE 'APARES%' THEN 0
     ELSE 2
 END , name ASC
-limit 100      
-
+limit 50      
 
   `;
 
@@ -239,7 +238,7 @@ export async function getPdcBanks(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
-    SELECT a.Bank_Code, a.Bank FROM   bank a where  a.Bank_Code like '%${search}%' OR a.Bank like '%${search}%' limit 100; 
+    SELECT a.Bank_Code, a.Bank FROM   bank a where  a.Bank_Code like '%${search}%' OR a.Bank like '%${search}%' limit 50; 
     `;
   return await prisma.$queryRawUnsafe(query);
 }
@@ -302,7 +301,7 @@ export async function searchPDC(search: any, req: Request) {
             AND (a.Ref_No LIKE '%${search}%' OR a.Name LIKE '%${search}%')
     GROUP BY a.Ref_No , a.Date , a.Name
     ORDER BY a.Date DESC , a.Name
-    LIMIT 100
+    LIMIT 50
   `);
 }
 export async function getSearchPDCheck(ref_no: any, req: Request) {

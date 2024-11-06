@@ -94,7 +94,7 @@ export async function searchPettyCash(search: string,req: Request) {
             OR a.Explanation LIKE '%${search}%')
     GROUP BY a.PC_Date , PC_No , a.Payee , a.Explanation
     ORDER BY a.PC_Date DESC
-    LIMIT 500
+    LIMIT 50
     `);
 }
 

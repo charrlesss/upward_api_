@@ -31,7 +31,7 @@ export async function getClientCheckedList(
             AND (a.PNo = '${PNo}')
             AND (a.ORNum IS NULL OR a.ORNum = '')
     ORDER BY a.Check_Date
-    LIMIT 100
+    LIMIT 50
     `;
 
   console.log("check list -", query);
@@ -193,7 +193,7 @@ export async function getCollections(
             OR Name LIKE '%${searchCollectionInput}%')
     GROUP BY a.Official_Receipt
     ORDER BY MAX(a.Date) DESC , Name
-    LIMIT 100
+    LIMIT 50
   `);
 }
 export async function getSearchCollection(ORNo: string, req: Request) {

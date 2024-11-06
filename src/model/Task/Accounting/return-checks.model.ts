@@ -266,7 +266,7 @@ export async function searchReturnChecks(search: string, req: Request) {
           OR Explanation LIKE '%${search}%')
     GROUP BY RC_Date , RC_No , Explanation
     ORDER BY RC_No desc , RC_Date desc
-    LIMIT 100;
+    LIMIT 50;
   `);
 }
 export async function getReturnCheckSearchFromJournal(

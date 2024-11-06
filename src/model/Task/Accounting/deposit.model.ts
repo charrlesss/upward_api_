@@ -86,7 +86,7 @@ export async function getBanksFromDeposit(search: string, req: Request) {
             OR a.Account_No LIKE '%${search}%'
             OR a.Account_Name LIKE '%${search}%')
       ORDER BY a.Account_Name
-      LIMIT 100;
+      LIMIT 50;
       `;
   console.log(sql)
   return await prisma.$queryRawUnsafe(sql);
@@ -204,7 +204,7 @@ export async function searchDeposit(searchDeposit: string, req: Request) {
         OR a.BankAccount LIKE '%${searchDeposit}%'
         OR a.AccountName LIKE '%${searchDeposit}%')
     ORDER BY a.Date DESC
-    limit 100
+    limit 50
 `);
 }
 export async function getCashDeposit(SlipCode: string, req: Request) {
@@ -421,7 +421,7 @@ export async function getBanksFromDepositByAccountNo(AccountNo: string, req: Req
         WHERE
             a.Inactive = 0 AND a.Account_No = '${AccountNo}'
       ORDER BY a.Account_Name
-      LIMIT 100;
+      LIMIT 50;
       `;
   return await prisma.$queryRawUnsafe(sql);
 }
