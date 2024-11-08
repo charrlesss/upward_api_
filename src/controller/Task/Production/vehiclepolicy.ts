@@ -429,7 +429,7 @@ async function insertNewVPolicy(
   }
 }
 VehiclePolicy.post("/tpl-add-vehicle-policy", async (req, res) => {
-
+  console.log(req.body)
   convertToPassitive(req);
   const { sub_account, client_id, PolicyAccount, PolicyNo, Denomination } =
     req.body;

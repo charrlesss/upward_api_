@@ -19,31 +19,19 @@ export async function getTPL_IDS(search: string, req: Request) {
   // GROUP BY Source_No_Ref_ID
   // ORDER BY Source_No ASC
   return await prisma.$queryRawUnsafe(`
-    SELECT 
-        *
-    FROM
-        (SELECT 
-            CONCAT(REGEXP_REPLACE(MIN(a.Source_No), '[0-9]', ''), MIN(b.SourceNo)) AS Source_No,
-                MIN(b.Cost) AS Cost,
-                a.Source_No_Ref_ID
-        FROM
-            journal a
-        INNER JOIN (SELECT 
-            (CAST(Credit AS DECIMAL (18 , 2 ))) AS Cost,
-                Source_No_Ref_ID,
-                CAST(REGEXP_REPLACE(Source_No, '[^0-9]', '') AS UNSIGNED) AS SourceNo,
-                Source_No
-        FROM
-            journal a
-        WHERE
-            Explanation = 'CTPL Registration'
-                AND Credit > 0
-                AND Remarks IS NULL
-        ORDER BY SourceNo) b ON a.Source_No = b.Source_No
-        GROUP BY a.Source_No_Ref_ID
-        ORDER BY MIN(b.SourceNo)) a
-    WHERE
-        a.Source_No LIKE '%${search}%'
+SELECT 
+    MIN(Source_No) as Source_No,
+    MIN(Debit) as Cost
+FROM
+    journal
+WHERE
+    cGL_Acct = 'CTPL Inventory'
+        AND Explanation = 'CTPL Registration'
+        AND Source_No_Ref_ID <> ''
+        AND (Remarks = '' OR Remarks IS NULL)
+		AND Source_No like '%${search}%'
+		group by Source_No_Ref_ID
+        order by Source_No;
 
   `);
 }

@@ -71,7 +71,11 @@ ProductionReports.post("/get-production-report", async (req, res) => {
 
 ProductionReports.post("/get-production-report-desk", async (req, res) => {
   try {
+    console.log(req.body);
+
+
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
     let  dateFrom = format( parseDate(req.body.FDate), "yyyy-MM-dd");
      let dateTo = format( parseDate(req.body.TDate), "yyyy-MM-dd");
     // if (req.body.report === "Daily") {
@@ -98,9 +102,7 @@ ProductionReports.post("/get-production-report-desk", async (req, res) => {
     //   dateFrom = format( parseDate(req.body.FDate), "yyyy-MM-dd");
     //   dateTo = format( parseDate(req.body.TDate), "yyyy-MM-dd");
     // }
-    console.log(req.body);
-    console.log(dateFrom, dateTo);
-
+    console.log(dateFrom,dateTo)
     const reportString = ProductionReport(
       dateFrom,
       dateTo,
@@ -111,7 +113,6 @@ ProductionReports.post("/get-production-report-desk", async (req, res) => {
       req.body.cmbpolicy ,
       req.body.cmbSort
     );
-    console.log(reportString)
     const data: Array<any> = await prisma.$queryRawUnsafe(reportString);
 
     res.send({

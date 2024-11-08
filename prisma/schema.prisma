@@ -168,7 +168,7 @@ model journal {
   VAT_Type         String?  @db.VarChar(255)
   OR_Invoice_No    String?  @db.VarChar(255)
   VATItemNo        Int?
-  Source_No_Ref_ID String
+  Source_No_Ref_ID String?
 }
 
 model policy {
