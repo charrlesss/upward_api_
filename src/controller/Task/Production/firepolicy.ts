@@ -151,6 +151,7 @@ async function insertFirePolicy(
     totalDue,
     strArea,
     cStrArea,
+    fsTax
   }: any,
   req: Request
 ) {
@@ -170,7 +171,7 @@ async function insertFirePolicy(
       TotalPremium: parseFloat(parseFloat(totalPremium).toFixed(2)),
       Vat: vat,
       DocStamp: docStamp,
-      FireTax: "0",
+      FireTax: fsTax,
       LGovTax: localGovTax,
       Notarial: "0",
       Misc: "0",

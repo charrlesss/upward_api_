@@ -5,35 +5,54 @@ const { CustomPrismaClient } = PrismaList();
 
 export async function getTPL_IDS(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-  //   SELECT
-  //   MIN(Source_No) AS Source_No,
-  //   MIN(CAST(Credit AS DECIMAL (18 , 2 ))) as Cost ,
-  //   Source_No_Ref_ID
-  // FROM
-  //   journal
-  // WHERE
-  //       Explanation = 'CTPL Registration'
-  //       AND Credit > 0
-  //       AND Remarks IS NULL
-  //       AND Source_No like '%${search}%'
-  // GROUP BY Source_No_Ref_ID
-  // ORDER BY Source_No ASC
-  return await prisma.$queryRawUnsafe(`
-SELECT 
-    MIN(Source_No) as Source_No,
-    MIN(Debit) as Cost
-FROM
-    journal
-WHERE
-    cGL_Acct = 'CTPL Inventory'
-        AND Explanation = 'CTPL Registration'
-        AND Source_No_Ref_ID <> ''
-        AND (Remarks = '' OR Remarks IS NULL)
-		AND Source_No like '%${search}%'
-		group by Source_No_Ref_ID
-        order by Source_No;
 
-  `);
+
+  const ctplQry = `
+        SELECT 
+            Prefix
+        FROM
+            upward_insurance_umis.ctplregistration
+            where Prefix <> '' AND Prefix is not null
+        GROUP BY Prefix;
+        `
+  const ctplPreffix = await prisma.$queryRawUnsafe(ctplQry) as any
+  let qry = ''
+  ctplPreffix.forEach((pref: any) => {
+    qry += `
+            select * from (
+                 Select   
+                Source_No,
+                cast(Credit as decimal(18,2)) as 'Cost' 
+                from Journal 
+            where 
+                Explanation ='CTPL Registration' 
+                and Source_No 
+                like'%${pref.Prefix}%' and 
+                Credit > 0 
+                and Remarks is null 
+            order by CAST(SUBSTRING(source_no, 3, CHAR_LENGTH(source_no)) AS SIGNED) asc
+            limit 1 
+            ) a
+             union all
+    `
+  });
+  qry += `
+           SELECT 
+                MIN(Source_No) as Source_No,
+                MIN(Debit) as Cost
+            FROM
+                journal
+            WHERE
+                cGL_Acct = 'CTPL Inventory'
+                    AND Explanation = 'CTPL Registration'
+                    AND Source_No_Ref_ID <> ''
+                    AND (Remarks = '' OR Remarks IS NULL)
+                    AND Source_No like '%%'
+                    group by Source_No_Ref_ID
+                    order by Source_No;
+        
+        `
+  return await prisma.$queryRawUnsafe(qry);
 }
 
 export async function getRateFromTPLUpdate(Source_No: string, req: Request) {
@@ -408,11 +427,10 @@ export async function searchDataVPolicy(
             b.PolicyNo is not null and
             a.PolicyNo is not null and
             a.PolicyType = '${policyType}' and
-        ${
-          isTemp
-            ? "left(a.PolicyNo,3) = 'TP-'and"
-            : "left(a.PolicyNo,3) != 'TP-' and"
-        }
+        ${isTemp
+      ? "left(a.PolicyNo,3) = 'TP-'and"
+      : "left(a.PolicyNo,3) != 'TP-' and"
+    }
         (
             a.PolicyNo like '%${search}%' or
             c.firstname like '%${search}%' or 

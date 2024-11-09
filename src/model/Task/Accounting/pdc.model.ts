@@ -354,7 +354,7 @@ export async function pdcIDGenerator(req: Request) {
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
-    concat(DATE_FORMAT(NOW(), '%y'),'.',if(concat(a.year,a.month) <> DATE_FORMAT(NOW(), '%y%m'),'0001',concat(LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1))) as pdcID   
+    concat(DATE_FORMAT(NOW(), '%y'),'.',concat(LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1)) as pdcID   
   FROM
       id_sequence a
   WHERE
