@@ -280,7 +280,7 @@ async function insertBondsPolicy(
   biddingDate = defaultFormat(new Date(biddingDate))
   time = defaultFormat(new Date(time))
   DateIssued = defaultFormat(new Date(DateIssued))
-  
+
   await createPolicy(
     {
       IDNo: client_id,
@@ -322,7 +322,7 @@ async function insertBondsPolicy(
       TaxCerNoCorp: insuranceOfficerTaxCert,
       IssuedLoctCorp: insuranceIssuedLoc,
       CIssued: insuranceDateIssued,
-      BondValue: insuredValue,
+      BondValue: parseFloat(insuredValue.replace(/,/g, '')),
       Percentage: percentagePremium,
       Officer: officer,
       OPosition: position,

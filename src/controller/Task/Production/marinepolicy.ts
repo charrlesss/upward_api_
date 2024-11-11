@@ -257,12 +257,12 @@ async function insertMarinePolicy(
   req: Request
 ) {
 
-  
+
   DateFrom = defaultFormat(new Date(DateFrom))
   DateTo = defaultFormat(new Date(DateTo))
   DateIssued = defaultFormat(new Date(DateIssued))
-  
-  
+
+
   await createPolicy(
     {
       IDNo: client_id,
@@ -271,14 +271,14 @@ async function insertMarinePolicy(
       PolicyType: "MAR",
       PolicyNo: PolicyNo,
       DateIssued,
-      TotalPremium: parseFloat(parseFloat(totalPremium).toFixed(2)),
-      Vat: vat,
-      DocStamp: docStamp,
+      TotalPremium: parseFloat(totalPremium.replace(/,/g, '')),
+      Vat: parseFloat(vat.replace(/,/g, '')).toFixed(2),
+      DocStamp: parseFloat(docStamp.replace(/,/g, '')).toFixed(2),
       FireTax: "0",
-      LGovTax: localGovTax,
+      LGovTax: parseFloat(localGovTax.replace(/,/g, '')).toFixed(2),
       Notarial: "0",
       Misc: "0",
-      TotalDue: totalDue,
+      TotalDue: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
       TotalPaid: "0",
       Journal: false,
       AgentID: agent_id,
@@ -300,7 +300,7 @@ async function insertMarinePolicy(
       AdditionalInfo: add_info,
       SubjectInsured: smi,
       Consignee: consignee,
-      InsuredValue: insuredValue,
+      InsuredValue: parseFloat(insuredValue.replace(/,/g, '')),
       Percentage: percentagePremium,
     },
     req

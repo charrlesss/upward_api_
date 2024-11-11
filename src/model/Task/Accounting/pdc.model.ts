@@ -315,7 +315,7 @@ export async function getSearchPDCheck(ref_no: any, req: Request) {
       a.PNo,
       a.IDNo,
       a.Check_No,
-      DATE_FORMAT(a.Check_Date, '%m/%d/%Y') AS Check_Date,
+      DATE_FORMAT(a.Check_Date, '%Y-%m-%d') AS Check_Date,
       a.Check_Amnt,
       d.Bank AS BankName,
       d.Bank_Code as BankCode,

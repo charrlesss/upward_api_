@@ -159,7 +159,14 @@ async function insertFirePolicy(
   DateFrom = defaultFormat(new Date(DateFrom))
   DateTo = defaultFormat(new Date(DateTo))
   DateIssued = defaultFormat(new Date(DateIssued))
-  
+
+  function formatNumber(num: number) {
+    return (num || 0).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  }
+
   await createPolicy(
     {
       IDNo: client_id,
@@ -168,14 +175,14 @@ async function insertFirePolicy(
       PolicyType: "FIRE",
       PolicyNo: PolicyNo,
       DateIssued,
-      TotalPremium: parseFloat(parseFloat(totalPremium).toFixed(2)),
-      Vat: vat,
-      DocStamp: docStamp,
-      FireTax: fsTax,
-      LGovTax: localGovTax,
+      TotalPremium: parseFloat(totalPremium.replace(/,/g, '')),
+      Vat: (parseFloat(vat.replace(/,/g, ''))).toFixed(2),
+      DocStamp: (parseFloat(docStamp.replace(/,/g, ''))).toFixed(2),
+      FireTax: (parseFloat(fsTax.replace(/,/g, ''))).toFixed(2),
+      LGovTax: (parseFloat(localGovTax.replace(/,/g, ''))).toFixed(2),
       Notarial: "0",
       Misc: "0",
-      TotalDue: totalDue,
+      TotalDue: (parseFloat(totalDue.replace(/,/g, ''))).toFixed(2),
       TotalPaid: "0",
       Journal: false,
       AgentID: agent_id,
@@ -198,7 +205,7 @@ async function insertFirePolicy(
       Boundaries: boundaries,
       Mortgage: mortgage,
       Warranties: warranties,
-      InsuredValue: insuredValue,
+      InsuredValue:(parseFloat(insuredValue.replace(/,/g, ''))).toFixed(2) ,
       Percentage: percentagePremium,
     },
     req

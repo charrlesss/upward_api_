@@ -64,10 +64,6 @@ PDC.post("/add-pdc", async (req, res) => {
     checks.forEach(async (check: any) => {
       newId = "chk-" + num.toString().padStart(count.length, "0");
       num++;
-      const pdcDate = req.body.Date
-      const datePart = check.Check_Date.slice(0, 10); // Extracts first 10 characters
-      const [month, day, year] = datePart.split('/');
-      const Check_Date = defaultFormat(new Date(`${year}-${month}-${day}`));
 
       if (check.DateDeposit === "") {
 
@@ -77,12 +73,12 @@ PDC.post("/add-pdc", async (req, res) => {
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
-            Date: pdcDate,
+            Date: req.body.Date,
             Name: req.body.Name,
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: Check_Date,
+            Check_Date: check.Check_Date,
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
@@ -98,12 +94,12 @@ PDC.post("/add-pdc", async (req, res) => {
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
-            Date: pdcDate,
+            Date: req.body.Date,
             Name: req.body.Name,
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: Check_Date,
+            Check_Date: check.Check_Date,
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
@@ -190,8 +186,6 @@ PDC.post("/update-pdc", async (req, res) => {
     num = parseInt(count, 10);
     let newId = "";
     checks.forEach(async (check: any) => {
-      const pdcDate = req.body.Date
-      const Check_Date = req.body.Check_Date
 
       newId = num.toString().padStart(count.length, "0");
       num++;
@@ -203,14 +197,14 @@ PDC.post("/update-pdc", async (req, res) => {
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
-            Date: pdcDate,
+            Date: req.body.Date,
             Name: req.body.Name,
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: Check_Date,
+            Check_Date: check.Check_Date,
             Check_No: check.Check_No,
-            Check_Amnt: check.Check_Amnt.replaceAll(",", ""),
+            Check_Amnt: check.Check_Amnt.replace(/,/g, ""),
             Check_Remarks: check.Check_Remarks,
             ORNum: check.OR_No,
             PDC_Status: "Received",
@@ -224,14 +218,14 @@ PDC.post("/update-pdc", async (req, res) => {
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
-            Date: pdcDate,
+            Date: req.body.Date,
             Name: req.body.Name,
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: Check_Date,
+            Check_Date: check.Check_Date,
             Check_No: check.Check_No,
-            Check_Amnt: check.Check_Amnt.replaceAll(",", ""),
+            Check_Amnt: check.Check_Amnt.replace(/,/g, ""),
             Check_Remarks: check.Check_Remarks,
             SlipCode: req.body.Deposit_Slip,
             DateDepo:

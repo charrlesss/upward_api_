@@ -154,6 +154,25 @@ export async function getRate(
   return await prisma.$queryRawUnsafe(query);
 }
 
+export async function getRateVPolicy(
+  account: string,
+  line: string,
+  type: string,
+  req: Request
+) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const query = `
+  select Rate from Rates 
+  where 
+  trim(Account) = '${account.trim()}' 
+  and trim(Line) = '${line}' 
+  and trim(Type) = '${type}'
+  `;
+  console.log(query)
+  return await prisma.$queryRawUnsafe(query);
+}
+
+
 export async function getClientById(entry_client_id: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
