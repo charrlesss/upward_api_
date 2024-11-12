@@ -628,7 +628,7 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
   function parseDate(dateStr: string) {
     // Expected format: 'DD/MM/YYYY HH:mm:ss am/pm'
     let [datePart, timePart] = dateStr.split(' ');
-    let [month , day, year] = datePart.split('/');
+    let [month, day, year] = datePart.split('/');
     return new Date(`${year}-${month}-${day}`);
   }
 
@@ -661,11 +661,11 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
                    SUM(IFNULL(qryJournal.mCredit, 0)) AS mCredit 
             FROM (${_qryJournal}) qryJournal 
             WHERE qryJournal.Source_Type IN ('BF', 'AB') 
-              AND qryJournal.Date_Query BETWEEN '${format(
+              AND qryJournal.Date_Query >= '${format(
               new Date(DateFrom),
               "yyyy-MM-01"
             )}' 
-              AND '${format(DateFrom, "yyyy-MM-dd")}' 
+              qryJournal.Date_Query  <= '${format(DateFrom, "yyyy-MM-dd")}' 
             GROUP BY qryJournal.GL_Acct 
             HAVING qryJournal.GL_Acct = '${GL_Code.trim()}' 
             ORDER BY qryJournal.GL_Acct;
@@ -678,11 +678,11 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
                    SUM(IFNULL(qryJournal.mCredit, 0)) AS mCredit 
             FROM (${_qryJournal}) qryJournal 
             WHERE qryJournal.Source_Type NOT IN ('BFD', 'BFS') 
-              AND qryJournal.Date_Query BETWEEN '${format(
+              AND qryJournal.Date_Query >= '${format(
               new Date(DateFrom),
               "yyyy-MM-dd"
             )}' 
-              AND '${format(subDays(DateFrom, 1), "yyyy-MM-dd")}' 
+              AND  qryJournal.Date_Query <= '${format(subDays(DateFrom, 1), "yyyy-MM-dd")}' 
             GROUP BY qryJournal.GL_Acct 
             HAVING qryJournal.GL_Acct = '${GL_Code.trim()}' 
             ORDER BY qryJournal.GL_Acct;
@@ -701,11 +701,11 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
                    SUM(IFNULL(qryJournal.mCredit, 0)) AS mCredit 
             FROM (${_qryJournal}) qryJournal 
             WHERE qryJournal.Source_Type IN ('BF', 'AB') 
-              AND qryJournal.Date_Query BETWEEN '${format(
+              AND qryJournal.Date_Query >=  '${format(
               new Date(DateFrom),
               "yyyy-MM-01"
             )}' 
-              AND '${format(DateFrom, "yyyy-MM-dd")}' 
+              AND  qryJournal.Date_Query <= '${format(DateFrom, "yyyy-MM-dd")}' 
             GROUP BY qryJournal.GL_Acct 
             ORDER BY qryJournal.GL_Acct;
           `;
@@ -717,17 +717,16 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
                    SUM(IFNULL(qryJournal.mCredit, 0)) AS mCredit 
             FROM (${_qryJournal}) qryJournal 
             WHERE qryJournal.Source_Type NOT IN ('BFD', 'BFS') 
-              AND qryJournal.Date_Query BETWEEN '${format(
+              AND qryJournal.Date_Query >= '${format(
               new Date(DateFrom),
               "yyyy-MM-01"
             )}' 
-              AND '${format(subDays(DateFrom, 1), "yyyy-MM-dd")}' 
+              AND qryJournal.Date_Query <= '${format(subDays(DateFrom, 1), "yyyy-MM-dd")}' 
             GROUP BY qryJournal.GL_Acct 
             ORDER BY qryJournal.GL_Acct;
           `;
           }
         }
-        console.log(Qry)
         // Execute the raw query
         dt = await prisma.$queryRawUnsafe(Qry);
 
@@ -769,15 +768,16 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
             FROM (${_qryJournal}) qryJournal 
             WHERE qryJournal.ID_No = '${mInput}' 
               AND qryJournal.Source_Type IN ('BFD', 'AB') 
-              AND qryJournal.Date_Query BETWEEN '${format(
+              AND qryJournal.Date_Query >= '${format(
               new Date(DateFrom),
               "yyyy-MM-01"
             )}' 
-              AND '${format(DateFrom, "yyyy-MM-dd")}' 
+              AND qryJournal.Date_Query <= '${format(DateFrom, "yyyy-MM-dd")}' 
             GROUP BY qryJournal.GL_Acct 
             HAVING qryJournal.GL_Acct = '${GL_Code.trim()}' 
             ORDER BY qryJournal.GL_Acct;
           `;
+  
           } else {
             // Query excluding 'BF' and 'BFS' for specific GL code with ID filter
             Qry = `
@@ -787,17 +787,41 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
             FROM (${_qryJournal}) qryJournal 
             WHERE qryJournal.ID_No = '${mInput}' 
               AND qryJournal.Source_Type NOT IN ('BF', 'BFS') 
-              AND qryJournal.Date_Query BETWEEN '${format(
+              AND qryJournal.Date_Query >= '${format(
               new Date(DateFrom),
               "yyyy-MM-01"
             )}' 
-              AND '${format(DateFrom, "yyyy-MM-dd")}' 
+              AND  qryJournal.Date_Query <  '${format(DateFrom, "yyyy-MM-dd")}' 
             GROUP BY qryJournal.GL_Acct 
             HAVING qryJournal.GL_Acct = '${GL_Code.trim()}' 
             ORDER BY qryJournal.GL_Acct;
           `;
           }
+        } else {
+
         }
+        dt = await prisma.$queryRawUnsafe(Qry);
+
+        // If we get results, insert them into xSubsidiary
+        if (dt.length > 0) {
+          for (const row of dt) {
+            let debit = row.mDebit;
+            let credit = row.mCredit;
+            let balance = parseFloat(debit) - parseFloat(credit);
+
+            // Insert query into xSubsidiary
+            await prisma.$queryRawUnsafe(`
+            INSERT INTO xSubsidiary 
+            (Date_Entry, Sort_Number, Source_Type, Source_No, Explanation, Debit, Credit, Bal, Balance, Address, GL_Acct) 
+            VALUES 
+            ('${format(subDays(DateFrom, 1), "yyyy-MM-dd")}', 1, 'BF', 
+             '${format(subDays(DateFrom, 1), "MMddyy")}', 'Balance Forwarded', 
+             ${debit}, ${credit}, ${balance}, ${balance}, '${mField}', '${row.GL_Acct
+              }');
+          `);
+          }
+        }
+
         // Execute and handle results similar to above
         // Add logic for inserting into xSubsidiary if needed.
         break;
@@ -889,7 +913,6 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
           `;
           }
         }
-        console.log(Qry)
         // Execute the raw query
         dt = await prisma.$queryRawUnsafe(Qry);
 
@@ -971,9 +994,9 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
       let sParticular = "";
       let Balance = 0;
 
-      for (let i = 0; i < dt.length - 1; i++) {
+      for (let i = 0; i < dt.length ; i++) {
         const row = dt[i];
-
+        console.log(row)
         // Check if the GL_Acct has changed
 
         if (lastAcct !== row.GL_Acct) {
@@ -1037,7 +1060,7 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
             Bal: parseFloat(row.mDebit) - parseFloat(row.mCredit),
             Balance: Balance,
             Check_Date: row.Check_Date !== "" && row.Check_Date !== null
-              ? defaultFormat(new Date(row.Check_Date)) 
+              ? defaultFormat(new Date(row.Check_Date))
               : null,
             Check_No: row.Checked,
             Check_Bank: clrStr(row.Bank),
@@ -1050,7 +1073,7 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
     }
 
     const report = await prisma.$queryRawUnsafe(
-      "select * FROM xSubsidiary order by xsubsidiary_id "
+      "select * FROM xSubsidiary order by Date_Entry "
     );
 
     res.send({
