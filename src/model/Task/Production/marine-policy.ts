@@ -68,12 +68,12 @@ export async function getWords(req: Request) {
 }
 export async function deleteMarinePolicy(PolicyNo: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
-  return await prisma.mpolicy.delete({
-    where: {
-      PolicyNo,
-    },
-  });
+  const query = `
+  delete from mpolicy 
+  where 
+    PolicyNo = '${PolicyNo}'
+  `;
+  return await prisma.$queryRawUnsafe(query);
 }
 
 export async function deletePolicyFromMarine(policyNo: string, req: Request) {

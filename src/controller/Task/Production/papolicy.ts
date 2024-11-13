@@ -244,7 +244,7 @@ async function insertPaPolicy(
   DateFrom = defaultFormat(new Date(DateFrom))
   DateTo = defaultFormat(new Date(DateTo))
   DateIssued = defaultFormat(new Date(DateIssued))
-  
+
   //   create  Policy
   await createPolicy(
     {
@@ -278,7 +278,7 @@ async function insertPaPolicy(
       Location: propertyInsured,
       PeriodFrom: DateFrom,
       PeriodTo: DateTo,
-      sumInsured,
+      sumInsured: parseFloat(sumInsured.replace(/,/g, '')),
     },
     req
   );

@@ -296,7 +296,7 @@ async function insertBondsPolicy(
       LGovTax: localGovTax,
       Notarial: umis,
       Misc: principal,
-      TotalDue: totalDue,
+      TotalDue: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
       TotalPaid: "0",
       Journal: false,
       AgentID: agent_id,

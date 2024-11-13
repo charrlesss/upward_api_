@@ -238,7 +238,7 @@ async function insertCGLPolicy(
   DateFrom = defaultFormat(new Date(DateFrom))
   DateTo = defaultFormat(new Date(DateTo))
   DateIssued = defaultFormat(new Date(DateIssued))
-  
+
   //   create  Policy
   await createPolicy(
     {
@@ -255,7 +255,7 @@ async function insertCGLPolicy(
       LGovTax: localGovTax,
       Notarial: "0",
       Misc: "0",
-      TotalDue: totalDue,
+      TotalDue: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
       TotalPaid: "0",
       Journal: false,
       AgentID: agent_id,

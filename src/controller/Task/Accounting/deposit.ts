@@ -105,7 +105,7 @@ Deposit.post("/add-deposit", async (req, res) => {
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
-  const BankAcctCode = await __executeQuery(`SELECT * FROM upward_test.bankaccounts where Account_No = '${req.body.BankAcctCode}'`, req) as Array<any>
+  const BankAcctCode = await __executeQuery(`SELECT * FROM bankaccounts where Account_No = '${req.body.BankAcctCode}'`, req) as Array<any>
   if (BankAcctCode.length <= 0) {
     return res.send({
       message: `${req.body.BankAcctCode} is not Found!`,
@@ -298,7 +298,7 @@ Deposit.post("/update-deposit", async (req, res) => {
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
-  const BankAcctCode = await __executeQuery(`SELECT * FROM upward_test.bankaccounts where Account_No = '${req.body.BankAcctCode}'`, req) as Array<any>
+  const BankAcctCode = await __executeQuery(`SELECT * FROM bankaccounts where Account_No = '${req.body.BankAcctCode}'`, req) as Array<any>
   if (BankAcctCode.length <= 0) {
     return res.send({
       message: `${req.body.BankAcctCode} is not Found!`,
