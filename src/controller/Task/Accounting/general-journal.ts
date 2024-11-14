@@ -24,6 +24,7 @@ import { getMonth, getYear, endOfMonth, format } from "date-fns";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
 const GeneralJournal = express.Router();
 
 GeneralJournal.post(
@@ -35,9 +36,8 @@ GeneralJournal.post(
     );
     if (userAccess.includes("ADMIN")) {
       return res.send({
-        message: `CAN'T ${
-          req.body.hasSelected ? "UPDATE" : "SAVE"
-        }, ADMIN IS FOR VIEWING ONLY!`,
+        message: `CAN'T ${req.body.hasSelected ? "UPDATE" : "SAVE"
+          }, ADMIN IS FOR VIEWING ONLY!`,
         success: false,
       });
     }
@@ -71,7 +71,7 @@ GeneralJournal.post(
         await addJournalVoucher(
           {
             Branch_Code: "HO",
-            Date_Entry: req.body.dateEntry, // Assuming dtpDate is a valid date
+            Date_Entry: defaultFormat(new Date(req.body.dateEntry)), // Assuming dtpDate is a valid date
             Source_Type: "GL",
             Source_No: req.body.refNo,
             Explanation: req.body.explanation,
@@ -94,7 +94,7 @@ GeneralJournal.post(
         await addJournalFromJournalVoucher(
           {
             Branch_Code: "HO",
-            Date_Entry: req.body.dateEntry, // Assuming dtpDate is a valid date
+            Date_Entry: defaultFormat(new Date(req.body.dateEntry)), // Assuming dtpDate is a valid date
             Source_Type: "GL",
             Source_No: req.body.refNo,
             Explanation: req.body.explanation,
@@ -469,9 +469,8 @@ async function RPTComputation(jobs: Array<any>, req: Request) {
 
 function RPTComputationDate(jobTransactionDate: any) {
   const month = getMonth(new Date(jobTransactionDate)) + 1;
-  const from = `${
-    month.toString().length > 1 ? month : "0" + month
-  }-01-${getYear(new Date(jobTransactionDate))}`;
+  const from = `${month.toString().length > 1 ? month : "0" + month
+    }-01-${getYear(new Date(jobTransactionDate))}`;
   const to = format(endOfMonth(new Date(jobTransactionDate)), "MM-dd-yyyy");
 
   return { from, to };

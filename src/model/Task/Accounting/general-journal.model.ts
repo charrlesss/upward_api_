@@ -310,7 +310,7 @@ export async function searchGeneralJournal(search: string, req: Request) {
           journal_voucher
     
       GROUP BY Date_Entry , Source_No , Explanation
-		ORDER BY Date_Entry DESC
+order by Date_Entry desc ,Source_No desc
    ) a 
     WHERE
         LEFT(a.Explanation, 7) <> '-- Void'
