@@ -777,7 +777,7 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
             HAVING qryJournal.GL_Acct = '${GL_Code.trim()}' 
             ORDER BY qryJournal.GL_Acct;
           `;
-  
+
           } else {
             // Query excluding 'BF' and 'BFS' for specific GL code with ID filter
             Qry = `
@@ -988,15 +988,15 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
     dt = await prisma.$queryRawUnsafe(Qry);
 
     // Processing query results
+    console.log(dt)
 
     if (dt.length > 0) {
       let lastAcct = "";
       let sParticular = "";
       let Balance = 0;
 
-      for (let i = 0; i < dt.length ; i++) {
+      for (let i = 0; i < dt.length; i++) {
         const row = dt[i];
-        console.log(row)
         // Check if the GL_Acct has changed
 
         if (lastAcct !== row.GL_Acct) {
@@ -1091,7 +1091,104 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
     });
   }
 });
+SubsidiaryLedger.get('/get-subsi-subAcct', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const { sub } = req.query
+    const qry = `
+    SELECT ShortName FROM upward_insurance_umis.sub_account where Acronym = '${sanitizeInput(sub as string)}';
+    `
+    res.send({
+      message: "Successfully",
+      success: false,
+      data: await prisma.$queryRawUnsafe(qry)
+    });
+  } catch (error: any) {
+    console.error("Error executing query:", error);
+    res.send({
+      message: error.message,
+      success: false,
+      data: [],
+    });
+  }
+})
+SubsidiaryLedger.get('/get-subsi-name', async (req, res) => {
+  try {
+    const { id } = req.query
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const qry = `
+        SELECT 
+            id_entry.ShortName,
+            id_entry.IDNo
+        FROM
+            (SELECT 
+                IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                        AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS ShortName,
+                    aa.entry_client_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_client aa UNION ALL SELECT 
+                CONCAT(IF(aa.lastname IS NOT NULL
+                        AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS ShortName,
+                    aa.entry_agent_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_agent aa UNION ALL SELECT 
+                CONCAT(IF(aa.lastname IS NOT NULL
+                        AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS ShortName,
+                    aa.entry_employee_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_employee aa UNION ALL SELECT 
+                aa.fullname AS ShortName,
+                    aa.entry_fixed_assets_id AS IDNo,
+                    sub_account
+            FROM
+                entry_fixed_assets aa UNION ALL SELECT 
+                aa.description AS ShortName,
+                    aa.entry_others_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_others aa UNION ALL SELECT 
+                IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                        AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS ShortName,
+                    aa.entry_supplier_id AS IDNo,
+                    aa.sub_account
+            FROM
+                entry_supplier aa) id_entry
 
+
+
+    `
+
+    const newQry = `
+    
+    select  * from (   SELECT * from  (${qry}) id_entry 
+       union all
+             SELECT 
+                 id_entry.ShortName,
+                 a.PolicyNo as IDNo
+            FROM
+                policy a
+            LEFT JOIN
+                (${qry}) id_entry ON a.IDNo = id_entry.IDNo) ids
+             where  ids.IDNo  = '${sanitizeInput(id as string)}'
+    `
+    res.send({
+      message: "Successfully",
+      success: false,
+      data: await prisma.$queryRawUnsafe(newQry)
+    });
+  } catch (error: any) {
+    console.error("Error executing query:", error);
+
+    res.send({
+      message: error.message,
+      success: false,
+      data: [],
+    });
+  }
+})
 function chkNull(value: any) {
   return value ?? "";
 }

@@ -28,6 +28,7 @@ import { convertToPassitive } from "../../../lib/convertToPassitive";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const BondPolicy = express.Router();
+
 BondPolicy.get("/get-bond-acc-type", async (req, res) => {
   try {
     const bonds = ((await getAllBondsType(req)) as any).map(
@@ -41,7 +42,6 @@ BondPolicy.get("/get-bond-acc-type", async (req, res) => {
     });
   } catch (err: any) {
     console.log(err.message);
-
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
