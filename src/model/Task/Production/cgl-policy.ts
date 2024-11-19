@@ -12,10 +12,11 @@ export async function searchCGLPolicy(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
-      select a.*,b.*, 
-        if(c.company = '', concat(c.firstname,', ',c.middlename,', ',c.lastname) , c.company) as client_fullname,
-        concat(d.firstname,', ',d.middlename,', ',d.lastname) as agent_fullname,
-        c.address,
+     select a.*,b.*, 
+          c.ShortName as client_fullname,
+		  CONCAT(IF(d.lastname IS NOT NULL
+				AND TRIM(d.lastname) <> '', CONCAT(d.lastname, ', '), ''), d.firstname) as agent_fullname,
+		  c.address,
         format(a.sumInsured,2) as sumInsured,
         a.address  as cgl_address,
         c.sale_officer,
@@ -23,13 +24,21 @@ export async function searchCGLPolicy(search: string, req: Request) {
         FROM cglpolicy a
         left join policy b
         on a.PolicyNo = b.PolicyNo 
-        left join entry_client c on b.IDNo = c.entry_client_id
+        left join (
+			 SELECT 
+            IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                AND TRIM(aa.lastname) <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS ShortName,
+              aa.entry_client_id AS IDNo,
+              aa.sub_account,
+                    aa.address,
+                    aa.sale_officer
+          FROM
+            entry_client aa
+        ) c on b.IDNo = c.IDNo
         left join entry_agent d on b.AgentID = d.entry_agent_id
       where 
         a.PolicyNo like '%${search}%' or
-        c.firstname like '%${search}%' or
-        c.lastname like '%${search}%' or
-        c.middlename like '%${search}%' 
+        c.ShortName like '%${search}%' 
         order by b.DateIssued desc
       limit 100
       `;
