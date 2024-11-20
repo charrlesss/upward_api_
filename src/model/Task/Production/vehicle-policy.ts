@@ -464,7 +464,10 @@ export async function searchDataVPolicy(
             }
         (
             a.PolicyNo like '%${search}%' or
-            c.ShortName like '%${search}%' 
+            c.ShortName like '%${search}%' or
+             b.PlateNo like '%${search}%' or
+            b.ChassisNo like '%${search}%' or
+           b.MotorNo like '%${search}%' 
         )
       ORDER BY a.PolicyNo desc
       LIMIT 100 
