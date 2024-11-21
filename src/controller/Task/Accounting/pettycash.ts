@@ -10,6 +10,7 @@ import {
   updatePettyCashID,
   searchPettyCash,
   loadSelectedPettyCash,
+  loadTranscation,
 } from "../../../model/Task/Accounting/pettycash.model";
 import generateUniqueUUID from "../../../lib/generateUniqueUUID";
 import saveUserLogs from "../../../lib/save_user_logs";
@@ -59,9 +60,8 @@ PettyCash.post("/add-petty-cash", async (req, res) => {
   );
   if (userAccess.includes("ADMIN")) {
     return res.send({
-      message: `CAN'T ${
-        req.body.hasSelected ? "UPDATE" : "SAVE"
-      }, ADMIN IS FOR VIEWING ONLY!`,
+      message: `CAN'T ${req.body.hasSelected ? "UPDATE" : "SAVE"
+        }, ADMIN IS FOR VIEWING ONLY!`,
       success: false,
     });
   }
@@ -211,6 +211,25 @@ PettyCash.post("/load-selected-petty-cash", async (req, res) => {
       message: "Successfully search petty cash",
       success: true,
       loadSelectedPettyCash: await loadSelectedPettyCash(PC_No, req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      pettyCash: [],
+    });
+  }
+});
+
+
+PettyCash.get("/load-transcation", async (req, res) => {
+  try {
+
+    res.send({
+      message: "Successfully search petty cash",
+      success: true,
+      laodTranscation: await loadTranscation(req),
     });
   } catch (error: any) {
     console.log(error.message);

@@ -126,3 +126,11 @@ export async function loadSelectedPettyCash(PC_No: string,req: Request) {
     FROM  petty_cash a  where a.PC_No='${PC_No}'
       `);
 }
+
+export async function loadTranscation(req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+  return await prisma.$queryRawUnsafe(`
+  SELECT * FROM Petty_Log WHERE InActive = 'False' ORDER BY Purpose
+  `);
+}
