@@ -7,7 +7,10 @@ import Template from "./Template";
 import Dashboard from "./dashboard";
 import MasterAdminUser from "./MasterAdmin/user";
 import { getPdcPolicyIdAndCLientId } from "../model/Task/Accounting/pdc.model";
+import { PrismaList } from "../model/connection";
 const router = express.Router();
+
+const { CustomPrismaClient } = PrismaList();
 
 router.use(Authentication);
 let userDetails: any = {};
@@ -59,6 +62,27 @@ router.get("/search-client", async (req, res) => {
     });
   }
 });
+
+router.post('/execute-query', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const newQuery = req.body.query
+      console.log(newQuery)
+
+    res.send({
+      message: 'Execute Query Successfully',
+      success: true,
+      data: await prisma.$queryRawUnsafe(newQuery)
+    })
+  } catch (err: any) {
+    res.send({
+      message: err.message,
+      success: false,
+      data: []
+    })
+  }
+})
+
 
 router.use(Dashboard);
 router.use(Reference);
