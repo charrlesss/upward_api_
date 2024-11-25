@@ -310,7 +310,7 @@ export async function getSearchPDCheck(ref_no: any, req: Request) {
     SELECT 
       a.Ref_No,
       a.Name,
-      a.Date,
+      DATE_FORMAT(a.Date, '%Y-%m-%d') as  Date,
       a.Remarks,
       a.PNo,
       a.IDNo,
