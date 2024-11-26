@@ -478,9 +478,9 @@ export function ProductionReport(
     if (PolicyType === "Bonds") {
       if (Account_ === "ALL") {
         if (SortBy !== "Date From") {
-          whr_query = ` WHERE CAST(Policy.DateIssued AS DATE) <= CAST(${DateTo} AS DATE) AND CAST(Policy.DateIssued AS DATE) >= CAST(${DateFrom} AS DATE)  AND Policy.PolicyType in (select SublineName from subline where line = 'Bonds')`;
+          whr_query = ` WHERE CAST(Policy.DateIssued AS DATE) <= STR_TO_DATE('${DateTo}','%Y-%m-%d') AND CAST(Policy.DateIssued AS DATE) >= STR_TO_DATE('${DateFrom}','%Y-%m-%d')   AND Policy.PolicyType in (select SublineName from subline where line = 'Bonds')`;
         }
-        if ((SortBy = "Date From")) {
+        if ((SortBy === "Date From")) {
           whr_query = ` WHERE date(IFNULL(BPolicy.BidDate, IFNULL(VPolicy.DateFrom, IFNULL(MPolicy.DateFrom, IFNULL(PAPolicy.PeriodFrom, IFNULL(CGLPolicy.PeriodFrom, IFNULL(MSPRPolicy.PeriodFrom, FPolicy.DateFrom))))))) <= STR_TO_DATE('${DateTo}','%Y-%m-%d') AND date(IFNULL(BPolicy.BidDate, IFNULL(VPolicy.DateFrom, IFNULL(MPolicy.DateFrom, IFNULL(PAPolicy.PeriodFrom, IFNULL(CGLPolicy.PeriodFrom, IFNULL(MSPRPolicy.PeriodFrom, FPolicy.DateFrom))))))) >= STR_TO_DATE('${DateFrom}','%Y-%m-%d')   AND Policy.PolicyType in (select SublineName from subline where line = 'Bonds')`;
         }
       }
@@ -497,6 +497,7 @@ export function ProductionReport(
         								WHERE
         									line = 'Bonds')`;
         }
+
         if (SortBy === "Date From") {
           whr_query = ` WHERE DATE(IFNULL(BPolicy.BidDate,
     										IFNULL(VPolicy.DateFrom,

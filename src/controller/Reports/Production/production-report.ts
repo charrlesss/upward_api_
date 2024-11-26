@@ -71,38 +71,13 @@ ProductionReports.post("/get-production-report", async (req, res) => {
 
 ProductionReports.post("/get-production-report-desk", async (req, res) => {
   try {
-    console.log(req.body);
 
-
+    console.log(req.body)
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
     let  dateFrom = format( parseDate(req.body.FDate), "yyyy-MM-dd");
      let dateTo = format( parseDate(req.body.TDate), "yyyy-MM-dd");
-    // if (req.body.report === "Daily") {
-    //   dateFrom = format( parseDate(req.body.FDate), "yyyy-MM-dd");
-    //   dateTo = format( parseDate(req.body.FDate), "yyyy-MM-dd");
-    // }
-    // if (req.body.report === "Monthly") {
-    //   const currentDate =  parseDate(req.body.FDate);
-    //   dateFrom = format(startOfMonth(currentDate), "yyyy-MM-dd");
-    //   dateTo = format(endOfMonth(currentDate), "yyyy-MM-dd");
-    // }
-    // if (req.body.report === "Yearly") {
-    //   const currentDate =  parseDate(req.body.FDate);
-
-    //   dateFrom = format(startOfYear(startOfMonth(currentDate)), "yyyy-MM-dd");
-    //   dateTo = format(
-    //     endOfMonth(
-    //       endOfYear(addYears(currentDate, parseInt(req.body.numYear)))
-    //     ),
-    //     "yyyy-MM-dd"
-    //   );
-    // }
-    // if (req.body.report === "Custom") {
-    //   dateFrom = format( parseDate(req.body.FDate), "yyyy-MM-dd");
-    //   dateTo = format( parseDate(req.body.TDate), "yyyy-MM-dd");
-    // }
-    console.log(dateFrom,dateTo)
+   
     const reportString = ProductionReport(
       dateFrom,
       dateTo,
@@ -113,6 +88,7 @@ ProductionReports.post("/get-production-report-desk", async (req, res) => {
       req.body.cmbpolicy ,
       req.body.cmbSort
     );
+    console.log(reportString)
     const data: Array<any> = await prisma.$queryRawUnsafe(reportString);
 
     res.send({
