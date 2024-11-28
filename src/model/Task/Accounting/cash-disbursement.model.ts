@@ -3,6 +3,67 @@ import { PrismaList } from "../../connection";
 import { Request } from "express";
 const { CustomPrismaClient } = PrismaList();
 
+export const selectClientWithoutMiddleName = `
+SELECT 
+  "Client" as IDType,
+  aa.entry_client_id AS IDNo,
+  aa.sub_account,
+  if(aa.option = "individual", CONCAT(aa.firstname,' ',aa.lastname), aa.company) as Shortname,
+  aa.entry_client_id as client_id,
+  aa.address 
+FROM
+  entry_client aa
+  union all
+  SELECT 
+  "Agent" as IDType,
+  aa.entry_agent_id AS IDNo,
+  aa.sub_account,
+  CONCAT(aa.firstname,' ',aa.lastname) AS Shortname,
+  aa.entry_agent_id as client_id,
+  aa.address
+FROM
+  entry_agent aa
+  union all
+  SELECT 
+  "Employee" as IDType,
+  aa.entry_employee_id AS IDNo,
+  aa.sub_account,
+  CONCAT(aa.firstname,' ',aa.lastname) AS Shortname,
+  aa.entry_employee_id as client_id,
+  aa.address  
+FROM
+  entry_employee aa
+union all
+SELECT 
+  "Supplier" as IDType,
+  aa.entry_supplier_id AS IDNo,
+  aa.sub_account,
+  if(aa.option = "individual", CONCAT(aa.firstname,' ',aa.lastname), aa.company) as Shortname,
+  aa.entry_supplier_id as client_id,
+  aa.address
+FROM
+  entry_supplier aa
+  union all
+SELECT 
+  "Fixed Assets" as IDType,
+  aa.entry_fixed_assets_id AS IDNo,
+  aa.sub_account,
+  aa.fullname AS Shortname,
+  aa.entry_fixed_assets_id as client_id,
+  aa.description as address
+FROM
+  entry_fixed_assets aa
+union all
+SELECT 
+  "Others" as IDType,
+  aa.entry_others_id AS IDNo,
+  aa.sub_account,
+  aa.description AS Shortname,
+  aa.entry_others_id as client_id,
+  aa.description as address
+FROM
+  entry_others aa
+`;
 
 export const selectClient = `
 SELECT 
@@ -102,6 +163,42 @@ const withPolicy = `
 
 ` 
 
+const withPolicyWithoutMiddleName = `
+  SELECT 
+        a.IDType AS Type,
+            a.IDNo,
+            a.sub_account,
+            a.Shortname AS Name,
+            a.client_id,
+            a.ShortName AS sub_shortname,
+            b.ShortName,
+            b.Acronym,
+            IF(a.IDType = 'Policy'
+                AND c.PolicyType = 'COM'
+                OR c.PolicyType = 'TPL', CONCAT('C: ', d.ChassisNo, '  ', 'E: ', d.MotorNo), '') AS remarks,
+            IFNULL(d.ChassisNo, '') AS chassis
+    FROM
+        (SELECT * FROM (${selectClientWithoutMiddleName}) id_entry 
+		UNION ALL SELECT 
+        'Policy' AS IDType,
+            a.PolicyNo AS IDNo,
+            b.sub_account,
+            b.Shortname,
+            a.IDNo AS client_id,
+            b.address
+    FROM
+        policy a
+    LEFT JOIN (
+    SELECT 
+        *
+    FROM
+        (${selectClientWithoutMiddleName}) id_entry) b ON a.IDNo = b.IDNo) a
+    LEFT JOIN sub_account b ON a.sub_account = b.Sub_Acct
+    LEFT JOIN policy c ON a.IDNo = c.PolicyNo
+    LEFT JOIN vpolicy d ON c.PolicyNo = d.PolicyNo
+
+` 
+
 
 export async function getClientFromPayTo(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
@@ -110,7 +207,7 @@ export async function getClientFromPayTo(search: string, req: Request) {
  SELECT 
     *
 FROM
-    (${withPolicy}) a
+    (${withPolicyWithoutMiddleName}) a
 WHERE
     a.Name IS NOT NULL AND a.IDNo LIKE '%${search}%'
         OR a.chassis LIKE '%${search}%'
