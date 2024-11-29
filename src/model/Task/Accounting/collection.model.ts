@@ -202,6 +202,7 @@ export async function getSearchCollection(ORNo: string, req: Request) {
   return await prisma.$queryRawUnsafe(`
   SELECT 
     a.*, 
+    date_format(a.Date_OR,'%Y-%m-%d') as Date_OR,
     b.Bank_Code, 
     b.Bank AS BankName,
     TRIM(BOTH ' ' FROM SUBSTRING_INDEX(a.Bank, '/', -1)) as Branch

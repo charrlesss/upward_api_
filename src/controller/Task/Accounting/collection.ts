@@ -57,9 +57,6 @@ Collection.get("/get-client-checked-by-id", async (req, res) => {
     });
   }
 });
-
-
-
 Collection.get("/get-transaction-code-title", async (req, res) => {
   try {
     console.log(await getTransactionDescription(req));
@@ -80,7 +77,6 @@ Collection.get("/get-transaction-code-title", async (req, res) => {
     });
   }
 });
-
 Collection.get("/get-new-or-number", async (req, res) => {
   try {
     res.send({
@@ -98,7 +94,6 @@ Collection.get("/get-new-or-number", async (req, res) => {
     });
   }
 });
-
 Collection.post("/add-collection", async (req, res) => {
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
@@ -154,7 +149,6 @@ Collection.post("/add-collection", async (req, res) => {
     });
   }
 });
-
 Collection.get("/get-collection-data-search", async (req, res) => {
   const { ORNo } = req.query;
   try {
@@ -190,7 +184,6 @@ Collection.get("/search-collection", async (req, res) => {
     });
   }
 });
-
 Collection.post("/update-collection", async (req, res) => {
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
@@ -231,7 +224,6 @@ Collection.post("/update-collection", async (req, res) => {
     });
   }
 });
-
 Collection.post("/get-drcode-drtitle-from-collection", async (req, res) => {
   try {
     console.log(req.body);
@@ -249,7 +241,6 @@ Collection.post("/get-drcode-drtitle-from-collection", async (req, res) => {
     });
   }
 });
-
 Collection.post("/on-print", async (req, res) => {
   try {
     console.log(req.body);
@@ -268,7 +259,6 @@ Collection.post("/on-print", async (req, res) => {
     });
   }
 });
-
 async function AddCollection(req: any) {
   const { IDEntryWithPolicy } = qry_id_policy_sub()
   const getClientSubAccount: any = await executeQuery(IDEntryWithPolicy, req.body.PNo, req)
