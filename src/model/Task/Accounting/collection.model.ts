@@ -181,19 +181,17 @@ export async function getCollections(
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
-    SELECT 
-        date_format(MAX(a.Date),'%m/%d/%Y') AS Date,
-        a.Official_Receipt AS 'ORNo',
-        MAX(a.Name) AS Name
-    FROM
-          collection a
-    WHERE
-        LEFT(a.Name, 7) <> '-- Void'
-            AND (a.Official_Receipt LIKE '%${searchCollectionInput}%'
-            OR Name LIKE '%${searchCollectionInput}%')
-    GROUP BY a.Official_Receipt
-    ORDER BY MAX(a.Date) DESC , Name
-    LIMIT 50
+     SELECT 
+		    a.*
+          FROM
+                collection a
+      WHERE
+          Date IS NOT NULL
+      AND (a.Official_Receipt LIKE '%${searchCollectionInput}%'
+                  OR Name LIKE '%${searchCollectionInput}%')
+                  ORDER BY CAST(a.ORNo AS DECIMAL) DESC
+      limit 50;
+
   `);
 }
 export async function getSearchCollection(ORNo: string, req: Request) {

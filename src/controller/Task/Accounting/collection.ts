@@ -327,7 +327,7 @@ async function AddCollection(req: any) {
     const Name = i === 0 ? req.body.Name : "";
 
     const newCollection = {
-      Date: `${ColDate}`,
+      Date: ColDate  ,
       ORNo: OR,
       IDNo: PNo,
       Name: Name,
