@@ -182,7 +182,10 @@ export async function getCollections(
 
   return await prisma.$queryRawUnsafe(`
      SELECT 
-		    a.*
+        date_format(a.Date_OR,'%Y-%m-%d')  as Date_OR,
+        a.ORNo,
+        a.Name
+		   
           FROM
                 collection a
       WHERE
