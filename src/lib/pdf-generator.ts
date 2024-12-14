@@ -21,6 +21,7 @@ interface PDFReportGeneratorProps {
     borderedColumns: Array<any>
     beforeDraw: (doc: any) => void | null;
     beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => void | null;
+    drawPageNumber: (doc: PDFKit.PDFDocument, currentPage: number, totalPages: number, pdfReportGenerator: any) => void
 }
 class PDFReportGenerator {
     public data: Array<any> = []
@@ -39,6 +40,7 @@ class PDFReportGenerator {
     public borderedColumns: Array<any>;
     public beforeDraw = (doc: any) => { };
     public beforePerPageDraw = (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => { }
+    public drawPageNumber = (doc: PDFKit.PDFDocument, currentPage: number, totalPages: number, pdfReportGenerator: any) => { }
     public scaledColumns: any = []
     public scaledFontSize: number = 0
     public scaledRowHeight: number = 0
@@ -62,6 +64,7 @@ class PDFReportGenerator {
         this.borderedColumns = [];
         this.beforeDraw = props.beforeDraw
         this.beforePerPageDraw = props.beforePerPageDraw
+        this.drawPageNumber = props.drawPageNumber
     }
 
     boldRow(rowIndex: number) {
@@ -207,14 +210,7 @@ class PDFReportGenerator {
         });
     }
 
-    drawPageNumber(doc: PDFKit.PDFDocument, currentPage: number, totalPages: number) {
-        doc.font('Helvetica');
-        const pageNumberText = `Page ${currentPage} of ${totalPages}`;
-        doc.text(pageNumberText, this.PAGE_WIDTH - 120, this.PAGE_HEIGHT - 40, {
-            align: 'right',
-            width: 100
-        });
-    }
+
 
     generatePDF(res: Response) {
 
@@ -228,7 +224,7 @@ class PDFReportGenerator {
 
         let startY = this.MARGIN.top + 60;
         let currentPage = 1;
-        const totalPages = this.data.reduce((total, row) => {
+        let totalPages = this.data.reduce((total, row) => {
             const rowHeight = this.calculateRowHeight(doc, row);
             if (startY + rowHeight + this.scaledRowHeight > this.PAGE_HEIGHT - this.MARGIN.bottom) {
                 total += 1;
@@ -236,8 +232,10 @@ class PDFReportGenerator {
             }
             startY += rowHeight;
             return total;
-        }, 2);
-
+        }, 1);
+        if (totalPages > 1) {
+            totalPages += 1
+        }
         startY = this.drawTitleAndHeader(doc, this.MARGIN.top / 2);
         if (this.beforeDraw) {
             this.beforeDraw(this)
@@ -248,7 +246,7 @@ class PDFReportGenerator {
                 if (this.beforePerPageDraw) {
                     this.beforePerPageDraw(this, doc)
                 }
-                this.drawPageNumber(doc, currentPage, totalPages);
+                this.drawPageNumber(doc, currentPage, totalPages, this);
                 doc.addPage();
                 currentPage += 1;
                 startY = this.drawTitleAndHeader(doc, this.MARGIN.top / 2);
@@ -259,7 +257,7 @@ class PDFReportGenerator {
         if (this.beforePerPageDraw) {
             this.beforePerPageDraw(this, doc)
         }
-        this.drawPageNumber(doc, currentPage, totalPages);
+        this.drawPageNumber(doc, currentPage, totalPages, this);
         doc.end();
         writeStream.on('finish', (e: any) => {
             console.log(`PDF created successfully at: ${outputFilePath}`);
