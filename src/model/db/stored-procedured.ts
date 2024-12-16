@@ -596,9 +596,8 @@ export function RenewalNoticeReport(
   policy: string,
   account: string,
   _type: string,
-  _date: string
+  date: string
 ) {
-  const date = format(parseDate(_date), 'yyyy-MM-dd')
   const selectClient = clients_view();
   let select_query = "";
   if (policy === "ALL") {

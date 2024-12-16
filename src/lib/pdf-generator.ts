@@ -71,8 +71,8 @@ class PDFReportGenerator {
         this.boldedRows.push(rowIndex);
     };
 
-    SpanRow(rowIndex: number, columnIndex: number, spanLength: number) {
-        this.spanMap.set(rowIndex, { columnIndex, spanLength });
+    SpanRow(rowIndex: number, columnIndex: number, spanLength: number, key: string = '',textAlign:string = 'left') {
+        this.spanMap.set(rowIndex, { columnIndex, spanLength, key ,textAlign });
     }
     // Function to define custom borders for a specific row and columns
     borderColumnInRow(rowIndex: number, columnDetails: any, borderSides: any) {
@@ -159,7 +159,7 @@ class PDFReportGenerator {
 
         // Check if the current row has a span
         const spanInfo = this.spanMap.get(rowIndex);
-        const { columnIndex, spanLength } = spanInfo || {};
+        const { columnIndex, spanLength, key: SpanKey, textAlign: SpanTextAlign } = spanInfo || {};
 
         this.keys.forEach((key, colIndex) => {
             // Skip columns that fall within a span range (except the starting column)
@@ -171,7 +171,16 @@ class PDFReportGenerator {
             const colSpan = spanInfo && colIndex === columnIndex ? spanLength : 1;
             const colWidth = this.columnWidths.slice(colIndex, colIndex + colSpan).reduce((sum, width) => sum + width, 0);
 
-            const cellValue = row[key];
+            let cellValue = '';
+            let textHeader = '' as "left" | "center" | "justify" | "right" | undefined
+            if (spanInfo && colIndex === columnIndex && SpanKey !== '') {
+                textHeader = SpanTextAlign
+                cellValue = row[SpanKey]
+            } else {
+                textHeader = this.headers[colIndex].textAlign as "left" | "center" | "justify" | "right" | undefined
+                cellValue = row[key]
+            }
+         
 
             // Draw the cell with the corresponding value
             doc.text(
@@ -180,7 +189,7 @@ class PDFReportGenerator {
                 startY + 5,
                 {
                     width: colWidth - 10,
-                    align: this.headers[colIndex].textAlign as "left" | "center" | "justify" | "right" | undefined
+                    align: textHeader
                 }
             );
 
