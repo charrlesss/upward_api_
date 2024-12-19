@@ -7,12 +7,47 @@ import {
   getApprovedPulloutWarehouse,
   getApprovedPulloutWarehouseCheckList,
   getApprovedPulloutWarehouseCheckListSelected,
+  getApprovedRCPNo,
+  loadList
 } from "../../../model/Task/Accounting/warehouse.model";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { VerifyToken } from "../../Authentication";
 
 const Warehouse = express.Router();
 
+Warehouse.post('/warehouse/load-list',async (req,res)=>{
+  try{
+    res.send({
+      message: `Successfully Get Data`,
+      success: true,
+      list: await loadList(req,req.body.RCPNo)
+    });
+  }catch(err:any){
+    console.log(err.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+Warehouse.get('/warehouse/get-pullout-rcpno',async (req,res)=>{
+  try{
+    console.log('qweqw')
+    res.send({
+      message: `Successfully Get Data`,
+      success: true,
+      rcpn:  await getApprovedRCPNo(req),
+    });
+  }catch(err:any){
+    console.log(err.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
 Warehouse.post(
   "/warehouse/search-pdc-checks-client-policy",
   async (req, res) => {

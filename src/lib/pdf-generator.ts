@@ -55,7 +55,7 @@ class PDFReportGenerator {
         this.PAGE_WIDTH = props.PAGE_WIDTH
         this.PAGE_HEIGHT = props.PAGE_HEIGHT
         this.MARGIN = props.MARGIN
-        this.BASE_FONT_SIZE = 10;
+        this.BASE_FONT_SIZE = 12;
         this.TITLE_FONT_SIZE = 16;
         this.MIN_ROW_HEIGHT = 20;
 

@@ -160,6 +160,7 @@ export async function getDebitOnSelectedCheck(
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
   SELECT 
+      
       a.CRCode,
       a.CRTitle,
       a.Credit,

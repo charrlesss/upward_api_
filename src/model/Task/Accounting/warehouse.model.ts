@@ -166,17 +166,72 @@ export async function updatePDCChecks(
 
   const status = ["Stored", "Endorsed", "Pulled Out"];
   const field = ["Date_Stored", "Date_Endorsed", "Date_Pulled_Out"];
-  
-  const query = `UPDATE   pdc SET PDC_Status = '${
-    status[parseInt(pdcStatus)]
-  }', ${field[parseInt(pdcStatus)]} = str_to_date('${convertDate(
-    new Date()
-  )}','%Y-%m-%d %H:%i:%s.%f')${
-    pdcStatus === "2"
+
+  const query = `UPDATE   pdc SET PDC_Status = '${status[parseInt(pdcStatus)]
+    }', ${field[parseInt(pdcStatus)]} = str_to_date('${convertDate(
+      new Date()
+    )}','%Y-%m-%d %H:%i:%s.%f')${pdcStatus === "2"
       ? `, PDC_Remarks = '${remarks}' WHERE PDC_ID='${PDC_ID}'`
       : ` WHERE PDC_ID='${PDC_ID}'`
-  }
+    }
 `;
   console.log(query);
   return await prisma.$queryRawUnsafe(query);
+}
+
+
+export async function getApprovedRCPNo(req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const query = `
+  select '' as RCPNo
+  union all
+  select * from (
+  SELECT DISTINCT
+      b.RCPNo
+  FROM
+      PDC A
+          INNER JOIN
+      (SELECT 
+          A.RCPNo, A.PNNo, b.CheckNo, a.Status
+      FROM
+          PullOut_Request A
+      INNER JOIN PullOut_Request_Details B ON A.RCPNo = B.RCPNo) B ON A.PNo = B.PNNo
+          AND A.Check_No = B.CheckNo
+  WHERE
+      PDC_Status = 'Stored'
+          AND b.Status = 'APPROVED'
+  ORDER BY B.RCPNo
+  ) a
+`;
+
+  return await prisma.$queryRawUnsafe(query);
+
+}
+
+export async function loadList(req: Request, RCPNo: string) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const query = `SELECT 
+   
+    B.RCPNo,
+    b.PNNo,
+    a.Name,
+    CAST(COUNT(b.CheckNo)  as char) as NoOfChecks,
+    b.Reason
+FROM
+    PDC A
+        INNER JOIN
+    (SELECT 
+        A.RCPNo, A.PNNo, b.CheckNo, a.Status, a.Reason
+    FROM
+        PullOut_Request A
+    INNER JOIN PullOut_Request_Details B ON A.RCPNo = B.RCPNo) B ON A.PNo = B.PNNo
+        AND A.Check_No = B.CheckNo
+WHERE
+    PDC_Status = 'Stored'
+        AND b.Status = 'APPROVED'
+        ${RCPNo !== '' ? ` and b.RCPNo = '${RCPNo}' ` :""}
+GROUP BY B.RCPNo , b.PNNo , a.Name , b.Reason
+ORDER BY B.RCPNo`
+  return await prisma.$queryRawUnsafe(query);
+
 }

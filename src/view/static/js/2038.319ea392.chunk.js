@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkupward=self.webpackChunkupward||[]).push([[2038],{32038:function(e,n,u){u.r(n),u.d(n,{default:function(){return t}});var r=u(80184);function t(){return(0,r.jsx)("div",{children:"ChekPostponementApproved"})}}}]);
+//# sourceMappingURL=2038.319ea392.chunk.js.map
