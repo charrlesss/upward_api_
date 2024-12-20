@@ -26,8 +26,158 @@ import generateRandomNumber from "../../../lib/generateRandomNumber";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { VerifyToken } from "../../Authentication";
 import generateUniqueUUID from "../../../lib/generateUniqueUUID";
+import { PrismaList } from "../../../model/connection";
+import { Request } from "express";
+const { CustomPrismaClient } = PrismaList();
 
 const CheckPostponement = express.Router();
+
+
+CheckPostponement.get('/check-postponement/request/load-pnno', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+
+    setTimeout(async () => {
+      // Step 2: Create `tmp_numbers` table
+      await prisma.$executeRawUnsafe(`
+  CREATE TEMPORARY TABLE tmp_numbers (number INT);
+`);
+
+      // Step 3: Insert data into `tmp_numbers`
+      await prisma.$executeRawUnsafe(`
+  INSERT INTO tmp_numbers (number)
+  SELECT x.i * 10 + y.i
+  FROM (SELECT 0 i UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 
+        UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) x,
+       (SELECT 0 i UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 
+        UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) y;
+`);
+
+      // Step 4: Create `TMP` table
+      await prisma.$executeRawUnsafe(`
+  CREATE TEMPORARY TABLE TMP AS
+  SELECT
+      DATE_ADD(CURDATE(), INTERVAL number DAY) AS \`Date\`,
+      1 AS IsWorkDay,
+      1 AS IsWeekDay
+  FROM
+      tmp_numbers;
+`);
+
+      // Step 5: Update `TMP` table based on holidays
+      await prisma.$executeRawUnsafe(`
+  UPDATE TMP
+  SET IsWorkDay = 0
+  WHERE \`Date\` IN (SELECT \`Date\` FROM HOLIDAYS);
+`);
+
+      // Step 6: Update `TMP` table for weekends
+      await prisma.$executeRawUnsafe(`
+  UPDATE TMP
+  SET IsWeekDay = 0, IsWorkDay = 0
+  WHERE DAYOFWEEK(\`Date\`) IN (1, 7); -- Sunday = 1, Saturday = 7
+`);
+
+      // Step 7: Final SELECT query to fetch data
+      const data = await prisma.$queryRawUnsafe(`
+  SELECT 
+      a.PNo,
+      a.Name,
+      'HO' AS BName
+  FROM
+      PDC a
+  LEFT JOIN TMP c
+      ON c.\`Date\` >= CURDATE() AND c.\`Date\` < a.Check_Date
+  LEFT JOIN (
+      SELECT 
+          ID_No,
+          SUM(IFNULL(Debit, 0) - IFNULL(Credit, 0)) AS Balance
+      FROM
+          Journal
+      WHERE GL_Acct = '1.03.01'
+      GROUP BY ID_No
+  ) d
+      ON a.PNo = d.ID_No
+  LEFT JOIN policy f
+      ON a.PNo = f.policyno
+  GROUP BY
+      a.PNo, a.Name
+  HAVING
+      COUNT(c.\`Date\`) >= 3
+  ORDER BY
+      a.PNo;
+`);
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS \`tmp_numbers\`;`);
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS \`TMP\`;`);
+
+      res.send({
+        success: true,
+        message: "Successfully load pnnno",
+        data
+      })
+    }, 200)
+
+  } catch (error: any) {
+    console.log(`${CheckPostponement} : ${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+
+CheckPostponement.get('/check-postponement/request/auto-id', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+    const sql = `
+      SELECT 
+          CAST((YEAR(CURDATE()) % 100) AS CHAR) AS Year,
+          lpad((COUNT(1) + 1), 4, '0') AS Count
+      FROM 
+          postponement
+      WHERE 
+          SUBSTRING(RPCDNo, 7, 2) = LPAD(YEAR(CURDATE()) % 100, 2, '0')
+          AND Branch = 'HO';
+      `
+    const data = await prisma.$queryRawUnsafe(sql);
+    res.send({
+      message: "Successfully Get ID",
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+CheckPostponement.post('/check-postponement/request/load-checks', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+    console.log(req.body)
+
+    res.send({
+      message: "Successfully Get ID",
+      success: true,
+      data:[]
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+
 
 CheckPostponement.get(
   "/check-postponement/reqeust/search-pnno-client",
@@ -43,7 +193,7 @@ CheckPostponement.get(
       res.send({
         message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
         success: false,
-        data: [],
+        pnnoClients: [],
       });
     }
   }
@@ -380,9 +530,8 @@ CheckPostponement.post(
       );
 
       res.send({
-        message: `${req.body.isApproved ? "APPROVED" : "DISAPPROVED"} Request ${
-          req.body.RPCD
-        } Successfully`,
+        message: `${req.body.isApproved ? "APPROVED" : "DISAPPROVED"} Request ${req.body.RPCD
+          } Successfully`,
         success: true,
       });
     } catch (error: any) {
@@ -503,9 +652,8 @@ async function sendRequestEmail(props: any) {
       style="${strong2}"
       >${client}</strong
     >
-    ${
-      approvalCode
-        ? `<p>
+    ${approvalCode
+      ? `<p>
       <strong
         style="${strong1}"
         >Approval Code : </strong
@@ -514,7 +662,7 @@ async function sendRequestEmail(props: any) {
         >${approvalCode}</strong
       >
     </p>`
-        : ""
+      : ""
     }
   </div>
   <table
@@ -596,9 +744,9 @@ async function sendRequestEmail(props: any) {
     <p>Request By:<span style="font-weight: 600; color: #334155;">${Requested_By}</span></p>
     <p style="font-weight: 200">
       Request Date:<span style="font-weight: 600;color: #334155;">${format(
-        Requested_Date,
-        "MM/dd/yyyy"
-      )}</span>
+      Requested_Date,
+      "MM/dd/yyyy"
+    )}</span>
     </p>
     <p>This is a computer generated E-mail</p>
   </div>
@@ -668,11 +816,10 @@ async function sendApprovedEmail(props: any) {
         >Status : </strong
       ><strong
         style="${strong2}"
-        >${
-          isApproved
-            ? "<span style='color:green'>APPROVED</span>"
-            : "<span style='color:#b91c1c'>DISAPPROVED</span>"
-        }</strong
+        >${isApproved
+      ? "<span style='color:green'>APPROVED</span>"
+      : "<span style='color:#b91c1c'>DISAPPROVED</span>"
+    }</strong
       >
     </p>
     <p>
@@ -810,9 +957,9 @@ async function sendApprovedEmail(props: any) {
     <p>Request By:<span style="font-weight: 600; color: #334155;">${Requested_By}</span></p>
     <p style="font-weight: 200">
       Request Date:<span style="font-weight: 600;color: #334155;">${format(
-        new Date(Requested_Date),
-        "MM/dd/yyyy"
-      )}</span>
+      new Date(Requested_Date),
+      "MM/dd/yyyy"
+    )}</span>
     </p>
     <p>This is a computer generated E-mail</p>
   </div>
