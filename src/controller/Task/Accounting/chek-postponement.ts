@@ -81,6 +81,12 @@ CheckPostponement.get('/check-postponement/request/load-pnno', async (req, res) 
 
       // Step 7: Final SELECT query to fetch data
       const data = await prisma.$queryRawUnsafe(`
+
+  select * from (
+        select  '' as PNo,
+          '' as Name,
+          '' AS BName
+  union all
   SELECT 
       a.PNo,
       a.Name,
@@ -105,6 +111,7 @@ CheckPostponement.get('/check-postponement/request/load-pnno', async (req, res) 
       a.PNo, a.Name
   HAVING
       COUNT(c.\`Date\`) >= 3
+  ) a
   ORDER BY
       a.PNo;
 `);
@@ -159,14 +166,71 @@ CheckPostponement.get('/check-postponement/request/auto-id', async (req, res) =>
 })
 CheckPostponement.post('/check-postponement/request/load-checks', async (req, res) => {
   try {
+
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
-    console.log(req.body)
+
+    await prisma.$executeRawUnsafe(`  
+    DROP TEMPORARY TABLE IF EXISTS tmp_dates;
+    `)
+    await prisma.$executeRawUnsafe(`  
+          CREATE TEMPORARY TABLE tmp_dates (
+        Date DATE,
+        IsWorkDay BOOLEAN,
+        IsWeekDay BOOLEAN
+    );
+    `)
+    await prisma.$executeRawUnsafe(`  
+  INSERT INTO tmp_dates (Date, IsWorkDay, IsWeekDay)
+  SELECT 
+      DATE_ADD(CURDATE(), INTERVAL n DAY) AS Date,
+      1 AS IsWorkDay,
+      CASE WHEN DAYOFWEEK(DATE_ADD(CURDATE(), INTERVAL n DAY)) IN (1, 7) THEN 0 ELSE 1 END AS IsWeekDay
+  FROM (
+      SELECT a.N + b.N * 10 AS n
+      FROM (
+          SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 
+          UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9
+      ) a,
+      (
+          SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+      ) b
+      ORDER BY n
+      LIMIT 30
+  ) numbers;
+    `)
+
+    await prisma.$executeRawUnsafe(`  
+      UPDATE tmp_dates t
+      JOIN holidays h ON t.Date = h.Date
+      SET t.IsWorkDay = 0;
+    `)
+
+    await prisma.$executeRawUnsafe(`  
+    UPDATE tmp_dates
+    SET IsWorkDay = 0, IsWeekDay = 0
+    WHERE DAYOFWEEK(Date) IN (1, 7);  
+    `)
+
+    const data = await prisma.$queryRawUnsafe(`
+      SELECT '' as CheckNo
+      union all
+      SELECT 
+        T.Check_No AS CheckNo
+      FROM PDC T
+      LEFT JOIN tmp_dates c 
+          ON c.Date >= CURDATE() 
+          AND c.Date <= T.Check_Date
+          AND c.IsWorkDay = 1
+      WHERE T.PNo = '${req.body.PNNo}'
+      GROUP BY T.Check_No, T.Check_Date
+      HAVING COUNT(c.Date) >= 3;
+    `)
 
     res.send({
       message: "Successfully Get ID",
       success: true,
-      data:[]
+      data
     });
   } catch (error: any) {
     console.log(`${error.message}`);
@@ -178,6 +242,39 @@ CheckPostponement.post('/check-postponement/request/load-checks', async (req, re
   }
 })
 
+CheckPostponement.post('/check-postponement/request/load-checks-details', async (req, res) => {
+  try {
+
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const data = await prisma.$queryRawUnsafe(`
+        SELECT 
+            Cast(Check_Date as Date) CheckDate,
+      Bank,
+      Check_No CheckNo,
+      Check_Amnt Amount 
+        FROM PDC  
+          Where 
+        Check_No = '${req.body.checkNo}' And PNo = '${req.body.PNNo}'
+      limit 1
+      `)
+    res.send({
+      message: "Successfully Get ID",
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+
+
+
+/// v============================
 
 CheckPostponement.get(
   "/check-postponement/reqeust/search-pnno-client",
