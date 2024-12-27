@@ -32,7 +32,6 @@ const { CustomPrismaClient } = PrismaList();
 
 const CheckPostponement = express.Router();
 
-
 CheckPostponement.get('/check-postponement/request/load-pnno', async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
@@ -134,7 +133,6 @@ CheckPostponement.get('/check-postponement/request/load-pnno', async (req, res) 
     });
   }
 })
-
 CheckPostponement.get('/check-postponement/request/auto-id', async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
@@ -241,7 +239,6 @@ CheckPostponement.post('/check-postponement/request/load-checks', async (req, re
     });
   }
 })
-
 CheckPostponement.post('/check-postponement/request/load-checks-details', async (req, res) => {
   try {
 
@@ -256,6 +253,35 @@ CheckPostponement.post('/check-postponement/request/load-checks-details', async 
           Where 
         Check_No = '${req.body.checkNo}' And PNo = '${req.body.PNNo}'
       limit 1
+      `)
+    res.send({
+      message: "Successfully Get ID",
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+CheckPostponement.post('/check-postponement/request/check-is-pending', async (req, res) => {
+  try {
+
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const data = await prisma.$queryRawUnsafe(`
+            SELECT * FROM (
+            SELECT 
+             *,
+              (SELECT PNNO FROM Postponement WHERE RPCDNo = a.RPCDNo) AS PNNO,
+              (SELECT status FROM Postponement WHERE RPCDNo = a.RPCDNo) AS Status
+              
+            FROM Postponement_Detail a
+          ) tbl 
+          WHERE checkNo = '${req.body.checkNo}' AND Status = 'PENDING';
       `)
     res.send({
       message: "Successfully Get ID",
@@ -461,10 +487,14 @@ CheckPostponement.post(
     }
   }
 );
+
+
+
 CheckPostponement.get(
   "/check-postponement/request/get-rcpn-list",
   async (req, res) => {
     try {
+      
       res.send({
         message: "Successfully Get ID",
         success: true,
