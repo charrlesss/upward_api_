@@ -87,7 +87,6 @@ GeneralJournal.post(
             ID_No: item.IDNo,
             VAT_Type: item.vatType,
             OR_Invoice_No: item.invoice,
-            VATItemNo: parseInt(item.TempID),
           },
           req
         );
@@ -110,7 +109,6 @@ GeneralJournal.post(
             ID_No: item.IDNo,
             VAT_Type: item.vatType,
             OR_Invoice_No: item.invoice,
-            VATItemNo: parseInt(item.TempID),
             Source_No_Ref_ID: "",
           },
           req
@@ -140,6 +138,7 @@ GeneralJournal.post(
 GeneralJournal.post(
   "/general-journal/void-general-journal",
   async (req, res) => {
+    console.log(req.body)
     const { userAccess }: any = await VerifyToken(
       req.cookies["up-ac-login"] as string,
       process.env.USER_ACCESS as string
@@ -150,6 +149,7 @@ GeneralJournal.post(
         success: false,
       });
     }
+
     try {
       if (
         !(await saveUserLogsCode(
