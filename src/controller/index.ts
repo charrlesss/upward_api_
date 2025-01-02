@@ -8,6 +8,7 @@ import Dashboard from "./dashboard";
 import MasterAdminUser from "./MasterAdmin/user";
 import { getPdcPolicyIdAndCLientId } from "../model/Task/Accounting/pdc.model";
 import { PrismaList } from "../model/connection";
+import { getUserByUsername } from "../model";
 const router = express.Router();
 
 const { CustomPrismaClient } = PrismaList();
@@ -15,22 +16,12 @@ const { CustomPrismaClient } = PrismaList();
 router.use(Authentication);
 let userDetails: any = {};
 
-router.post("/get-user-details", async (req, res) => {
-  userDetails = req.body;
-  console.log(userDetails)
-  res.send({ message: "successfully" });
-});
 router.get("/get-user-details", async (req, res) => {
-  let DATABASE =
-    userDetails.department === "UCSMI"
-      ? "upward_insurance_ucsmi_new"
-      : "upward_insurance_umis_new";
-
-
+  console.log(userDetails)
   res.send(`
         DEPARTMENT:${userDetails.department}
         ACCESS:${userDetails.userAccess}
-        IS_ADMIN:${userDetails.is_admin === false ? "NO" : "YES"}
+        IS_ADMIN:"NO"
         ACCESS_TOKEN:${userDetails.ACCESS_TOKEN}
         REFRESH_TOKEN:${userDetails.REFRESH_TOKEN}
         up_ac_login: ${userDetails.up_ac_login}
@@ -41,8 +32,42 @@ router.get("/get-user-details", async (req, res) => {
     `);
 });
 
-router.use(ValidateToken);
 
+router.use(ValidateToken);
+router.use(Dashboard);
+router.use(Reference);
+router.use(Task);
+router.use(Reports);
+router.use(Template);
+router.use(MasterAdminUser);
+router.get("/logout", logout);
+router.post('/open-report-by-username', async (req, res) => {
+  try {
+    const user: any = await getUserByUsername(req.body.username, req)
+    userDetails = {
+      department: user[0].Department,
+      userAccess: user[0].AccountType,
+      is_admin: user[0].is_master_admin,
+      ACCESS_TOKEN: req.body.ACCESS_TOKEN,
+      REFRESH_TOKEN: user[0].REFRESH_TOKEN,
+      up_ac_login: user[0].AccountType,
+      up_dpm_login: user[0].Department,
+      up_ima_login: 'No',
+      up_at_login: req.body.ACCESS_TOKEN,
+      up_rt_login: user[0].REFRESH_TOKEN,
+      up_ac_username: req.body.username,
+    }
+    res.send({
+      message: "Open Report Successfully",
+      success: true
+    })
+  } catch (err: any) {
+    res.send({
+      message: err.message,
+      success: false
+    })
+  }
+})
 router.get("/search-client", async (req, res) => {
   try {
     console.log(req.body);
@@ -62,12 +87,11 @@ router.get("/search-client", async (req, res) => {
     });
   }
 });
-
 router.post('/execute-query', async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
     const newQuery = req.body.query
-      console.log(newQuery)
+    console.log(newQuery)
 
     res.send({
       message: 'Execute Query Successfully',
@@ -84,12 +108,6 @@ router.post('/execute-query', async (req, res) => {
 })
 
 
-router.use(Dashboard);
-router.use(Reference);
-router.use(Task);
-router.use(Reports);
-router.use(Template);
-router.use(MasterAdminUser);
-router.get("/logout", logout);
+
 
 export default router;

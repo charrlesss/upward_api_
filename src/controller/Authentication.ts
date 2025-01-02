@@ -104,6 +104,7 @@ Authentication.post("/login", async (req: Request, res: Response) => {
     res.cookie("up-ima-login", is_master_admin, { httpOnly: true });
     res.cookie("up-at-login", accessToken, { httpOnly: true });
     res.cookie("up-rt-login", refreshToken, { httpOnly: true });
+    res.cookie("up-ac-username", req.body.username, { httpOnly: true });
 
     await prisma.system_logs.create({
       data: {
@@ -128,14 +129,8 @@ Authentication.post("/login", async (req: Request, res: Response) => {
         userAccess: findUser.AccountType,
         department,
         is_master_admin,
-      },
-      cokie: {
-        "up_ac_login": userAccess,
-        "up_dpm_login": department,
-        "up_ima_login": is_master_admin,
-        "up_at_login": accessToken,
-        "up_rt_login": refreshToken,
-      },
+        username:req.body.username
+      }
     });
   } else {
     return res.send({
@@ -155,6 +150,7 @@ Authentication.get("/token", async (req, res) => {
   const accessToken = req.cookies["up-at-login"];
   const refreshToken = req.cookies["up-rt-login"];
   const userAccessToken = req.cookies["up-ac-login"];
+  const username = req.cookies["up-ac-username"];
   if (refreshToken === "" || refreshToken == null) {
     return res.send(null);
   }
@@ -178,6 +174,7 @@ Authentication.get("/token", async (req, res) => {
       userAccess,
       department,
       is_master_admin,
+      username
     });
   } catch (err: any) {
     console.log(err.message);

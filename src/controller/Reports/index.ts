@@ -7,4 +7,11 @@ const Reports = express.Router();
 Reports.use("/reports", ProductionReport);
 Reports.use("/reports", AccountingReport);
 
+Reports.post('/sample-excel', (req, res) => {
+    console.log(req.body)
+    res.send({
+        hello: "world"
+    })
+})
+
 export default Reports;

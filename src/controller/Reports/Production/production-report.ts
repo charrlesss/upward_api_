@@ -1,23 +1,19 @@
 import express from "express";
 import {
   format,
-  startOfMonth,
-  endOfMonth,
-  addYears,
-  endOfYear,
-  startOfYear,
 } from "date-fns";
-import { exportToExcel } from "./report-to-excel";
 import { parseDate, ProductionReport } from "../../../model/db/stored-procedured";
 import { PrismaList } from "../../../model/connection";
 import PDFReportGenerator from '../../../lib/pdf-generator'
+
+import { drawExcel } from "../../../lib/excel-generator";
 
 const ProductionReports = express.Router();
 
 const { CustomPrismaClient } = PrismaList();
 
 
-ProductionReports.post("/test-new-report", async (req, res) => {
+ProductionReports.post("/production-report", async (req, res) => {
   try {
     const title = req.body.title
     const formatValue = req.body.format
@@ -731,7 +727,7 @@ ProductionReports.post("/test-new-report", async (req, res) => {
           'PlateNo',
           'ChassisNo',
           'MotorNo',
-          'TotalDue', 
+          'TotalDue',
           'Mortgagee',
         ],
         title,
@@ -790,6 +786,365 @@ ProductionReports.post("/test-new-report", async (req, res) => {
     res.send({ message: "SERVER ERROR", success: false, data: [] });
   }
 });
+ProductionReports.post("/production-report-to-excel", async (req, res) => {
+  try {
+    const title = req.body.title
+    const formatValue = req.body.format
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    let dateFrom = format(parseDate(req.body.FDate), "yyyy-MM-dd");
+    let dateTo = format(parseDate(req.body.TDate), "yyyy-MM-dd");
+    const reportString = ProductionReport(
+      dateFrom,
+      dateTo,
+      req.body.cmbOrder,
+      req.body.cmbSubAcct,
+      parseInt(req.body.cmbType),
+      "",
+      req.body.cmbpolicy,
+      req.body.cmbSort
+    );
+    // console.log(reportString)
+    const data: Array<any> = await prisma.$queryRawUnsafe(reportString);
+
+
+    if (formatValue === 0) {
+      if (req.body.cmbSubAcct === 'TPL') {
+        const newData = data.map((itm: any) => {
+          itm.PLimit = formatNumber(parseFloat(itm.PLimit.toString().replace(/,/g, '')))
+          itm.TotalPremium = formatNumber(parseFloat(itm.TotalPremium.toString().replace(/,/g, '')))
+          itm.TotalPremium = formatNumber(parseFloat(itm.TotalPremium.toString().replace(/,/g, '')))
+          itm.DocStamp = formatNumber(parseFloat(itm.DocStamp.toString().replace(/,/g, '')))
+          itm.Vat = formatNumber(parseFloat(itm.Vat.toString().replace(/,/g, '')))
+          itm.LGovTax = formatNumber(parseFloat(itm.LGovTax.toString().replace(/,/g, '')))
+          itm.Misc = formatNumber(parseFloat(itm.Misc.toString().replace(/,/g, '')))
+          itm.TotalDue = formatNumber(parseFloat(itm.TotalDue.toString().replace(/,/g, '')))
+
+          return {
+            DateIssued: itm.DateIssued,
+            AssuredName: itm.AssuredName,
+            PolicyNo: itm.PolicyNo,
+            CoverNo: itm.CoverNo,
+            EffictiveDate: itm.EffictiveDate,
+            PLimit: itm.PLimit,
+            Premium: itm.TotalPremium,
+            Subtotal: itm.TotalPremium,
+            DocStamp: itm.DocStamp,
+            Vat: itm.Vat,
+            LGovTax: itm.LGovTax,
+            Misc: itm.Misc,
+            TotalDue: itm.TotalDue,
+          }
+        })
+        newData.push({
+          DateIssued: `No. of Records: ${data.length}`,
+          AssuredName: "",
+          PolicyNo: "",
+          CoverNo: "",
+          EffictiveDate: "",
+          PLimit: "",
+          Premium: "",
+          Subtotal: formatNumber(getSum(newData, 'Subtotal')),
+          DocStamp: formatNumber(getSum(newData, 'DocStamp')),
+          Vat: formatNumber(getSum(newData, 'Vat')),
+          LGovTax: formatNumber(getSum(newData, 'LGovTax')),
+          Misc: formatNumber(getSum(newData, 'Misc')),
+          TotalDue: formatNumber(getSum(newData, 'TotalDue'))
+        })
+
+      } else if (req.body.cmbSubAcct === 'COM') {
+        const newData = data.map((itm: any) => {
+          itm.InsuredValue = formatNumber(parseFloat(itm.InsuredValue.toString().replace(/,/g, '')))
+          itm.PLimit = formatNumber(parseFloat(itm.PLimit.toString().replace(/,/g, '')))
+          itm.Sec4A = formatNumber(parseFloat(itm.Sec4A.toString().replace(/,/g, '')))
+          itm.Sec4B = formatNumber(parseFloat(itm.Sec4B.toString().replace(/,/g, '')))
+          itm.Sec4C = formatNumber(parseFloat(itm.Sec4C.toString().replace(/,/g, '')))
+          itm.TotalPremium = formatNumber(parseFloat(itm.TotalPremium.toString().replace(/,/g, '')))
+          itm.Vat = formatNumber(parseFloat(itm.Vat.toString().replace(/,/g, '')))
+          itm.DocStamp = formatNumber(parseFloat(itm.DocStamp.toString().replace(/,/g, '')))
+          itm.LGovTax = formatNumber(parseFloat(itm.LGovTax.toString().replace(/,/g, '')))
+          itm.TotalDue = formatNumber(parseFloat(itm.TotalDue.toString().replace(/,/g, '')))
+
+          return {
+            DateIssued: itm.DateIssued,
+            PolicyNo: itm.PolicyNo,
+            AssuredName: itm.AssuredName,
+            EffictiveDate: itm.EffictiveDate,
+            InsuredValue: itm.InsuredValue,
+            PLimit: itm.PLimit,
+            Sec4A: itm.Sec4A,
+            Sec4B: itm.Sec4B,
+            Sec4C: itm.Sec4C,
+            TotalPremium: itm.TotalPremium,
+            DocStamp: itm.DocStamp,
+            Vat: itm.Vat,
+            LGovTax: itm.LGovTax,
+            TotalDue: itm.TotalDue
+          }
+        })
+        newData.push({
+          DateIssued: `No. of Records: ${data.length}`,
+          PolicyNo: "",
+          AssuredName: "",
+          EffictiveDate: "",
+          InsuredValue: "",
+          PLimit: formatNumber(getSum(newData, 'PLimit')),
+          Sec4A: formatNumber(getSum(newData, 'Sec4A')),
+          Sec4B: formatNumber(getSum(newData, 'Sec4B')),
+          Sec4C: formatNumber(getSum(newData, 'Sec4C')),
+          TotalPremium: formatNumber(getSum(newData, 'TotalPremium')),
+          DocStamp: formatNumber(getSum(newData, 'DocStamp')),
+          Vat: formatNumber(getSum(newData, 'Vat')),
+          LGovTax: formatNumber(getSum(newData, 'LGovTax')),
+          TotalDue: formatNumber(getSum(newData, 'TotalDue'))
+        })
+
+        drawExcel(res, {
+          columns: [
+            { key: 'DateIssued', width: 14 },
+            { key: 'PolicyNo', width: 25 },
+            { key: 'AssuredName', width: 55 },
+            { key: 'EffictiveDate', width: 16 },
+            { key: 'InsuredValue', width: 16 },
+            { key: 'PLimit', width: 17 },
+            { key: 'Sec4A', width: 17 },
+            { key: 'Sec4B', width: 17 },
+            { key: 'Sec4C', width: 17 },
+            { key: 'TotalPremium', width: 17 },
+            { key: 'DocStamp', width: 17 },
+            { key: 'Vat', width: 17 },
+            { key: 'LGovTax', width: 17 },
+            { key: 'TotalDue', width: 17 },
+          ],
+          data: newData,
+          beforeDraw: (props: any, worksheet: any) => {
+            title.split('\n').forEach((t: string, idx: number) => {
+              const tt = worksheet.addRow([t]);
+              props.mergeCells(idx + 1, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+              const alignColumns = props.alphabet.slice(0, props.columns.length);
+              props.setAlignment(1, alignColumns, { horizontal: "left", vertical: "middle" })
+              tt.font = { bolder: true };
+            });
+            props.setFontSize([1, 2, 3], 12)
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            // Now, insert the column header row after the custom rows (row 3)
+            const headerRow = worksheet.addRow([
+              'DATE ISSUED',
+              'POLICY NO',
+              'ASSURED NAME',
+              'EFFECTIVE DATE',
+              'SUM INSURED',
+              'LD PREMIUM',
+              'ETPL BI PREMIUM',
+              'PD PREMIUM',
+              'PAR PREMIUM',
+              'SUB - TOTAL',
+              'DOC. STAMP',
+              'EVAT',
+              'LGT',
+              'TOTAL',
+            ]);
+            headerRow.font = { bold: true };
+            props.addBorder(6, props.alphabet.slice(0, props.columns.length), {
+              bottom: { style: 'thin' },
+            })
+
+          },
+          onDraw: (props: any, rowItm: any, rowIdx: number) => {
+            props.setAlignment(rowIdx + 6, ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'], { horizontal: "right", vertical: "middle" })
+          },
+          afterDraw: (props: any, worksheet: any) => {
+            props.boldText(props.data.length + 6, ['A', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'])
+            props.addBorder(props.data.length + 6, ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'], {
+              top: { style: 'thin' },
+            })
+            props.setAlignment(props.data.length + 6, ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'], { horizontal: "right", vertical: "middle" })
+            props.mergeCells(props.data.length + 6, 'A', 'E');
+
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            const sig = worksheet.addRow(['Prepared By:                                                                                                                        Checked By:                                                                                                                        Noted By:']);
+            props.mergeCells(props.data.length + 10, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+            const alignColumns = props.alphabet.slice(0, props.columns.length - 2);
+            props.setAlignment(props.data.length + 10, alignColumns, { horizontal: "center", vertical: "middle" })
+            sig.font = { bold: true };
+          },
+        })
+
+
+      } else if (
+        req.body.cmbSubAcct === 'MAR' ||
+        req.body.cmbSubAcct === 'MSPR' ||
+        req.body.cmbSubAcct === 'PA' ||
+        req.body.cmbSubAcct === 'CGL'
+      ) {
+        const newData = data.map((itm: any) => {
+          itm.InsuredValue = formatNumber(parseFloat(itm.InsuredValue.toString().replace(/,/g, '')))
+          itm.TotalPremium = formatNumber(parseFloat(itm.TotalPremium.toString().replace(/,/g, '')))
+          itm.Vat = formatNumber(parseFloat(itm.Vat.toString().replace(/,/g, '')))
+          itm.DocStamp = formatNumber(parseFloat(itm.DocStamp.toString().replace(/,/g, '')))
+          itm.LGovTax = formatNumber(parseFloat(itm.LGovTax.toString().replace(/,/g, '')))
+          itm.TotalDue = formatNumber(parseFloat(itm.TotalDue.toString().replace(/,/g, '')))
+
+          return {
+            DateIssued: itm.DateIssued,
+            PolicyNo: itm.PolicyNo,
+            AssuredName: itm.AssuredName,
+            EffictiveDate: itm.EffictiveDate,
+            InsuredValue: itm.InsuredValue,
+            TotalPremium: itm.TotalPremium,
+            DocStamp: itm.DocStamp,
+            Vat: itm.Vat,
+            LGovTax: itm.LGovTax,
+            TotalDue: itm.TotalDue
+          }
+        })
+        newData.push({
+          DateIssued: `No. of Records: ${data.length}`,
+          PolicyNo: "",
+          AssuredName: "",
+          EffictiveDate: "",
+          InsuredValue: "",
+          TotalPremium: formatNumber(getSum(newData, 'TotalPremium')),
+          DocStamp: formatNumber(getSum(newData, 'DocStamp')),
+          Vat: formatNumber(getSum(newData, 'Vat')),
+          LGovTax: formatNumber(getSum(newData, 'LGovTax')),
+          TotalDue: formatNumber(getSum(newData, 'TotalDue'))
+        })
+
+
+      } else if (req.body.cmbSubAcct === "FIRE") {
+        const newData = data.map((itm: any) => {
+          itm.InsuredValue = formatNumber(parseFloat(itm.InsuredValue.toString().replace(/,/g, '')))
+          itm.TotalPremium = formatNumber(parseFloat(itm.TotalPremium.toString().replace(/,/g, '')))
+          itm.DocStamp = formatNumber(parseFloat(itm.DocStamp.toString().replace(/,/g, '')))
+          itm.FireTax = formatNumber(parseFloat(itm.FireTax.toString().replace(/,/g, '')))
+          itm.Vat = formatNumber(parseFloat(itm.Vat.toString().replace(/,/g, '')))
+          itm.LGovTax = formatNumber(parseFloat(itm.LGovTax.toString().replace(/,/g, '')))
+          itm.TotalDue = formatNumber(parseFloat(itm.TotalDue.toString().replace(/,/g, '')))
+
+          return {
+            DateIssued: itm.DateIssued,
+            PolicyNo: itm.PolicyNo,
+            AssuredName: itm.AssuredName,
+            EffictiveDate: itm.EffictiveDate,
+            InsuredValue: itm.InsuredValue,
+            TotalPremium: itm.TotalPremium,
+            DocStamp: itm.DocStamp,
+            FireTax: itm.FireTax,
+            Vat: itm.Vat,
+            LGovTax: itm.LGovTax,
+            TotalDue: itm.TotalDue
+          }
+        })
+        newData.push({
+          DateIssued: `No. of Records: ${data.length}`,
+          PolicyNo: "",
+          AssuredName: "",
+          EffictiveDate: "",
+          InsuredValue: "",
+          TotalPremium: formatNumber(getSum(newData, 'TotalPremium')),
+          DocStamp: formatNumber(getSum(newData, 'DocStamp')),
+          FireTax: formatNumber(getSum(newData, 'FireTax')),
+          Vat: formatNumber(getSum(newData, 'Vat')),
+          LGovTax: formatNumber(getSum(newData, 'LGovTax')),
+          TotalDue: formatNumber(getSum(newData, 'TotalDue'))
+        })
+
+
+      } else {
+        const newData = data.map((itm: any) => {
+          itm.InsuredValue = formatNumber(parseFloat(itm.InsuredValue.toString().replace(/,/g, '')))
+          itm.TotalPremium = formatNumber(parseFloat(itm.TotalPremium.toString().replace(/,/g, '')))
+          itm.Misc = formatNumber(parseFloat(itm.Misc.toString().replace(/,/g, '')))
+          itm.Notarial = formatNumber(parseFloat(itm.Notarial.toString().replace(/,/g, '')))
+          itm.DocStamp = formatNumber(parseFloat(itm.DocStamp.toString().replace(/,/g, '')))
+          itm.Vat = formatNumber(parseFloat(itm.Vat.toString().replace(/,/g, '')))
+          itm.LGovTax = formatNumber(parseFloat(itm.LGovTax.toString().replace(/,/g, '')))
+          itm.TotalDue = formatNumber(parseFloat(itm.TotalDue.toString().replace(/,/g, '')))
+
+          return {
+            DateIssued: itm.DateIssued,
+            PolicyNo: itm.PolicyNo,
+            AssuredName: itm.AssuredName,
+            EffictiveDate: itm.EffictiveDate,
+            InsuredValue: itm.InsuredValue,
+            TotalPremium: itm.TotalPremium,
+            Misc: itm.Misc,
+            Notarial: itm.Notarial,
+            DocStamp: itm.DocStamp,
+            Vat: itm.Vat,
+            LGovTax: itm.LGovTax,
+            TotalDue: itm.TotalDue
+          }
+        })
+        newData.push({
+          DateIssued: `No. of Records: ${data.length}`,
+          PolicyNo: "",
+          AssuredName: "",
+          EffictiveDate: "",
+          InsuredValue: "",
+          TotalPremium: formatNumber(getSum(newData, 'TotalPremium')),
+          Misc: formatNumber(getSum(newData, 'Misc')),
+          Notarial: formatNumber(getSum(newData, 'Notarial')),
+          DocStamp: formatNumber(getSum(newData, 'DocStamp')),
+          Vat: formatNumber(getSum(newData, 'Vat')),
+          LGovTax: formatNumber(getSum(newData, 'LGovTax')),
+          TotalDue: formatNumber(getSum(newData, 'TotalDue'))
+        })
+
+      }
+    } else {
+      const newData = data.map((itm: any) => {
+        itm.InsuredValue = formatNumber(parseFloat(itm.InsuredValue.toString().replace(/,/g, '')))
+        itm.TotalDue = formatNumber(parseFloat(itm.TotalDue.toString().replace(/,/g, '')))
+
+        return {
+          DateIssued: itm.DateIssued,
+          AssuredName: itm.AssuredName,
+          PolicyNo: itm.PolicyNo,
+          EffictiveDate: itm.EffictiveDate,
+          InsuredValue: itm.InsuredValue,
+          Make: itm.Make,
+          BodyType: itm.BodyType,
+          PlateNo: itm.PlateNo,
+          ChassisNo: itm.ChassisNo,
+          MotorNo: itm.MotorNo,
+          TotalDue: itm.TotalDue,
+          Mortgagee: itm.Mortgagee,
+        }
+      })
+      newData.push({
+        DateIssued: `No. of Records: ${data.length}`,
+        AssuredName: "",
+        PolicyNo: "",
+        EffictiveDate: "",
+        InsuredValue: "",
+        Make: "",
+        BodyType: "",
+        PlateNo: "",
+        ChassisNo: "",
+        MotorNo: "",
+        TotalDue: formatNumber(getSum(newData, 'TotalDue')),
+        Mortgagee: "",
+      })
+
+    }
+
+
+
+    // Create a new workbook and worksheet
+
+
+  } catch (err: any) {
+    console.log(err)
+    res.send({ message: "SERVER ERROR", success: false, data: [] });
+  }
+});
+
 
 ProductionReports.get('/policy-account', async (req, res) => {
   try {
@@ -857,5 +1212,6 @@ function getSum(data: Array<any>, key: string): number {
     return total
   }, 0)
 }
+
 
 export default ProductionReports;
