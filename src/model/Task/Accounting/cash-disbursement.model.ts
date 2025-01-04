@@ -232,11 +232,15 @@ export async function GenerateCashDisbursementID(req: Request) {
 
   return await prisma.$queryRawUnsafe(`
        SELECT 
+      
         concat(
         DATE_FORMAT(NOW(), '%y'),
         if(a.month <> DATE_FORMAT(NOW(), '%m') ,DATE_FORMAT(NOW(), '%m'),a.month),
         '-', 
-        if(a.month <> DATE_FORMAT(NOW(),'%m'),'00001',concat(LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1))) as id   
+        concat(LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1)
+       )
+        
+         as id   
       FROM
           id_sequence a
       WHERE

@@ -824,8 +824,8 @@ model postponement_auth_codes {
 }
 
 model postponement_detail {
-  RPCD         String    @db.VarChar(250)
   RPCDNo       String    @id @db.VarChar(250)
+  RPCD         String    @db.VarChar(250)
   CheckNo      String    @db.VarChar(250)
   OldCheckDate DateTime? @db.Date
   NewCheckDate DateTime? @db.Date

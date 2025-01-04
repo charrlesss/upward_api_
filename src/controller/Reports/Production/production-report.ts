@@ -212,7 +212,7 @@ ProductionReports.post("/production-report", async (req, res) => {
 
         const props: any = {
           data: newData,
-          columnWidths: [80, 100, 250, 80, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90],
+          columnWidths: [90, 100, 250, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90],
           headers: [
             { headerName: 'DATE ISSUED', textAlign: "left" },
             { headerName: 'POLICY NO', textAlign: "left" },
@@ -246,7 +246,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             'TotalDue'
           ],
           title,
-          PAGE_WIDTH: 20 * 72,
+          PAGE_WIDTH: 20.5 * 72,
           PAGE_HEIGHT: 8.5 * 72,
           MARGIN: { top: 20, right: 10, bottom: 80, left: 10 },
           beforeDraw: (pdfReportGenerator: any) => {

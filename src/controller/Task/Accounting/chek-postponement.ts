@@ -28,6 +28,10 @@ import { VerifyToken } from "../../Authentication";
 import generateUniqueUUID from "../../../lib/generateUniqueUUID";
 import { PrismaList } from "../../../model/connection";
 import { Request } from "express";
+import { defaultFormat } from "../../../lib/defaultDateFormat";
+import { v4 as uuidv4 } from "uuid";
+
+
 const { CustomPrismaClient } = PrismaList();
 
 const CheckPostponement = express.Router();
@@ -268,6 +272,107 @@ CheckPostponement.post('/check-postponement/request/load-checks-details', async 
     });
   }
 })
+CheckPostponement.post('/check-postponement/request/load-rpcdno', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const data = await prisma.$queryRawUnsafe(` select '' as  RPCDNo  union all SELECT RPCDNo FROM postponement  Where Status = 'PENDING' and Branch = 'HO'`)
+
+    res.send({
+      message: "Successfully Saved",
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+CheckPostponement.post('/check-postponement/request/load-rpcd-details', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const data = await prisma.$queryRawUnsafe(` 
+       SELECT 
+      PNNO,
+      (SELECT DISTINCT
+              (name)
+          FROM
+              PDC
+          WHERE
+              PNo = a.PNNo AND Check_No = a.CheckNo) AS 'Name',
+      CheckNo,
+      'Head Office' AS 'Branch Name',
+      (SELECT 
+              bank
+          FROM
+              PDC
+          WHERE
+              Check_No = a.CheckNo AND PNo = a.PNNO) AS 'Bank',
+      (SELECT 
+              Check_Amnt
+          FROM
+              PDC
+          WHERE
+              Check_No = a.CheckNo AND PNo = a.PNNO) AS 'check_Amnt',
+      a.OldCheckDate,
+      a.NewCheckDate,
+      a.Reason,
+      (SELECT 
+              PaidVia
+          FROM
+              Postponement
+          WHERE
+              RPCDNo = a.RPCD) AS 'PaidVia',
+      (SELECT 
+              Surplus
+          FROM
+              Postponement
+          WHERE
+              RPCDNo = a.RPCD) AS 'Surplus',
+      (SELECT 
+              Deducted_to
+          FROM
+              Postponement
+          WHERE
+              RPCDNo = a.RPCD) AS 'Deducted_to',
+      (SELECT 
+              PaidInfo
+          FROM
+              Postponement
+          WHERE
+              RPCDNo = a.RPCD) AS 'PaidInfo'
+  FROM
+      (SELECT 
+          *,
+              (SELECT 
+                      pnno
+                  FROM
+                      Postponement
+                  WHERE
+                      RPCDNo = A.RPCD) AS 'PNNO'
+      FROM
+          Postponement_Detail A) a
+  WHERE
+      RPCD = '${req.body.RPCDNo}'  
+      `)
+
+    res.send({
+      message: "Successfully Saved",
+      success: true,
+      data
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
 CheckPostponement.post('/check-postponement/request/check-is-pending', async (req, res) => {
   try {
 
@@ -297,10 +402,63 @@ CheckPostponement.post('/check-postponement/request/check-is-pending', async (re
     });
   }
 })
+CheckPostponement.post('/check-postponement/request/saving', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    // HEADER
+    await prisma.postponement.create({
+      data: {
+        RPCDNo: req.body.RPCDNoRef,
+        PNNo: req.body.PNNoRef,
+        HoldingFees: req.body.HoldingFeesRef,
+        PenaltyCharge: req.body.PenaltyChargeRef,
+        PaidVia: req.body.HowToBePaidRef,
+        PaidInfo: req.body.RemarksRef,
+        Date: defaultFormat(new Date()),
+        Status: "PENDING",
+        Branch: req.body.BranchRef,
+        Prepared_by: req.body.Prepared_By,
+        Surplus: req.body.SurplusRef,
+        Deducted_to: req.body.DeductedToRef
+      }
+    })
+
+    // DETAILS
+    const selected = JSON.parse(req.body.data)
+
+    for (const itm of selected) {
+      await prisma.postponement_detail.create({
+        data: {
+          RPCDNo: uuidv4(),
+          RPCD: req.body.RPCDNoRef,
+          CheckNo: itm[1],
+          OldCheckDate: defaultFormat(new Date(itm[4])),
+          NewCheckDate: defaultFormat(new Date(itm[5])),
+          Reason: itm[8]
+        }
+      })
+    }
+
+
+    res.send({
+      message: "Successfully Saved",
+      success: true,
+      data: []
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
 
 
 
-/// v============================
+
+/// ============================
 
 CheckPostponement.get(
   "/check-postponement/reqeust/search-pnno-client",
@@ -321,7 +479,6 @@ CheckPostponement.get(
     }
   }
 );
-
 CheckPostponement.post(
   "/check-postponement/selected-pn-no-checklist",
   async (req, res) => {
@@ -343,7 +500,6 @@ CheckPostponement.post(
     }
   }
 );
-
 CheckPostponement.get(
   "/check-postponement/reqeust/get-id",
   async (req, res) => {
@@ -363,7 +519,6 @@ CheckPostponement.get(
     }
   }
 );
-
 CheckPostponement.post("/check-postponement/save", async (req, res) => {
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
@@ -467,7 +622,6 @@ CheckPostponement.post("/check-postponement/save", async (req, res) => {
     });
   }
 });
-
 CheckPostponement.post(
   "/check-postponement/request/get-rcpn-list",
   async (req, res) => {
@@ -487,14 +641,11 @@ CheckPostponement.post(
     }
   }
 );
-
-
-
 CheckPostponement.get(
   "/check-postponement/request/get-rcpn-list",
   async (req, res) => {
     try {
-      
+
       res.send({
         message: "Successfully Get ID",
         success: true,
