@@ -36,6 +36,8 @@ const { CustomPrismaClient } = PrismaList();
 
 const CheckPostponement = express.Router();
 
+
+// ========================= REQUEST =================================
 CheckPostponement.get('/check-postponement/request/load-pnno', async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
@@ -405,6 +407,19 @@ CheckPostponement.post('/check-postponement/request/check-is-pending', async (re
 CheckPostponement.post('/check-postponement/request/saving', async (req, res) => {
   try {
     const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const user = await getUserById((req.user as any).UserId);
+    const subtitle = `<h3>Check Deposit Postponement Request</h3>`;
+    const text = getSelectedCheck(req.body.data);
+    const Requested_By = user?.Username;
+    const Requested_Date = new Date();
+    const approvalCode = generateRandomNumber(6);
+    const EmailToSend = [
+      "upwardinsurance.grace@gmail.com",
+      "lva_ancar@yahoo.com",
+      "encoder.upward@yahoo.com",
+      "charlespalencia21@gmail.com",
+    ];
+
     // HEADER
     await prisma.postponement.create({
       data: {
@@ -422,10 +437,8 @@ CheckPostponement.post('/check-postponement/request/saving', async (req, res) =>
         Deducted_to: req.body.DeductedToRef
       }
     })
-
     // DETAILS
     const selected = JSON.parse(req.body.data)
-
     for (const itm of selected) {
       await prisma.postponement_detail.create({
         data: {
@@ -438,8 +451,32 @@ CheckPostponement.post('/check-postponement/request/saving', async (req, res) =>
         }
       })
     }
-
-
+    for (const toEmail of EmailToSend) {
+      await sendRequestEmail({
+        RPCD: req.body.RPCDNoRef,
+        PNNo: req.body.PNNoRef,
+        client: req.body.PNNoRef,
+        text,
+        Requested_Date,
+        Requested_By,
+        approvalCode,
+        subtitle,
+        holdingFee: req.body.HoldingFeesRef,
+        penaltyCharge: req.body.PenaltyChargeRef,
+        surplus: req.body.SurplusRef,
+        paidVia: req.body.HowToBePaidRef,
+        toEmail,
+      });
+      await prisma.postponement_auth_codes.create({
+        data: {
+          RPCD: req.body.RPCDNoRef,
+          For_User: toEmail,
+          Approved_Code: approvalCode.toString(),
+          Disapproved_Code: "",
+          postponement_auth_codes_id: uuidv4()
+        }
+      })
+    }
     res.send({
       message: "Successfully Saved",
       success: true,
@@ -454,129 +491,199 @@ CheckPostponement.post('/check-postponement/request/saving', async (req, res) =>
     });
   }
 })
-
-
-
-
-/// ============================
-
-CheckPostponement.get(
-  "/check-postponement/reqeust/search-pnno-client",
-  async (req, res) => {
-    try {
-      res.send({
-        message: "Successfully Get ID",
-        success: true,
-        pnnoClients: await searchPDCCLients(req),
-      });
-    } catch (error: any) {
-      console.log(`${CheckPostponement} : ${error.message}`);
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        pnnoClients: [],
-      });
-    }
-  }
-);
-CheckPostponement.post(
-  "/check-postponement/selected-pn-no-checklist",
-  async (req, res) => {
-    const { PNNo } = req.body;
-    try {
-      const selectedChecks = await getSelectedCheckPostponementPNNo(PNNo, req);
-      res.send({
-        message: "Successfully Get Search Selected",
-        success: true,
-        selectedChecks,
-      });
-    } catch (error: any) {
-      console.log(`${CheckPostponement} : ${error.message}`);
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        selectedChecks: [],
-      });
-    }
-  }
-);
-CheckPostponement.get(
-  "/check-postponement/reqeust/get-id",
-  async (req, res) => {
-    try {
-      res.send({
-        message: "Successfully Get ID",
-        success: true,
-        id: await checkPostponementRequestAutoID(req),
-      });
-    } catch (error: any) {
-      console.log(`${CheckPostponement} : ${error.message}`);
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        id: [],
-      });
-    }
-  }
-);
-CheckPostponement.post("/check-postponement/save", async (req, res) => {
-  const { userAccess }: any = await VerifyToken(
-    req.cookies["up-ac-login"] as string,
-    process.env.USER_ACCESS as string
-  );
-  if (userAccess.includes("ADMIN")) {
-    return res.send({
-      message: `CAN'T SAVE, ADMIN IS FOR VIEWING ONLY!`,
-      success: false,
-    });
-  }
-
+CheckPostponement.post('/check-postponement/request/edit', async (req, res) => {
   try {
-    if (req.body.requestMode === "edit") {
-      await deleteOnUpdate(req, req.body.RPCD);
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    // HEADER
+    await prisma.$queryRawUnsafe(`delete from postponement where RPCDNo = '${req.body.RPCDNoRef}'`)
+    await prisma.postponement.create({
+      data: {
+        RPCDNo: req.body.RPCDNoRef,
+        PNNo: req.body.PNNoRef,
+        HoldingFees: req.body.HoldingFeesRef,
+        PenaltyCharge: req.body.PenaltyChargeRef,
+        PaidVia: req.body.HowToBePaidRef,
+        PaidInfo: req.body.RemarksRef,
+        Date: defaultFormat(new Date()),
+        Status: "PENDING",
+        Branch: req.body.BranchRef,
+        Prepared_by: req.body.Prepared_By,
+        Surplus: req.body.SurplusRef,
+        Deducted_to: req.body.DeductedToRef
+      }
+    })
+    // DETAILS
+    await prisma.$queryRawUnsafe(`delete from postponement_detail where RPCD = '${req.body.RPCDNoRef}'`)
+    const selected = JSON.parse(req.body.data)
+    for (const itm of selected) {
+      await prisma.postponement_detail.create({
+        data: {
+          RPCDNo: uuidv4(),
+          RPCD: req.body.RPCDNoRef,
+          CheckNo: itm[1],
+          OldCheckDate: defaultFormat(new Date(itm[4])),
+          NewCheckDate: defaultFormat(new Date(itm[5])),
+          Reason: itm[8]
+        }
+      })
     }
-
     const user = await getUserById((req.user as any).UserId);
-    const data = {
-      RPCDNo: req.body.RPCD,
-      PNNo: req.body.PNNo,
-      HoldingFees: req.body.holdingFee,
-      PenaltyCharge: req.body.penaltyCharge,
-      PaidVia: req.body.paidVia,
-      PaidInfo: req.body.paidInfo,
-      PaidDate: req.body.paidDate,
-      Date: new Date(),
-      Status: "PENDING",
-      Branch: "HO",
-      ClientBranch: req.body.branch,
-      Prepared_by: user?.Username,
-      Surplus: req.body.surplus,
-      Deducted_to: req.body.deductedTo,
-      Requested_By: user?.Username,
-      Requested_Date: new Date(),
-    };
-    await createPostponement(data, req);
-
-    JSON.parse(req.body.checkSelected).forEach(async (item: any) => {
-      const details = {
-        RPCD: req.body.RPCD,
-        RPCDNo: `${req.body.RPCD}-${item.temp_id}`,
-        CheckNo: item.Check_No,
-        OldCheckDate: new Date(item.Check_Date),
-        NewCheckDate: new Date(item.New_Check_Date),
-        Reason: item.Reason,
-      };
-      await createPostponementDetails(details, req);
-    });
-
-    const subtitle = `
-      <h3>Check Deposit Postponement Request</h3>
-    `;
-    const text = getSelectedCheck(req.body.checkSelected);
+    const subtitle = `<h3>Check Deposit Postponement Request</h3>`;
+    const text = getSelectedCheck(req.body.data);
     const Requested_By = user?.Username;
     const Requested_Date = new Date();
     const approvalCode = generateRandomNumber(6);
+    const EmailToSend = [
+      "upwardinsurance.grace@gmail.com",
+      "lva_ancar@yahoo.com",
+      "encoder.upward@yahoo.com",
+      "charlespalencia21@gmail.com",
+    ];
+    await prisma.$queryRawUnsafe(`delete from postponement_auth_codes where RPCD = '${req.body.RPCDNoRef}'`)
+    for (const toEmail of EmailToSend) {
+      await sendRequestEmail({
+        RPCD: req.body.RPCDNoRef,
+        PNNo: req.body.PNNoRef,
+        client: req.body.PNNoRef,
+        text,
+        Requested_Date,
+        Requested_By,
+        approvalCode,
+        subtitle,
+        holdingFee: req.body.HoldingFeesRef,
+        penaltyCharge: req.body.PenaltyChargeRef,
+        surplus: req.body.SurplusRef,
+        paidVia: req.body.HowToBePaidRef,
+        toEmail,
+      });
 
+      await prisma.postponement_auth_codes.create({
+        data: {
+          RPCD: req.body.RPCDNoRef,
+          For_User: toEmail,
+          Approved_Code: approvalCode.toString(),
+          Disapproved_Code: "",
+          postponement_auth_codes_id: uuidv4()
+        }
+      })
+    }
+    res.send({
+      message: `Update ${req.body.RPCDNoRef} Successfully`,
+      success: true,
+      data: []
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+// ========================= APPROVED ===========================
+CheckPostponement.get('/check-postponement/approve/load-rpcdno', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    res.send({
+      message: `Update ${req.body.RPCDNoRef} Successfully`,
+      success: true,
+      data: await prisma.$queryRawUnsafe(`select '' as RPCDNo union all Select RPCDNo from Postponement  Where Status = 'PENDING'`)
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+CheckPostponement.post('/check-postponement/approve/load-details', async (req, res) => {
+  try {
+
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    res.send({
+      message: `Update ${req.body.RPCDNoRef} Successfully`,
+      success: true,
+      data: await prisma.$queryRawUnsafe(`
+        selecT 
+        PNNO, 
+      (selecT distinct(name) from PDC where PNno = a.PnNo and Check_No = a.CheckNo) as 'Name', 
+      CheckNo, 
+      'HO' as Branch, 
+      (select bank from PDC where Check_No = a.CheckNo and PNo =a.PNNO ) as 'Bank', 
+      (select Check_Amnt from PDC where Check_No = a.CheckNo and PNo =a.PNNO ) as 'Amount', 
+      date_format(a.OldCheckDate,'%Y-%m-%d') as OldDepositDate,
+      date_format(a.NewCheckDate,'%Y-%m-%d') as NewDate,
+      CAST(DATEDIFF(a.NewCheckDate,  a.OldCheckDate) AS CHAR) AS Datediff,
+      a.Reason, 
+      (seleCT PaidVia from Postponement where RPCDNo = a.RPCD) as 'PaidVia', 
+      (seleCT Surplus from Postponement where RPCDNo = a.RPCD) as 'Surplus', 
+      (seleCT Deducted_to from Postponement where RPCDNo = a.RPCD) as 'Deducted_to',
+      (seleCT PaidInfo from Postponement where RPCDNo = a.RPCD) as 'PaidInfo' 
+      from (
+      seleCT *, 
+          (selecT pnno from Postponement where RPCDNo = A.RPCD) as 'PNNO' 
+          from Postponement_Detail A) a 
+      where RPCD = '${req.body.RPCDNo}'  
+        
+      `)
+    });
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+CheckPostponement.post('/check-postponement/approve/confirmation', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const isCodeFound: Array<any> = await prisma.$queryRawUnsafe(`selecT * from postponement_auth_codes where Approved_Code = '${req.body.code}'`)
+    console.log(req.body)
+    if (isCodeFound.length <= 0) {
+      return res.send({
+        message: `Invalid Authorization Code [${req.body.code}]!`,
+        success: false,
+        data: []
+      });
+    }
+    const dt: Array<any> = await prisma.$queryRawUnsafe(`selecT * from postponement_auth_codes where RPCD ='${isCodeFound[0].RPCD}' and used_by is not null`)
+    if (dt.length <= 0) {
+      res.send({
+        message: `Are you sure you want to confirm this transaction?`,
+        success: true,
+        data: [{ RPCD: isCodeFound[0].RPCD, code: req.body.code, mode: req.body.mode }]
+      });
+    } else {
+      return res.send({
+        message: `Request No. ${isCodeFound[0].RPCD} had already been approved/disapproved!`,
+        success: false,
+        data: []
+      });
+    }
+  } catch (error: any) {
+    console.log(`${error.message}`);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+})
+CheckPostponement.post('/check-postponement/approve/con-confirmation', async (req, res) => {
+  try {
+    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+    const user = await getUserById((req.user as any).UserId);
+
+    const subtitle = `<h3>Check Deposit Postponement Request</h3>`;
+    const text = getSelectedCheck(req.body.data);
+    const Requested_By = user?.Username;
+    const Requested_Date = new Date();
+    const approvalCode = generateRandomNumber(6);
     const EmailToSend = [
       "upwardinsurance.grace@gmail.com",
       "lva_ancar@yahoo.com",
@@ -585,242 +692,74 @@ CheckPostponement.post("/check-postponement/save", async (req, res) => {
     ];
 
     for (const toEmail of EmailToSend) {
-      await sendRequestEmail({
-        ...req.body,
+      await sendApprovedEmail({
+        RPCD: req.body.RPCDNoRef,
+        PNNo: req.body.PNNoRef,
+        client: req.body.PNNoRef,
         text,
-        Requested_By,
         Requested_Date,
+        Requested_By,
         approvalCode,
         subtitle,
+        holdingFee: req.body.HoldingFeesRef,
+        penaltyCharge: req.body.PenaltyChargeRef,
+        surplus: req.body.SurplusRef,
+        paidVia: req.body.HowToBePaidRef,
         toEmail,
+        isApproved:req.body.mode === 'Approve',
+        Approved_By:user?.Username,
+        code:req.body.code
+
+      });
+      await prisma.postponement_auth_codes.create({
+        data: {
+          RPCD: req.body.RPCDNoRef,
+          For_User: toEmail,
+          Approved_Code: approvalCode.toString(),
+          Disapproved_Code: "",
+          postponement_auth_codes_id: uuidv4()
+        }
+      })
+    }
+    await prisma.$queryRawUnsafe(`update Postponement_Auth_codes set used_by ='${user?.Username}', used_datetime =now() where Approved_Code ='${req.body.code}'`)
+    if (req.body.mode === 'Approve') {
+      const data = JSON.parse(req.body.data)
+      for (const itm of data) {
+        await prisma.$queryRawUnsafe(`Update PDC set Check_Date = '${itm[5]}' where PNo = '${req.body.PNNoRef}' and Check_No = '${itm[1]}'`)
+
+      }
+      await prisma.$queryRawUnsafe(`Update Postponement set Status = 'APPROVED' WHERE RPCDNo = '${req.body.RPCD}' `)
+
+      res.send({
+        message: `Request has been approved.`,
+        success: true,
+        data: []
+      });
+    } else {
+
+      await prisma.$queryRawUnsafe(`Update Postponement set Status = 'DISAPPROVED' WHERE RPCDNo = '${req.body.RPCD}' `)
+      res.send({
+        message: `Request has been disapproved.`,
+        success: true,
+        data: []
       });
     }
 
-    const postponement_auth_codes_id = await generateUniqueUUID(
-      "postponement_auth_codes",
-      "postponement_auth_codes_id"
-    );
 
-    await approvalCodePostponement(
-      {
-        postponement_auth_codes_id,
-        RPCD: req.body.RPCD,
-        For_User: Requested_By,
-        Approved_Code: approvalCode.toString(),
-        Disapproved_Code: "",
-      },
-      req
-    );
-    await updateAnyId("check-postponement", req);
-    await saveUserLogs(req, req.body.RPCD, `add request`, "Check-Postponement");
-    res.send({ message: "Save Successfully.", success: true });
+
   } catch (error: any) {
-    console.log(`${CheckPostponement} : ${error.message}`);
+    console.log(`${error.message}`);
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
+      data: [],
     });
   }
-});
-CheckPostponement.post(
-  "/check-postponement/request/get-rcpn-list",
-  async (req, res) => {
-    try {
-      res.send({
-        message: "Successfully Get ID",
-        success: true,
-        rcpn: await getRCPNList(req),
-      });
-    } catch (error: any) {
-      console.log(`${CheckPostponement} : ${error.message}`);
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        rcpn: [],
-      });
-    }
-  }
-);
-CheckPostponement.get(
-  "/check-postponement/request/get-rcpn-list",
-  async (req, res) => {
-    try {
+})
 
-      res.send({
-        message: "Successfully Get ID",
-        success: true,
-        rcpn: await getRCPNList(req),
-      });
-    } catch (error: any) {
-      console.log(`${CheckPostponement} : ${error.message}`);
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        rcpn: [],
-      });
-    }
-  }
-);
-CheckPostponement.post(
-  "/check-postponement/request/get-rcpn-selected-datails",
-  async (req, res) => {
-    try {
-      res.send({
-        message: "Successfully Get ID",
-        success: true,
-        rcpnDetails: await getRCPNDetails(req, req.body.RPCDNo),
-      });
-    } catch (error: any) {
-      console.log(`${CheckPostponement} : ${error.message}`);
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        rcpnDetails: [],
-      });
-    }
-  }
-);
-CheckPostponement.get("/check-postponement/search-edit", async (req, res) => {
-  const { searchEdit } = req.query;
-  try {
-    const selectedRequest = await searchEditPostponentRequest(
-      searchEdit as string,
-      req
-    );
-    res.send({
-      message: "Successfully Get Search Selected",
-      success: true,
-      selectedRequest,
-    });
-  } catch (error: any) {
-    console.log(`${CheckPostponement} : ${error.message}`);
-    res.send({
-      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-      success: false,
-      selectedRequest: [],
-    });
-  }
-});
-CheckPostponement.post(
-  "/check-postponement/search-selected-edit",
-  async (req, res) => {
-    try {
-      const selectedSearchEdit = await searchSelectedEditPostponentRequest(
-        req.body.RPCD,
-        req
-      );
-      res.send({
-        message: "Successfully Get Search Selected",
-        success: true,
-        selectedSearchEdit,
-      });
-    } catch (error: any) {
-      console.log(`${CheckPostponement} : ${error.message}`);
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        selectedSearchEdit: [],
-      });
-    }
-  }
-);
-CheckPostponement.post(
-  "/check-postponement/approved-request",
-  async (req, res) => {
-    const { userAccess }: any = await VerifyToken(
-      req.cookies["up-ac-login"] as string,
-      process.env.USER_ACCESS as string
-    );
-    if (userAccess.includes("ADMIN")) {
-      return res.send({
-        message: `CAN'T APPROVED, ADMIN IS FOR VIEWING ONLY!`,
-        success: false,
-      });
-    }
+/// ============================
 
-    try {
-      if (
-        req.body.code === "" ||
-        req.body.code === null ||
-        req.body.code === undefined
-      ) {
-        return res.send({
-          message: "Invalid Approval Code",
-          success: false,
-        });
-      }
-      const isAuthorized: any = await findApprovalPostponementCode(
-        req.body.code,
-        req.body.RPCD,
-        req
-      );
 
-      if (isAuthorized.length <= 0) {
-        return res.send({
-          message: "Invalid Approval Code",
-          success: false,
-        });
-      }
-
-      const user = await getUserById((req.user as any).UserId);
-      await updatePostponementStatus(
-        req.body.isApproved,
-        req.body.RPCD,
-        user?.Username as string,
-        req
-      );
-      await updateApprovalPostponementCode(
-        user?.Username as string,
-        req.body.RPCD,
-        req
-      );
-      const subtitle = `
-        <h3>Check Deposit Postponement Request</h3>
-      `;
-      const text = getSelectedCheck(req.body.checkSelected);
-      const Approved_By = user?.Username;
-
-      const EmailToSend = [
-        "upwardinsurance.grace@gmail.com",
-        "lva_ancar@yahoo.com",
-        "encoder.upward@yahoo.com",
-        "charlespalencia21@gmail.com",
-      ];
-
-      for (const toEmail of EmailToSend) {
-        await sendApprovedEmail({
-          ...req.body,
-          text,
-          Requested_By: req.body.Requested_By,
-          Requested_Date: req.body.Requested_Date,
-          approvalCode: req.body.code,
-          subtitle,
-          Approved_By,
-          toEmail,
-        });
-      }
-
-      await saveUserLogs(
-        req,
-        req.body.RPCD,
-        `${req.body.isApproved ? "approved" : "disapproved"} request`,
-        "Check-Postponement"
-      );
-
-      res.send({
-        message: `${req.body.isApproved ? "APPROVED" : "DISAPPROVED"} Request ${req.body.RPCD
-          } Successfully`,
-        success: true,
-      });
-    } catch (error: any) {
-      console.log(error.message);
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-      });
-    }
-  }
-);
 function getSelectedCheck(selected: string) {
   let tbodyText = "";
   JSON.parse(selected).forEach((item: any) => {
@@ -831,13 +770,13 @@ function getSelectedCheck(selected: string) {
 function generateTextTable(item: any) {
   return `
   <tr>
-    <td style="border: 1px solid #ddd; padding: 8px">${item.Check_No}</td>
-    <td style="border: 1px solid #ddd; padding: 8px">${item.Bank}</td>
-    <td style="border: 1px solid #ddd; padding: 8px">₱${item.Check_Amnt}</td>
-    <td style="border: 1px solid #ddd; padding: 8px">${item.Check_Date}</td>
-    <td style="border: 1px solid #ddd; padding: 8px">${item.New_Check_Date}</td>
-    <td style="border: 1px solid #ddd; padding: 8px">${item.DateDiff}</td>
-    <td style="border: 1px solid #ddd; padding: 8px">${item.Reason}</td>
+    <td style="border: 1px solid #ddd; padding: 8px">${item[1]}</td>
+    <td style="border: 1px solid #ddd; padding: 8px">${item[2]}</td>
+    <td style="border: 1px solid #ddd; padding: 8px">₱${item[3]}</td>
+    <td style="border: 1px solid #ddd; padding: 8px">${item[4]}</td>
+    <td style="border: 1px solid #ddd; padding: 8px">${item[5]}</td>
+    <td style="border: 1px solid #ddd; padding: 8px">${item[7]}</td>
+    <td style="border: 1px solid #ddd; padding: 8px">${item[8]}</td>
   </tr>`;
 }
 async function sendRequestEmail(props: any) {

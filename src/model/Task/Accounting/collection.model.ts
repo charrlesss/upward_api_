@@ -87,18 +87,7 @@ export async function getTransactionDescription(req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
-        SELECT 
-            a.Description as label,
-            b.Acct_Code,
-            b.Acct_Title,
-            a.Code
-        FROM
-              transaction_code a
-                LEFT JOIN
-              chart_account b ON a.Acct_Code = b.Acct_Code
-        WHERE
-            b.Acct_Code IS NOT NULL
-        ORDER BY Description`;
+        SELECT Transaction_Code.*, Chart_Account.Acct_Title from Transaction_Code LEFT JOIN Chart_Account ON Transaction_Code.Acct_Code = Chart_Account.Acct_Code WHERE Chart_Account.Acct_Code IS NOT NULL ORDER BY Description`;
   return await prisma.$queryRawUnsafe(query);
 }
 
@@ -202,7 +191,36 @@ export async function getSearchCollection(ORNo: string, req: Request) {
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
-    a.*, 
+    a.Date, 
+    a.ORNo, 
+    a.IDNo, 
+    a.Name, 
+	a.Payment, 
+    a.Bank,
+	a.Check_Date,
+	a.Check_No,
+	a.DRCode,
+	a.DRTitle,
+	a.DRRemarks,
+    a.Debit,
+    a.Purpose,
+    c.Acct_Code  as CRCode,
+    c.Acct_Title as CRTitle,
+    a.Credit,
+    a.CRRemarks,
+    a.ID_No,
+    a.Official_Receipt,
+	a.Temp_OR,
+	a.Date_OR,
+	a.Short,
+	a.SlipCode,
+	a.Status,
+	a.CRLoanID,
+	a.CRLoanName,
+	a.CRRemarks2,
+    a.CRVATType,
+    a.CRInvoiceNo,
+	c.Code as TC,
     date_format(a.Date_OR,'%Y-%m-%d') as Date_OR,
     b.Bank_Code, 
     b.Bank AS BankName,
@@ -211,9 +229,13 @@ export async function getSearchCollection(ORNo: string, req: Request) {
       collection a
         LEFT JOIN
       bank b ON b.Bank_Code = TRIM(BOTH ' ' FROM SUBSTRING_INDEX(a.Bank, '/', 1))
+     left join  (
+     select Chart_Account.* ,Transaction_Code.Description ,Transaction_Code.Code from Transaction_Code LEFT JOIN Chart_Account ON Transaction_Code.Acct_Code = Chart_Account.Acct_Code 
+     ) c on a.Purpose = c.Description 
   WHERE
     a.Official_Receipt = '${ORNo}'
   ORDER BY a.Temp_OR
+
   `);
 }
 

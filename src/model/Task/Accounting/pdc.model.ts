@@ -354,12 +354,21 @@ export async function pdcIDGenerator(req: Request) {
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
-    concat(DATE_FORMAT(NOW(), '%y'),'.',concat(LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1)) as pdcID   
+        concat(
+        if(
+        a.year <> DATE_FORMAT(NOW(), '%y'),
+        DATE_FORMAT(NOW(), '%y'),
+        a.year),
+        '.', 
+        if(a.year <> DATE_FORMAT(NOW(), '%y'),'0001',concat(LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1))
+       )
+         as pdcID   
+
   FROM
       id_sequence a
   WHERE
     type = 'pdc';
-;`);
+`);
 }
 export async function updatePDCIDSequence(data: any, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
