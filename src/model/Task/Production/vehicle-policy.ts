@@ -3,6 +3,70 @@ import { PrismaList } from "../../connection";
 import { Prisma } from "@prisma/client";
 const { CustomPrismaClient } = PrismaList();
 
+
+
+
+export async function searchClientByNameOrByID(input: string, req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+  const qry = `
+  select * from (
+  SELECT 
+      a.entry_client_id AS IDNo,
+      IF(a.company <> ''
+              AND a.company IS NOT NULL,
+          a.company,
+          CONCAT(IF(a.lastname <> ''
+                          AND a.lastname IS NOT NULL,
+                      CONCAT(a.lastname, ', '),
+                      ''),
+                  a.firstname)) AS Name,
+      'Client' AS IDType
+  FROM
+      entry_client a
+  ) a
+
+  where 
+  a.IDNo like '%${input}%' OR
+  a.name like '%${input}%' 
+  order by a.name asc
+  limit 500
+  
+  `
+  return await prisma.$queryRawUnsafe(qry) as any
+}
+export async function searchAgentByNameOrByID(input: string, req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+  const qry = `
+  select * from (
+SELECT 
+    a.entry_agent_id AS IDNo,
+  CONCAT(IF(a.lastname <> ''
+                        AND a.lastname IS NOT NULL,
+                    CONCAT(a.lastname, ', '),
+                    ''),
+                a.firstname) AS Name,
+    'Client' AS IDType
+FROM
+    entry_agent a
+) a
+
+where 
+a.IDNo like '%${input}%' OR
+a.name like '%${input}%' 
+order by a.name asc
+limit 500
+  
+  `
+  return await prisma.$queryRawUnsafe(qry) as any
+}
+
+
+// ===========================
+
+
+
 export async function getTPL_IDS(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
@@ -459,9 +523,9 @@ export async function searchDataVPolicy(
             a.PolicyNo is not null and
             a.PolicyType = '${policyType}' and
             ${isTemp
-              ? "left(a.PolicyNo,3) = 'TP-'and"
-              : "left(a.PolicyNo,3) != 'TP-' and"
-            }
+      ? "left(a.PolicyNo,3) = 'TP-'and"
+      : "left(a.PolicyNo,3) != 'TP-' and"
+    }
         (
             a.PolicyNo like '%${search}%' or
             c.ShortName like '%${search}%' or

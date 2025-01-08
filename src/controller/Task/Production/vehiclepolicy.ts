@@ -17,6 +17,8 @@ import {
   getRateFromTPLUpdate,
   deleteTPLFromJournalBySource,
   getCostByTPL,
+  searchClientByNameOrByID,
+  searchAgentByNameOrByID,
 } from "../../../model/Task/Production/vehicle-policy";
 import { getAgents, getClients } from "../../../model/Task/Production/policy";
 import saveUserLogs from "../../../lib/save_user_logs";
@@ -26,6 +28,46 @@ import { convertToPassitive } from "../../../lib/convertToPassitive";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const VehiclePolicy = express.Router();
+
+
+VehiclePolicy.post('/search-client-by-id-or-name', async (req, res) => {
+  try {
+    res.send({
+      message: "search data successfully",
+      success: true,
+      data: await searchClientByNameOrByID(req.body.search,req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      tempId: [],
+    });
+  }
+})
+
+VehiclePolicy.post('/search-agent-by-id-or-name', async (req, res) => {
+  try {
+    console.log('sad')
+    res.send({
+      message: "search data successfully",
+      success: true,
+      data: await searchAgentByNameOrByID(req.body.search,req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      tempId: [],
+    });
+  }
+})
+
+
 VehiclePolicy.get(
   "/get-vehicle-policy-temp-id",
   async (req: Request, res: Response) => {
