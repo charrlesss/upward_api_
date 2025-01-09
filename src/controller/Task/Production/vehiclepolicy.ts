@@ -17,8 +17,12 @@ import {
   getRateFromTPLUpdate,
   deleteTPLFromJournalBySource,
   getCostByTPL,
+  // ======= new ===
   searchClientByNameOrByID,
   searchAgentByNameOrByID,
+  getPolicyAccount,
+  getPolicyMortgagee,
+  getPolicyDenomination
 } from "../../../model/Task/Production/vehicle-policy";
 import { getAgents, getClients } from "../../../model/Task/Production/policy";
 import saveUserLogs from "../../../lib/save_user_logs";
@@ -35,7 +39,7 @@ VehiclePolicy.post('/search-client-by-id-or-name', async (req, res) => {
     res.send({
       message: "search data successfully",
       success: true,
-      data: await searchClientByNameOrByID(req.body.search,req),
+      data: await searchClientByNameOrByID(req.body.search, req),
     });
   } catch (error: any) {
     console.log(error.message);
@@ -47,14 +51,12 @@ VehiclePolicy.post('/search-client-by-id-or-name', async (req, res) => {
     });
   }
 })
-
 VehiclePolicy.post('/search-agent-by-id-or-name', async (req, res) => {
   try {
-    console.log('sad')
     res.send({
       message: "search data successfully",
       success: true,
-      data: await searchAgentByNameOrByID(req.body.search,req),
+      data: await searchAgentByNameOrByID(req.body.search, req),
     });
   } catch (error: any) {
     console.log(error.message);
@@ -66,7 +68,108 @@ VehiclePolicy.post('/search-agent-by-id-or-name', async (req, res) => {
     });
   }
 })
+VehiclePolicy.post('/account', async (req, res) => {
+  try {
+    const policy = req.body.policy
+    let whr = ''
+    if (policy === 'COM') {
+      whr = ' WHERE COM = 1'
+    }
+    if (policy === 'TPL') {
+      whr = ' WHERE TPL = 1'
+    }
+    res.send({
+      message: "search data successfully",
+      success: true,
+      data: await getPolicyAccount(whr, req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
 
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      tempId: [],
+    });
+  }
+})
+VehiclePolicy.post('/mortgagee', async (req, res) => {
+  try {
+    const policy = req.body.policy
+    let whr = ''
+    if (policy === 'COM') {
+      whr = ` WHERE Policy = 'Comprehensive'`
+    }
+    if (policy === 'TPL') {
+      whr = ` WHERE Policy = 'TPL'`
+    }
+    res.send({
+      message: "search data successfully",
+      success: true,
+      data: await getPolicyMortgagee(whr, req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      tempId: [],
+    });
+  }
+})
+VehiclePolicy.post('/denomination', async (req, res) => {
+  try {
+    const policy = req.body.policy
+    const account = req.body.account
+    let whr = ''
+
+    if (policy === 'COM') {
+      whr = ` where Line = 'Vehicle' and SUBSTRING(Type,1,3) ='COM' `
+    }
+    if (policy === 'TPL') {
+      whr = ` where Line = 'Vehicle' and SUBSTRING(Type,1,3) ='TPL' `
+    }
+
+    if (account && account !== '') {
+      whr = whr + ` and Account ='${account}' `
+    }
+
+    res.send({
+      message: "search data successfully",
+      success: true,
+      data: await getPolicyDenomination(whr, req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      tempId: [],
+    });
+  }
+})
+VehiclePolicy.post('/save', async (req, res) => {
+  try {
+
+    console.log(req.body)
+    res.send({
+      message: "search data successfully",
+      success: true,
+      data: [],
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      tempId: [],
+    });
+  }
+})
+// =================== old  =================== 
 
 VehiclePolicy.get(
   "/get-vehicle-policy-temp-id",
