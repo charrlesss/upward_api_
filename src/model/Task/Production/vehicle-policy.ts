@@ -79,6 +79,11 @@ SELECT '' as Type union all  select distinct Type from Rates ${whr};
   return await prisma.$queryRawUnsafe(qry) as any
 }
 
+export async function getPolicySubAccount(req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const qry = `SELECT Acronym FROM Sub_Account ORDER BY Acronym`
+  return await prisma.$queryRawUnsafe(qry) as any
+}
 
 // ===========================
 

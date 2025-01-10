@@ -22,9 +22,10 @@ import {
   searchAgentByNameOrByID,
   getPolicyAccount,
   getPolicyMortgagee,
-  getPolicyDenomination
+  getPolicyDenomination,
+  getPolicySubAccount
 } from "../../../model/Task/Production/vehicle-policy";
-import { getAgents, getClients } from "../../../model/Task/Production/policy";
+import { __executeQuery, getAgents, getClients } from "../../../model/Task/Production/policy";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
@@ -150,14 +151,12 @@ VehiclePolicy.post('/denomination', async (req, res) => {
     });
   }
 })
-VehiclePolicy.post('/save', async (req, res) => {
+VehiclePolicy.get('/sub-account', async (req, res) => {
   try {
-
-    console.log(req.body)
     res.send({
       message: "search data successfully",
       success: true,
-      data: [],
+      data: await getPolicySubAccount(req),
     });
   } catch (error: any) {
     console.log(error.message);
@@ -169,8 +168,554 @@ VehiclePolicy.post('/save', async (req, res) => {
     });
   }
 })
-// =================== old  =================== 
+VehiclePolicy.post('/search-policy', async (req, res) => {
+  try {
+    res.send({
+      message: "Search Successfully",
+      success: true,
+      data: await __executeQuery(`
+        SELECT 
+          date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
+          Policy.PolicyNo, Policy.Account, 
+          ID_Entry.cID_No AS Name
+        FROM Policy
+        LEFT JOIN FPolicy ON Policy.PolicyNo = FPolicy.PolicyNo 
+        LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
+        LEFT JOIN MPolicy  ON Policy.PolicyNo = MPolicy.PolicyNo LEFT JOIN BPolicy ON Policy.PolicyNo = BPolicy.PolicyNo 
+        LEFT JOIN MSPRPolicy  ON Policy.PolicyNo = MSPRPolicy.PolicyNo 
+        LEFT JOIN PAPolicy  ON Policy.PolicyNo = PAPolicy.PolicyNo 
+        LEFT JOIN CGLPolicy  ON Policy.PolicyNo = CGLPolicy.PolicyNo 
+        LEFT JOIN ( 
+          SELECT 
+                        a.entry_client_id as IDNo,
+                            sub_account,
+                            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No
+                    FROM
+                        entry_client a UNION ALL SELECT 
+                        a.entry_supplier_id as IDNo,
+                            sub_account,
+                            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No
+                    FROM
+                        entry_supplier a UNION ALL SELECT 
+                        a.entry_employee_id as IDNo,
+                            sub_account,
+                            IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No
+                    FROM
+                        entry_employee a UNION ALL SELECT 
+                        a.entry_fixed_assets_id as IDNo, sub_account, a.fullname AS cID_No
+                    FROM
+                        entry_fixed_assets a UNION ALL SELECT 
+                        a.entry_others_id as IDNo, sub_account, a.description AS cID_No
+                    FROM
+                        entry_others a UNION ALL SELECT 
+                        a.entry_agent_id as IDNo,
+                            sub_account,
+                            IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No
+                    FROM
+                        entry_agent a
+        ) ID_Entry  ON Policy.IDNo = ID_Entry.IDNo
+        WHERE 
+        
+        ((VPolicy.ChassisNo LIKE '%${req.body.search}%') 
+        OR (VPolicy.MotorNo LIKE '%${req.body.search}%') 
+        OR (VPolicy.PlateNo LIKE '%${req.body.search}%') 
+        OR (ID_Entry.cID_No LIKE '%${req.body.search}%') 
+        OR (Policy.PolicyNo LIKE '%${req.body.search}%') 
+        OR (Policy.Account LIKE '%${req.body.search}%')
+        OR (ID_Entry.IDNo LIKE '%${req.body.search}%'))
+        AND Policy.PolicyType = 'COM' AND SUBSTRING(Policy.PolicyNo,1,2) <> 'TP'
+        ORDER BY Policy.DateIssued desc
+        limit 500
+        ` , req)
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({ message: err.message, success: false, data: [] });
+  }
+})
+VehiclePolicy.post('/search-policy-selected', async (req, res) => {
+  try {
+    const data1 = await __executeQuery(`
+       SELECT 
+            Policy.*, 
+            INS.cID_No AS InsName, 
+            INS.address AS InsAdd, 
+            ifnull(AGNT.cID_No,'') AS AgentName 
+          FROM Policy
+          LEFT JOIN (
+          SELECT 
+                          a.entry_client_id as IDNo,
+                              sub_account,
+                              IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                  AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No,
+                                  a.address
+                      FROM
+                          entry_client a 
+                          UNION ALL SELECT 
+                          a.entry_supplier_id as IDNo,
+                              sub_account,
+                              IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                  AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No,
+                  a.address
+                      FROM
+                          entry_supplier a 
+                          UNION ALL SELECT 
+                          a.entry_employee_id as IDNo,
+                              sub_account,
+                              IF(a.lastname IS NOT NULL
+                                  AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No,
+                  a.address
+                      FROM
+                          entry_employee a 
+                          UNION ALL SELECT 
+                          a.entry_fixed_assets_id as IDNo, sub_account, a.fullname AS cID_No,
+                  a.description as address
+                      FROM
+                          entry_fixed_assets a 
+                          UNION ALL SELECT 
+                          a.entry_others_id as IDNo, sub_account, a.description AS cID_No,
+                          a.remarks as address
+                    
+                      FROM
+                          entry_others a 
+                          UNION ALL SELECT 
+                          a.entry_agent_id as IDNo,
+                              sub_account,
+                              IF(a.lastname IS NOT NULL
+                                  AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No,
+                  a.address
+                      FROM
+                          entry_agent a
+          ) INS ON Policy.IDNo = INS.IDNo 
+          LEFT JOIN (
+            SELECT 
+                          a.entry_client_id as IDNo,
+                              sub_account,
+                              IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                  AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No,
+                                  a.address
+                      FROM
+                          entry_client a 
+                          UNION ALL SELECT 
+                          a.entry_supplier_id as IDNo,
+                              sub_account,
+                              IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                  AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No,
+                  a.address
+                      FROM
+                          entry_supplier a 
+                          UNION ALL SELECT 
+                          a.entry_employee_id as IDNo,
+                              sub_account,
+                              IF(a.lastname IS NOT NULL
+                                  AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No,
+                  a.address
+                      FROM
+                          entry_employee a 
+                          UNION ALL SELECT 
+                          a.entry_fixed_assets_id as IDNo, sub_account, a.fullname AS cID_No,
+                  a.description as address
+                      FROM
+                          entry_fixed_assets a 
+                          UNION ALL SELECT 
+                          a.entry_others_id as IDNo, sub_account, a.description AS cID_No,
+                          a.remarks as address
+                    
+                      FROM
+                          entry_others a 
+                          UNION ALL SELECT 
+                          a.entry_agent_id as IDNo,
+                              sub_account,
+                              IF(a.lastname IS NOT NULL
+                                  AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No,
+                  a.address
+                      FROM
+                          entry_agent a
+          ) AS AGNT ON Policy.AgentID = AGNT.IDNo 
+          WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'
+        `, req)
+    const data2 = await __executeQuery(`SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`, req)
+    res.send({
+      message: "Search Successfully",
+      success: true,
+      data1,
+      data2
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({ message: err.message, success: false, data1: [], data2: [] });
+  }
+})
 
+VehiclePolicy.post("/tpl-add-vehicle-policy", async (req, res) => {
+  const { userAccess }: any = await VerifyToken(
+    req.cookies["up-ac-login"] as string,
+    process.env.USER_ACCESS as string
+  );
+
+  if (userAccess.includes("ADMIN")) {
+    return res.send({
+      message: "CAN'T SAVE, ADMIN IS FOR VIEWING ONLY!",
+      success: false,
+    });
+  }
+
+  try {
+
+
+    let dt: any = await __executeQuery(`SELECT * FROM Policy  WHERE PolicyNo = '${req.body.policyNoRef}' `, req)
+    if (req.body.mode !== 'update' && dt.length > 0) {
+      return res.send({
+        message: "Unable to save! Policy No. already exists!",
+        success: false,
+        data: [],
+      });
+    }
+
+    //get Commision rate
+    dt = await __executeQuery(`select Rate from Rates where Account = '${req.body.PolicyAccount}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`, req)
+
+    const rate = (
+      (await getRate(req.body.accountRef, "Vehicle", req.body.dinomination, req)) as Array<any>
+    )[0];
+    if (rate == null) {
+      return res.send({
+        message: "Please setup commission rate for this account and Line",
+        success: false,
+      });
+    }
+
+    const subAccount = ((await getClientById(req.body.clientIDRef, req)) as Array<any>)[0];
+    const strArea =
+      subAccount.Acronym === "" ? req.body.subAccountRef : subAccount.Acronym;
+    const cStrArea = subAccount.ShortName;
+
+    // const strArea = "HO";
+    // const cStrArea = "Head Office";
+    await insertNewVPolicy({ ...req.body, cStrArea, strArea }, req);
+
+    await saveUserLogs(req, req.body.policyNoRef, "add", "Vehicle Policy");
+    res.send({ message: "Create Vehicle Policy Successfully", success: true });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({ message: err.message, success: false });
+  }
+});
+
+// =================== old  =================== 
+async function insertNewVPolicy(
+  {
+    policy,
+    dateFromRef,
+    dateToRef,
+    dateIssuedRef,
+    clientIDRef,
+    clientNameRef,
+    accountRef,
+    subAccountRef,
+    policyNoRef,
+    totalPremiumRef,
+    vatRef,
+    docstampRef,
+    _localGovTaxRef,
+    stradComRef,
+    totalDueRef,
+    agentIdRef,
+    agentCommisionRef,
+    corNoRef,
+    orNoRef,
+    modelRef,
+    makeRef,
+    typeOfBodyRef,
+    plateNoRef,
+    chassisNoRef,
+    motorNoRef,
+    colorRef,
+    bltFileNoRef,
+    authorizedCapacityRef,
+    unladenWeightRef,
+    premiumPaidRef,
+    estimatedValueSchedVehicleRef,
+    airconRef,
+    stereoRef,
+    magwheelsRef,
+    othersSpecifyRef,
+    othersSpecifyRef_,
+    DeductibleRef,
+    towingRef,
+    authorizedRepairLimitRef,
+    bodyInjuryRef,
+    propertyDamageRef,
+    personalAccidentRef,
+    sectionI_IIRef,
+    sectionIIIRef,
+    ownDamageRef,
+    theftRef,
+    sectionIVARef,
+    sectionIVBRef,
+    othersRef,
+    _aogRef,
+    mortgageecheckRef,
+    mortgageeSelect,
+    dinomination,
+    aogRef,
+    localGovTaxRef,
+    typeRef,
+    strArea,
+    cStrArea,
+    Source_No_Ref_ID = '',
+    form_action,
+    rateCost = 0
+  }: any,
+  req: Request
+) {
+
+  let DateFrom: any = defaultFormat(new Date(dateFromRef))
+  let DateTo: any = defaultFormat(new Date(dateToRef))
+  let DateIssued: any = defaultFormat(new Date(dateIssuedRef))
+
+  await createPolicy(
+    {
+      IDNo: clientIDRef,
+      Account: accountRef,
+      SubAcct: subAccountRef,
+      PolicyType: policy,
+      PolicyNo: policyNoRef,
+      DateIssued,
+      TotalPremium: parseFloat(totalPremiumRef.replace(/,/g, '')),
+      Vat: parseFloat(vatRef.replace(/,/g, '')).toFixed(2),
+      DocStamp: parseFloat(docstampRef.replace(/,/g, '')).toFixed(2),
+      FireTax: "0",
+      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, '')).toFixed(2),
+      Notarial: "0",
+      Misc: parseFloat(stradComRef.replace(/,/g, '')).toFixed(2),
+      TotalDue: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
+      TotalPaid: "0",
+      Journal: false,
+      AgentID: agentIdRef,
+      AgentCom: agentCommisionRef,
+    },
+    req
+  );
+  // insert vehicle policy
+  await createVehiclePolicy(
+    {
+      PolicyNo: policyNoRef,
+      Account: accountRef,
+      PolicyType: policy,
+      CoverNo: corNoRef,
+      ORNo: orNoRef,
+      DateFrom,
+      DateTo,
+      Model: modelRef,
+      Make: makeRef,
+      BodyType: typeOfBodyRef,
+      Color: colorRef,
+      BLTFileNo: bltFileNoRef,
+      PlateNo: plateNoRef,
+      ChassisNo: chassisNoRef,
+      MotorNo: motorNoRef,
+      AuthorizedCap: authorizedCapacityRef,
+      UnladenWeight: unladenWeightRef,
+      TPL: "",
+      TPLLimit: "0.00",
+      PremiumPaid: parseFloat(premiumPaidRef.replace(/,/g, '')).toFixed(2),
+      EstimatedValue: parseFloat(estimatedValueSchedVehicleRef.replace(/,/g, '')).toFixed(2),
+      Aircon: parseFloat(airconRef.replace(/,/g, '')).toFixed(2),
+      Stereo: parseFloat(stereoRef.replace(/,/g, '')).toFixed(2),
+      Magwheels: parseFloat(magwheelsRef.replace(/,/g, '')).toFixed(2),
+      Others: othersSpecifyRef,
+      OthersAmount: parseFloat(othersSpecifyRef_.replace(/,/g, '')).toFixed(2),
+      Deductible: parseFloat(DeductibleRef.replace(/,/g, '')).toFixed(2),
+      Towing: parseFloat(towingRef.replace(/,/g, '')).toFixed(2),
+      RepairLimit: parseFloat(authorizedRepairLimitRef.replace(/,/g, '')).toFixed(2),
+      BodilyInjury: parseFloat(bodyInjuryRef.replace(/,/g, "")).toFixed(2),
+      PropertyDamage: parseFloat(propertyDamageRef.replace(/,/g, "")).toFixed(2),
+      PersonalAccident: parseFloat(personalAccidentRef.replace(/,/g, "")).toFixed(
+        2
+      ),
+      SecI: parseFloat(sectionI_IIRef.replace(/,/g, "")).toFixed(2),
+      SecIIPercent: parseFloat(sectionIIIRef.replace(/,/g, "")).toFixed(2),
+      ODamage: parseFloat(ownDamageRef.replace(/,/g, "")).toFixed(2),
+      Theft: parseFloat(theftRef.replace(/,/g, "")).toFixed(2),
+      Sec4A: parseFloat(sectionIVARef.replace(/,/g, "")).toFixed(2),
+      Sec4B: parseFloat(sectionIVBRef.replace(/,/g, "")).toFixed(2),
+      Sec4C: parseFloat(othersRef.replace(/,/g, "")).toFixed(2),
+      AOG: parseFloat(_aogRef.replace(/,/g, "")).toFixed(2),
+      MortgageeForm: mortgageecheckRef,
+      Mortgagee: mortgageeSelect,
+      Denomination: dinomination,
+      AOGPercent: parseFloat(aogRef.replace(/,/g, "")).toFixed(2),
+      LocalGovTaxPercent: parseFloat(localGovTaxRef.replace(/,/g, "")).toFixed(2),
+      TPLTypeSection_I_II: typeRef,
+      Remarks: "",
+    },
+    req
+  );
+
+  if (policyNoRef.includes("TP-")) {
+    await createJournalInVP(
+      {
+        Branch_Code: subAccountRef,
+        Date_Entry: DateIssued,
+        Source_Type: "PL",
+        Source_No: policyNoRef,
+        Explanation: `${policy} Production`,
+        GL_Acct: "1.03.03",
+        Sub_Acct: strArea,
+        ID_No: clientIDRef,
+        cGL_Acct: "Premium Receivable",
+        cSub_Acct: cStrArea,
+        cID_No: clientNameRef,
+        Debit: parseFloat(totalDueRef.replace(/,/g, '')),
+        Credit: 0,
+        TC: "P/R",
+        Remarks: "",
+        Source_No_Ref_ID,
+      },
+      req
+    );
+  } else {
+    await createJournalInVP(
+      {
+        Branch_Code: subAccountRef,
+        Date_Entry: DateIssued,
+        Source_Type: "PL",
+        Source_No: policyNoRef,
+        Explanation: `${policy} Production`,
+        GL_Acct: "1.03.01",
+        Sub_Acct: strArea,
+        ID_No: clientIDRef,
+        cGL_Acct: "Premium Receivable",
+        cSub_Acct: cStrArea,
+        cID_No: clientNameRef,
+        Debit: parseFloat(totalDueRef.replace(/,/g, '')),
+        Credit: 0,
+        TC: "P/R",
+        Remarks: "",
+        Source_No_Ref_ID,
+      },
+      req
+    );
+  }
+
+  if (policyNoRef.includes("TP-")) {
+    await createJournalInVP(
+      {
+        Branch_Code: subAccountRef,
+        Date_Entry: DateIssued,
+        Source_Type: "PL",
+        Source_No: policyNoRef,
+        Explanation: `${policy} Production`,
+        GL_Acct: "4.02.07",
+        Sub_Acct: strArea,
+        ID_No: clientIDRef,
+        cGL_Acct: "A/P",
+        cSub_Acct: cStrArea,
+        cID_No: clientNameRef,
+        Debit: 0,
+        Credit: parseFloat(totalDueRef.replace(/,/g, '')),
+        TC: "A/P",
+        Remarks: "",
+        Source_No_Ref_ID,
+      },
+      req
+    );
+  } else {
+    await createJournalInVP(
+      {
+        Branch_Code: subAccountRef,
+        Date_Entry: DateIssued,
+        Source_Type: "PL",
+        Source_No: policyNoRef,
+        Explanation: `${policy} Production`,
+        GL_Acct: "4.02.01",
+        Sub_Acct: strArea,
+        ID_No: clientIDRef,
+        cGL_Acct: "A/P",
+        cSub_Acct: cStrArea,
+        cID_No: clientNameRef,
+        Debit: 0,
+        Credit: parseFloat(totalDueRef.replace(/,/g, '')),
+        TC: "A/P",
+        Remarks: "",
+        Source_No_Ref_ID,
+      },
+      req
+    );
+  }
+
+  if (form_action === "REG" && policy === "TPL") {
+    await updateJournalByPolicy(policyNoRef, "CTPL Registration", req);
+    await createJournalInVP(
+      {
+        Branch_Code: subAccountRef,
+        Date_Entry: DateIssued,
+        Source_Type: "GL",
+        Source_No: policyNoRef,
+        Explanation: `${policy} Production`,
+        GL_Acct: "4.02.01",
+        Sub_Acct: strArea,
+        ID_No: clientIDRef,
+        cGL_Acct: "A/P",
+        cSub_Acct: cStrArea,
+        cID_No: clientNameRef,
+        Debit: parseFloat(totalDueRef.replace(/,/g, '')),
+        Credit: 0,
+        TC: "P/R",
+        Remarks: "",
+        Source_No_Ref_ID,
+      },
+      req
+    );
+    await createJournalInVP(
+      {
+        Branch_Code: subAccountRef,
+        Date_Entry: DateIssued,
+        Source_Type: "GL",
+        Source_No: policyNoRef,
+        Explanation: `${policy} Production`,
+        GL_Acct: "1.04.01",
+        Sub_Acct: strArea,
+        ID_No: clientIDRef,
+        cGL_Acct: "CTPL Inventory",
+        cSub_Acct: cStrArea,
+        cID_No: clientNameRef,
+        Debit: 0,
+        Credit: parseFloat(rateCost.toString().replace(/,/g, '')),
+        TC: "CTI",
+        Remarks: "",
+        Source_No_Ref_ID,
+      },
+      req
+    );
+    await createJournalInVP(
+      {
+        Branch_Code: subAccountRef,
+        Date_Entry: DateIssued,
+        Source_Type: "GL",
+        Source_No: policyNoRef,
+        Explanation: `${policy} Production`,
+        GL_Acct: "6.01.10",
+        Sub_Acct: strArea,
+        ID_No: clientIDRef,
+        cGL_Acct: "CTPL Income",
+        cSub_Acct: cStrArea,
+        cID_No: clientNameRef,
+        Debit: 0,
+        Credit: parseFloat(totalDueRef.replace(/,/g, '')) - parseFloat(rateCost.toString().replace(/,/g, '')),
+        TC: "CIN",
+        Remarks: "",
+        Source_No_Ref_ID,
+      },
+      req
+    );
+  }
+}
 VehiclePolicy.get(
   "/get-vehicle-policy-temp-id",
   async (req: Request, res: Response) => {
@@ -259,323 +804,9 @@ VehiclePolicy.get(
     }
   }
 );
-async function insertNewVPolicy(
-  {
-    form_action,
-    form_type,
-    sub_account,
-    client_id,
-    client_name,
-    client_address,
-    agent_id,
-    agent_name,
-    agent_com,
-    PolicyAccount,
-    PolicyNo,
-    CCN,
-    ORN,
-    DateFrom,
-    DateTo,
-    DateIssued,
-    Model,
-    Make,
-    TB,
-    Color,
-    BLTFileNo,
-    PlateNo,
-    ChassisNo,
-    MotorNo,
-    AuthorizedCapacity,
-    UnladenWeigth,
-    TplType,
-    PremiumPaid,
-    EVSV,
-    Aircon,
-    Stereo,
-    Magwheels,
-    OthersRate,
-    OthersDesc,
-    CompreType,
-    Deductible,
-    Towing,
-    ARL,
-    BodyInjury,
-    PropertyDamage,
-    PersinalAccident,
-    Denomination,
-    Mortgagee,
-    MortgageeForm,
-    SectionI_II,
-    SectionIII,
-    OwnDamage,
-    Theft,
-    SectionIVA,
-    SectionIVB,
-    PremiumOther,
-    AOG,
-    AOGPercent,
-    TotalPremium,
-    Vat,
-    DocStamp,
-    LocalGovTax,
-    StradCom,
-    TotalDue,
-    Type,
-    LocalGovTaxPercent,
-    rateCost,
-    Source_No_Ref_ID,
-    strArea,
-    cStrArea,
-    remarks,
-  }: any,
-  req: Request
-) {
 
-  DateFrom = defaultFormat(new Date(DateFrom))
-  DateTo = defaultFormat(new Date(DateTo))
-  DateIssued = defaultFormat(new Date(DateIssued))
-
-  await createPolicy(
-    {
-      IDNo: client_id,
-      Account: PolicyAccount,
-      SubAcct: sub_account,
-      PolicyType: form_type,
-      PolicyNo: PolicyNo,
-      DateIssued,
-      TotalPremium: parseFloat(parseFloat(TotalPremium).toFixed(2)),
-      Vat,
-      DocStamp,
-      FireTax: "0",
-      LGovTax: LocalGovTax,
-      Notarial: "0",
-      Misc: StradCom,
-      TotalDue,
-      TotalPaid: "0",
-      Journal: false,
-      AgentID: agent_id,
-      AgentCom: agent_com,
-    },
-    req
-  );
-  // insert vehicle policy
-  await createVehiclePolicy(
-    {
-      PolicyNo,
-      Account: PolicyAccount,
-      PolicyType: form_type,
-      CoverNo: CCN,
-      ORNo: ORN,
-      DateFrom,
-      DateTo,
-      Model,
-      Make,
-      BodyType: TB,
-      Color,
-      BLTFileNo,
-      PlateNo,
-      ChassisNo,
-      MotorNo,
-      AuthorizedCap: AuthorizedCapacity,
-      UnladenWeight: UnladenWeigth,
-      TPL: "",
-      TPLLimit: "0.00",
-      PremiumPaid: parseFloat(PremiumPaid).toFixed(2),
-      EstimatedValue: parseFloat(EVSV).toFixed(2),
-      Aircon: parseFloat(Aircon).toFixed(2),
-      Stereo: parseFloat(Stereo).toFixed(2),
-      Magwheels: parseFloat(Magwheels).toFixed(2),
-      Others: OthersDesc,
-      OthersAmount: parseFloat(OthersRate).toFixed(2),
-      Deductible: parseFloat(Deductible).toFixed(2),
-      Towing: parseFloat(Towing).toFixed(2),
-      RepairLimit: parseFloat(ARL).toFixed(2),
-      BodilyInjury: parseFloat(BodyInjury.replace(/,/g, "")).toFixed(2),
-      PropertyDamage: parseFloat(PropertyDamage.replace(/,/g, "")).toFixed(2),
-      PersonalAccident: parseFloat(PersinalAccident.replace(/,/g, "")).toFixed(
-        2
-      ),
-      SecI: parseFloat(SectionI_II).toFixed(2),
-      SecIIPercent: parseFloat(SectionIII).toFixed(2),
-      ODamage: parseFloat(OwnDamage).toFixed(2),
-      Theft: parseFloat(Theft).toFixed(2),
-      Sec4A: parseFloat(SectionIVA).toFixed(2),
-      Sec4B: parseFloat(SectionIVB).toFixed(2),
-      Sec4C: parseFloat(PremiumOther).toFixed(2),
-      AOG: parseFloat(AOG).toFixed(2),
-      MortgageeForm: JSON.parse(MortgageeForm),
-      Mortgagee: Mortgagee,
-      Denomination,
-      AOGPercent: parseFloat(AOGPercent).toFixed(2),
-      LocalGovTaxPercent: parseFloat(LocalGovTaxPercent).toFixed(2),
-      TPLTypeSection_I_II: TplType,
-      Remarks: remarks,
-    },
-    req
-  );
-
-  if (PolicyNo.includes("TP-")) {
-    await createJournalInVP(
-      {
-        Branch_Code: sub_account,
-        Date_Entry: DateIssued,
-        Source_Type: "PL",
-        Source_No: PolicyNo,
-        Explanation: `${form_type} Production`,
-        GL_Acct: "1.03.03",
-        Sub_Acct: strArea,
-        ID_No: PolicyNo,
-        cGL_Acct: "Premium Receivable",
-        cSub_Acct: cStrArea,
-        cID_No: client_name,
-        Debit: parseFloat(TotalDue),
-        Credit: 0,
-        TC: "P/R",
-        Remarks: "",
-        Source_No_Ref_ID,
-      },
-      req
-    );
-  } else {
-    await createJournalInVP(
-      {
-        Branch_Code: sub_account,
-        Date_Entry: DateIssued,
-        Source_Type: "PL",
-        Source_No: PolicyNo,
-        Explanation: `${form_type} Production`,
-        GL_Acct: "1.03.01",
-        Sub_Acct: strArea,
-        ID_No: PolicyNo,
-        cGL_Acct: "Premium Receivable",
-        cSub_Acct: cStrArea,
-        cID_No: client_name,
-        Debit: parseFloat(TotalDue),
-        Credit: 0,
-        TC: "P/R",
-        Remarks: "",
-        Source_No_Ref_ID,
-      },
-      req
-    );
-  }
-
-  if (PolicyNo.includes("TP-")) {
-    await createJournalInVP(
-      {
-        Branch_Code: sub_account,
-        Date_Entry: DateIssued,
-        Source_Type: "PL",
-        Source_No: PolicyNo,
-        Explanation: `${form_type} Production`,
-        GL_Acct: "4.02.07",
-        Sub_Acct: strArea,
-        ID_No: PolicyNo,
-        cGL_Acct: "A/P",
-        cSub_Acct: cStrArea,
-        cID_No: client_name,
-        Debit: 0,
-        Credit: parseFloat(TotalDue),
-        TC: "A/P",
-        Remarks: "",
-        Source_No_Ref_ID,
-      },
-      req
-    );
-  } else {
-    await createJournalInVP(
-      {
-        Branch_Code: sub_account,
-        Date_Entry: DateIssued,
-        Source_Type: "PL",
-        Source_No: PolicyNo,
-        Explanation: `${form_type} Production`,
-        GL_Acct: "4.02.01",
-        Sub_Acct: strArea,
-        ID_No: PolicyNo,
-        cGL_Acct: "A/P",
-        cSub_Acct: cStrArea,
-        cID_No: client_name,
-        Debit: 0,
-        Credit: parseFloat(TotalDue),
-        TC: "A/P",
-        Remarks: "",
-        Source_No_Ref_ID,
-      },
-      req
-    );
-  }
-
-  if (form_action === "REG" && form_type === "TPL") {
-    await updateJournalByPolicy(PolicyNo, "CTPL Registration", req);
-    await createJournalInVP(
-      {
-        Branch_Code: sub_account,
-        Date_Entry: DateIssued,
-        Source_Type: "GL",
-        Source_No: PolicyNo,
-        Explanation: `${form_type} Production`,
-        GL_Acct: "4.02.01",
-        Sub_Acct: strArea,
-        ID_No: PolicyNo,
-        cGL_Acct: "A/P",
-        cSub_Acct: cStrArea,
-        cID_No: client_name,
-        Debit: parseFloat(TotalDue),
-        Credit: 0,
-        TC: "P/R",
-        Remarks: "",
-        Source_No_Ref_ID,
-      },
-      req
-    );
-    await createJournalInVP(
-      {
-        Branch_Code: sub_account,
-        Date_Entry: DateIssued,
-        Source_Type: "GL",
-        Source_No: PolicyNo,
-        Explanation: `${form_type} Production`,
-        GL_Acct: "1.04.01",
-        Sub_Acct: strArea,
-        ID_No: PolicyNo,
-        cGL_Acct: "CTPL Inventory",
-        cSub_Acct: cStrArea,
-        cID_No: client_name,
-        Debit: 0,
-        Credit: parseFloat(rateCost),
-        TC: "CTI",
-        Remarks: "",
-        Source_No_Ref_ID,
-      },
-      req
-    );
-    await createJournalInVP(
-      {
-        Branch_Code: sub_account,
-        Date_Entry: DateIssued,
-        Source_Type: "GL",
-        Source_No: PolicyNo,
-        Explanation: `${form_type} Production`,
-        GL_Acct: "6.01.10",
-        Sub_Acct: strArea,
-        ID_No: PolicyNo,
-        cGL_Acct: "CTPL Income",
-        cSub_Acct: cStrArea,
-        cID_No: client_name,
-        Debit: 0,
-        Credit: parseFloat(TotalDue) - parseFloat(rateCost),
-        TC: "CIN",
-        Remarks: "",
-        Source_No_Ref_ID,
-      },
-      req
-    );
-  }
-}
 VehiclePolicy.post("/tpl-add-vehicle-policy", async (req, res) => {
-  console.log(req.body)
-  convertToPassitive(req);
+  // convertToPassitive(req);
   const { sub_account, client_id, PolicyAccount, PolicyNo, Denomination } =
     req.body;
   const { userAccess }: any = await VerifyToken(
