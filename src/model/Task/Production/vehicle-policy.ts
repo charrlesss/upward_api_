@@ -330,10 +330,10 @@ export async function deleteJournalBySource(
 ) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
-  delete from journal 
-  where 
-  Source_No = '${source_no}' 
-  and Source_Type = '${source_type}'
+    delete from journal 
+    where 
+    Source_No = '${source_no}' 
+    and Source_Type = '${source_type}'
   `;
   return await prisma.$queryRawUnsafe(query);
 }

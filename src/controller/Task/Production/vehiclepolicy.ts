@@ -351,7 +351,7 @@ VehiclePolicy.post('/search-policy-selected', async (req, res) => {
   }
 })
 
-VehiclePolicy.post("/tpl-add-vehicle-policy", async (req, res) => {
+VehiclePolicy.post("/save", async (req, res) => {
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
@@ -377,7 +377,7 @@ VehiclePolicy.post("/tpl-add-vehicle-policy", async (req, res) => {
     }
 
     //get Commision rate
-    dt = await __executeQuery(`select Rate from Rates where Account = '${req.body.PolicyAccount}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`, req)
+    dt = await __executeQuery(`select Rate from Rates where Account = '${req.body.accountRef}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`, req)
 
     const rate = (
       (await getRate(req.body.accountRef, "Vehicle", req.body.dinomination, req)) as Array<any>
@@ -402,6 +402,54 @@ VehiclePolicy.post("/tpl-add-vehicle-policy", async (req, res) => {
     res.send({ message: "Create Vehicle Policy Successfully", success: true });
   } catch (err: any) {
     console.log(err.message);
+    res.send({ message: err.message, success: false });
+  }
+});
+
+VehiclePolicy.post("/com-update-regular", async (req, res) => {
+    const { userAccess }: any = await VerifyToken(
+    req.cookies["up-ac-login"] as string,
+    process.env.USER_ACCESS as string
+  );
+  if (userAccess.includes("ADMIN")) {
+    return res.send({
+      message: "CAN'T UPDATE, ADMIN IS FOR VIEWING ONLY!",
+      success: false,
+    });
+  }
+ 
+
+  try {
+    if (!(await saveUserLogsCode(req, "update", req.body.policyNoRef, "Vehicle Policy"))) {
+      return res.send({ message: "Invalid User Code", success: false });
+    }
+    //get Commision rate
+    const rate = (
+      (await getRate(req.body.accountRef, "Vehicle", req.body.dinomination, req)) as Array<any>
+    )[0];
+
+    if (rate == null) {
+      return res.send({
+        message: "Please setup commission rate for this account and Line",
+        success: false,
+      });
+    }
+
+    const subAccount = ((await getClientById(req.body.clientIDRef, req)) as Array<any>)[0];
+    const strArea =
+      subAccount.Acronym === "" ? req.body.subAccountRef : subAccount.Acronym;
+    const cStrArea = subAccount.ShortName;
+
+    //delete policy
+    await deletePolicyByVehicle(req.body.policy, req.body.policyNoRef, req);
+    //delete v policy
+    await deleteVehiclePolicy(req.body.policy, req.body.policyNoRef, req);
+    //delete journal
+    await deleteJournalBySource(req.body.policyNoRef, "PL", req);
+    // insert policy
+    await insertNewVPolicy({ ...req.body, cStrArea, strArea }, req);
+    res.send({ message: "Update Vehicle Policy Successfully", success: true });
+  } catch (err: any) {
     res.send({ message: err.message, success: false });
   }
 });
@@ -905,7 +953,7 @@ VehiclePolicy.post("/tpl-update-vehicle-policy", async (req, res) => {
     await deleteVehiclePolicy(form_type, PolicyNo, req);
     //delete journal
     await deleteTPLFromJournalBySource(PolicyNo, req);
-    await deleteJournalBySource(PolicyNo, "PL", req);
+   // await deleteJournalBySource(PolicyNo, "PL", req);
 
     // insert policy
     await insertNewVPolicy({ ...req.body, cStrArea, strArea }, req);
@@ -915,59 +963,7 @@ VehiclePolicy.post("/tpl-update-vehicle-policy", async (req, res) => {
     res.send({ message: err.message, success: false });
   }
 });
-VehiclePolicy.post("/com-update-vehicle-policy", async (req, res) => {
-  convertToPassitive(req);
-  const { userAccess }: any = await VerifyToken(
-    req.cookies["up-ac-login"] as string,
-    process.env.USER_ACCESS as string
-  );
-  if (userAccess.includes("ADMIN")) {
-    return res.send({
-      message: "CAN'T UPDATE, ADMIN IS FOR VIEWING ONLY!",
-      success: false,
-    });
-  }
-  const {
-    form_type,
-    sub_account,
-    client_id,
-    PolicyAccount,
-    PolicyNo,
-    Denomination,
-  } = req.body;
-  try {
-    if (!(await saveUserLogsCode(req, "update", PolicyNo, "Vehicle Policy"))) {
-      return res.send({ message: "Invalid User Code", success: false });
-    }
-    //get Commision rate
-    const rate = (
-      (await getRate(PolicyAccount, "Vehicle", Denomination, req)) as Array<any>
-    )[0];
-    if (rate == null) {
-      return res.send({
-        message: "Please setup commission rate for this account and Line",
-        success: false,
-      });
-    }
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
-    const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
-    const cStrArea = subAccount.ShortName;
-    let Source_Type = "PL";
 
-    //delete policy
-    await deletePolicyByVehicle(form_type, PolicyNo, req);
-    //delete v policy
-    await deleteVehiclePolicy(form_type, PolicyNo, req);
-    //delete journal
-    await deleteJournalBySource(PolicyNo, "PL", req);
-    // insert policy
-    await insertNewVPolicy({ ...req.body, cStrArea, strArea }, req);
-    res.send({ message: "Update Vehicle Policy Successfully", success: true });
-  } catch (err: any) {
-    res.send({ message: err.message, success: false });
-  }
-});
 VehiclePolicy.get("/tpl-search-vehicle-policy", async (req, res) => {
   const { form_type, form_action, search } = req.query;
   const getSearch = await searchDataVPolicy(
