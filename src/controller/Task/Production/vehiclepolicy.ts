@@ -23,9 +23,14 @@ import {
   getPolicyAccount,
   getPolicyMortgagee,
   getPolicyDenomination,
-  getPolicySubAccount
+  getPolicySubAccount,
+  generateTempID,
 } from "../../../model/Task/Production/vehicle-policy";
-import { __executeQuery, getAgents, getClients } from "../../../model/Task/Production/policy";
+import {
+  __executeQuery,
+  getAgents,
+  getClients,
+} from "../../../model/Task/Production/policy";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
@@ -34,8 +39,7 @@ import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const VehiclePolicy = express.Router();
 
-
-VehiclePolicy.post('/search-client-by-id-or-name', async (req, res) => {
+VehiclePolicy.post("/search-client-by-id-or-name", async (req, res) => {
   try {
     res.send({
       message: "search data successfully",
@@ -51,8 +55,8 @@ VehiclePolicy.post('/search-client-by-id-or-name', async (req, res) => {
       tempId: [],
     });
   }
-})
-VehiclePolicy.post('/search-agent-by-id-or-name', async (req, res) => {
+});
+VehiclePolicy.post("/search-agent-by-id-or-name", async (req, res) => {
   try {
     res.send({
       message: "search data successfully",
@@ -68,16 +72,16 @@ VehiclePolicy.post('/search-agent-by-id-or-name', async (req, res) => {
       tempId: [],
     });
   }
-})
-VehiclePolicy.post('/account', async (req, res) => {
+});
+VehiclePolicy.post("/account", async (req, res) => {
   try {
-    const policy = req.body.policy
-    let whr = ''
-    if (policy === 'COM') {
-      whr = ' WHERE COM = 1'
+    const policy = req.body.policy;
+    let whr = "";
+    if (policy === "COM") {
+      whr = " WHERE COM = 1";
     }
-    if (policy === 'TPL') {
-      whr = ' WHERE TPL = 1'
+    if (policy === "TPL") {
+      whr = " WHERE TPL = 1";
     }
     res.send({
       message: "search data successfully",
@@ -93,16 +97,16 @@ VehiclePolicy.post('/account', async (req, res) => {
       tempId: [],
     });
   }
-})
-VehiclePolicy.post('/mortgagee', async (req, res) => {
+});
+VehiclePolicy.post("/mortgagee", async (req, res) => {
   try {
-    const policy = req.body.policy
-    let whr = ''
-    if (policy === 'COM') {
-      whr = ` WHERE Policy = 'Comprehensive'`
+    const policy = req.body.policy;
+    let whr = "";
+    if (policy === "COM") {
+      whr = ` WHERE Policy = 'Comprehensive'`;
     }
-    if (policy === 'TPL') {
-      whr = ` WHERE Policy = 'TPL'`
+    if (policy === "TPL") {
+      whr = ` WHERE Policy = 'TPL'`;
     }
     res.send({
       message: "search data successfully",
@@ -118,22 +122,22 @@ VehiclePolicy.post('/mortgagee', async (req, res) => {
       tempId: [],
     });
   }
-})
-VehiclePolicy.post('/denomination', async (req, res) => {
+});
+VehiclePolicy.post("/denomination", async (req, res) => {
   try {
-    const policy = req.body.policy
-    const account = req.body.account
-    let whr = ''
+    const policy = req.body.policy;
+    const account = req.body.account;
+    let whr = "";
 
-    if (policy === 'COM') {
-      whr = ` where Line = 'Vehicle' and SUBSTRING(Type,1,3) ='COM' `
+    if (policy === "COM") {
+      whr = ` where Line = 'Vehicle' and SUBSTRING(Type,1,3) ='COM' `;
     }
-    if (policy === 'TPL') {
-      whr = ` where Line = 'Vehicle' and SUBSTRING(Type,1,3) ='TPL' `
+    if (policy === "TPL") {
+      whr = ` where Line = 'Vehicle' and SUBSTRING(Type,1,3) ='TPL' `;
     }
 
-    if (account && account !== '') {
-      whr = whr + ` and Account ='${account}' `
+    if (account && account !== "") {
+      whr = whr + ` and Account ='${account}' `;
     }
 
     res.send({
@@ -150,8 +154,8 @@ VehiclePolicy.post('/denomination', async (req, res) => {
       tempId: [],
     });
   }
-})
-VehiclePolicy.get('/sub-account', async (req, res) => {
+});
+VehiclePolicy.get("/sub-account", async (req, res) => {
   try {
     res.send({
       message: "search data successfully",
@@ -167,13 +171,14 @@ VehiclePolicy.get('/sub-account', async (req, res) => {
       tempId: [],
     });
   }
-})
-VehiclePolicy.post('/search-policy', async (req, res) => {
+});
+VehiclePolicy.post("/search-policy", async (req, res) => {
   try {
     res.send({
       message: "Search Successfully",
       success: true,
-      data: await __executeQuery(`
+      data: await __executeQuery(
+        `
         SELECT 
           date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
           Policy.PolicyNo, Policy.Account, 
@@ -230,16 +235,19 @@ VehiclePolicy.post('/search-policy', async (req, res) => {
         AND Policy.PolicyType = 'COM' AND SUBSTRING(Policy.PolicyNo,1,2) <> 'TP'
         ORDER BY Policy.DateIssued desc
         limit 500
-        ` , req)
+        `,
+        req
+      ),
     });
   } catch (err: any) {
     console.log(err.message);
     res.send({ message: err.message, success: false, data: [] });
   }
-})
-VehiclePolicy.post('/search-policy-selected', async (req, res) => {
+});
+VehiclePolicy.post("/search-policy-selected", async (req, res) => {
   try {
-    const data1 = await __executeQuery(`
+    const data1 = await __executeQuery(
+      `
        SELECT 
             Policy.*, 
             INS.cID_No AS InsName, 
@@ -337,20 +345,24 @@ VehiclePolicy.post('/search-policy-selected', async (req, res) => {
                           entry_agent a
           ) AS AGNT ON Policy.AgentID = AGNT.IDNo 
           WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'
-        `, req)
-    const data2 = await __executeQuery(`SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`, req)
+        `,
+      req
+    );
+    const data2 = await __executeQuery(
+      `SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`,
+      req
+    );
     res.send({
       message: "Search Successfully",
       success: true,
       data1,
-      data2
+      data2,
     });
   } catch (err: any) {
     console.log(err.message);
     res.send({ message: err.message, success: false, data1: [], data2: [] });
   }
-})
-
+});
 VehiclePolicy.post("/save", async (req, res) => {
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
@@ -365,10 +377,11 @@ VehiclePolicy.post("/save", async (req, res) => {
   }
 
   try {
-
-
-    let dt: any = await __executeQuery(`SELECT * FROM Policy  WHERE PolicyNo = '${req.body.policyNoRef}' `, req)
-    if (req.body.mode !== 'update' && dt.length > 0) {
+    let dt: any = await __executeQuery(
+      `SELECT * FROM Policy  WHERE PolicyNo = '${req.body.policyNoRef}' `,
+      req
+    );
+    if (req.body.mode !== "update" && dt.length > 0) {
       return res.send({
         message: "Unable to save! Policy No. already exists!",
         success: false,
@@ -377,10 +390,18 @@ VehiclePolicy.post("/save", async (req, res) => {
     }
 
     //get Commision rate
-    dt = await __executeQuery(`select Rate from Rates where Account = '${req.body.accountRef}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`, req)
+    dt = await __executeQuery(
+      `select Rate from Rates where Account = '${req.body.accountRef}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`,
+      req
+    );
 
     const rate = (
-      (await getRate(req.body.accountRef, "Vehicle", req.body.dinomination, req)) as Array<any>
+      (await getRate(
+        req.body.accountRef,
+        "Vehicle",
+        req.body.dinomination,
+        req
+      )) as Array<any>
     )[0];
     if (rate == null) {
       return res.send({
@@ -389,7 +410,9 @@ VehiclePolicy.post("/save", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(req.body.clientIDRef, req)) as Array<any>)[0];
+    const subAccount = (
+      (await getClientById(req.body.clientIDRef, req)) as Array<any>
+    )[0];
     const strArea =
       subAccount.Acronym === "" ? req.body.subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
@@ -405,9 +428,8 @@ VehiclePolicy.post("/save", async (req, res) => {
     res.send({ message: err.message, success: false });
   }
 });
-
 VehiclePolicy.post("/com-update-regular", async (req, res) => {
-    const { userAccess }: any = await VerifyToken(
+  const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
@@ -417,15 +439,26 @@ VehiclePolicy.post("/com-update-regular", async (req, res) => {
       success: false,
     });
   }
- 
 
   try {
-    if (!(await saveUserLogsCode(req, "update", req.body.policyNoRef, "Vehicle Policy"))) {
+    if (
+      !(await saveUserLogsCode(
+        req,
+        "update",
+        req.body.policyNoRef,
+        "Vehicle Policy"
+      ))
+    ) {
       return res.send({ message: "Invalid User Code", success: false });
     }
     //get Commision rate
     const rate = (
-      (await getRate(req.body.accountRef, "Vehicle", req.body.dinomination, req)) as Array<any>
+      (await getRate(
+        req.body.accountRef,
+        "Vehicle",
+        req.body.dinomination,
+        req
+      )) as Array<any>
     )[0];
 
     if (rate == null) {
@@ -435,7 +468,9 @@ VehiclePolicy.post("/com-update-regular", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(req.body.clientIDRef, req)) as Array<any>)[0];
+    const subAccount = (
+      (await getClientById(req.body.clientIDRef, req)) as Array<any>
+    )[0];
     const strArea =
       subAccount.Acronym === "" ? req.body.subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
@@ -454,7 +489,179 @@ VehiclePolicy.post("/com-update-regular", async (req, res) => {
   }
 });
 
-// =================== old  =================== 
+//// TEMP
+VehiclePolicy.get("/temp-id", async (req, res) => {
+  try {
+    res.send({
+      message: "Get Temp ID Successfully",
+      success: true,
+      data: await generateTempID(req),
+    });
+  } catch (err: any) {
+    res.send({ message: err.message, success: false, data: [] });
+  }
+});
+VehiclePolicy.post("/search-policy-temp", async (req, res) => {
+  try {
+    res.send({
+      message: "Search Successfully",
+      success: true,
+      data: await __executeQuery(
+        `
+        SELECT 
+          date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
+          Policy.PolicyNo, Policy.Account, 
+          ID_Entry.cID_No AS Name
+        FROM Policy
+        LEFT JOIN FPolicy ON Policy.PolicyNo = FPolicy.PolicyNo 
+        LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
+        LEFT JOIN MPolicy  ON Policy.PolicyNo = MPolicy.PolicyNo LEFT JOIN BPolicy ON Policy.PolicyNo = BPolicy.PolicyNo 
+        LEFT JOIN MSPRPolicy  ON Policy.PolicyNo = MSPRPolicy.PolicyNo 
+        LEFT JOIN PAPolicy  ON Policy.PolicyNo = PAPolicy.PolicyNo 
+        LEFT JOIN CGLPolicy  ON Policy.PolicyNo = CGLPolicy.PolicyNo 
+        LEFT JOIN ( 
+          SELECT 
+                        a.entry_client_id as IDNo,
+                            sub_account,
+                            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No
+                    FROM
+                        entry_client a UNION ALL SELECT 
+                        a.entry_supplier_id as IDNo,
+                            sub_account,
+                            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No
+                    FROM
+                        entry_supplier a UNION ALL SELECT 
+                        a.entry_employee_id as IDNo,
+                            sub_account,
+                            IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No
+                    FROM
+                        entry_employee a UNION ALL SELECT 
+                        a.entry_fixed_assets_id as IDNo, sub_account, a.fullname AS cID_No
+                    FROM
+                        entry_fixed_assets a UNION ALL SELECT 
+                        a.entry_others_id as IDNo, sub_account, a.description AS cID_No
+                    FROM
+                        entry_others a UNION ALL SELECT 
+                        a.entry_agent_id as IDNo,
+                            sub_account,
+                            IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No
+                    FROM
+                        entry_agent a
+        ) ID_Entry  ON Policy.IDNo = ID_Entry.IDNo
+        WHERE 
+        
+        ((VPolicy.ChassisNo LIKE '%${req.body.search}%') 
+        OR (VPolicy.MotorNo LIKE '%${req.body.search}%') 
+        OR (VPolicy.PlateNo LIKE '%${req.body.search}%') 
+        OR (ID_Entry.cID_No LIKE '%${req.body.search}%') 
+        OR (Policy.PolicyNo LIKE '%${req.body.search}%') 
+        OR (Policy.Account LIKE '%${req.body.search}%')
+        OR (ID_Entry.IDNo LIKE '%${req.body.search}%'))
+        AND Policy.PolicyType = 'COM' AND SUBSTRING(Policy.PolicyNo,1,2) = 'TP'
+        ORDER BY Policy.DateIssued desc
+        limit 500
+        `,
+        req
+      ),
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({ message: err.message, success: false, data: [] });
+  }
+});
+
+// TPL
+VehiclePolicy.post("/get-tpl-id", async (req, res) => {
+  try {
+    res.send({
+      message: "Search Successfully",
+      success: true,
+      data: await getTPL_IDS(req.body.search as string, req),
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({ message: err.message, success: false, data: [] });
+  }
+});
+
+VehiclePolicy.post("/search-policy-tpl", async (req, res) => {
+  try {
+    res.send({
+      message: "Search Successfully",
+      success: true,
+      data: await __executeQuery(
+        `
+        SELECT 
+          date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
+          Policy.PolicyNo, Policy.Account, 
+          ID_Entry.cID_No AS Name
+        FROM Policy
+        LEFT JOIN FPolicy ON Policy.PolicyNo = FPolicy.PolicyNo 
+        LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
+        LEFT JOIN MPolicy  ON Policy.PolicyNo = MPolicy.PolicyNo LEFT JOIN BPolicy ON Policy.PolicyNo = BPolicy.PolicyNo 
+        LEFT JOIN MSPRPolicy  ON Policy.PolicyNo = MSPRPolicy.PolicyNo 
+        LEFT JOIN PAPolicy  ON Policy.PolicyNo = PAPolicy.PolicyNo 
+        LEFT JOIN CGLPolicy  ON Policy.PolicyNo = CGLPolicy.PolicyNo 
+        LEFT JOIN ( 
+          SELECT 
+                        a.entry_client_id as IDNo,
+                            sub_account,
+                            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No
+                    FROM
+                        entry_client a UNION ALL SELECT 
+                        a.entry_supplier_id as IDNo,
+                            sub_account,
+                            IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS cID_No
+                    FROM
+                        entry_supplier a UNION ALL SELECT 
+                        a.entry_employee_id as IDNo,
+                            sub_account,
+                            IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No
+                    FROM
+                        entry_employee a UNION ALL SELECT 
+                        a.entry_fixed_assets_id as IDNo, sub_account, a.fullname AS cID_No
+                    FROM
+                        entry_fixed_assets a UNION ALL SELECT 
+                        a.entry_others_id as IDNo, sub_account, a.description AS cID_No
+                    FROM
+                        entry_others a UNION ALL SELECT 
+                        a.entry_agent_id as IDNo,
+                            sub_account,
+                            IF(a.lastname IS NOT NULL
+                                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename)) AS cID_No
+                    FROM
+                        entry_agent a
+        ) ID_Entry  ON Policy.IDNo = ID_Entry.IDNo
+        WHERE 
+        
+        ((VPolicy.ChassisNo LIKE '%${req.body.search}%') 
+        OR (VPolicy.MotorNo LIKE '%${req.body.search}%') 
+        OR (VPolicy.PlateNo LIKE '%${req.body.search}%') 
+        OR (ID_Entry.cID_No LIKE '%${req.body.search}%') 
+        OR (Policy.PolicyNo LIKE '%${req.body.search}%') 
+        OR (Policy.Account LIKE '%${req.body.search}%')
+        OR (ID_Entry.IDNo LIKE '%${req.body.search}%'))
+        AND Policy.PolicyType = 'TPL' AND SUBSTRING(Policy.PolicyNo,1,2) <> 'TP'
+        ORDER BY Policy.DateIssued desc
+        limit 500
+        `,
+        req
+      ),
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({ message: err.message, success: false, data: [] });
+  }
+});
+
+// =================== old  ===================
 async function insertNewVPolicy(
   {
     policy,
@@ -515,16 +722,15 @@ async function insertNewVPolicy(
     typeRef,
     strArea,
     cStrArea,
-    Source_No_Ref_ID = '',
+    Source_No_Ref_ID = "",
     form_action,
-    rateCost = 0
+    rateCost = 0,
   }: any,
   req: Request
 ) {
-
-  let DateFrom: any = defaultFormat(new Date(dateFromRef))
-  let DateTo: any = defaultFormat(new Date(dateToRef))
-  let DateIssued: any = defaultFormat(new Date(dateIssuedRef))
+  let DateFrom: any = defaultFormat(new Date(dateFromRef));
+  let DateTo: any = defaultFormat(new Date(dateToRef));
+  let DateIssued: any = defaultFormat(new Date(dateIssuedRef));
 
   await createPolicy(
     {
@@ -534,14 +740,14 @@ async function insertNewVPolicy(
       PolicyType: policy,
       PolicyNo: policyNoRef,
       DateIssued,
-      TotalPremium: parseFloat(totalPremiumRef.replace(/,/g, '')),
-      Vat: parseFloat(vatRef.replace(/,/g, '')).toFixed(2),
-      DocStamp: parseFloat(docstampRef.replace(/,/g, '')).toFixed(2),
+      TotalPremium: parseFloat(totalPremiumRef.replace(/,/g, "")),
+      Vat: parseFloat(vatRef.replace(/,/g, "")).toFixed(2),
+      DocStamp: parseFloat(docstampRef.replace(/,/g, "")).toFixed(2),
       FireTax: "0",
-      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, '')).toFixed(2),
+      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, "")).toFixed(2),
       Notarial: "0",
-      Misc: parseFloat(stradComRef.replace(/,/g, '')).toFixed(2),
-      TotalDue: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
+      Misc: parseFloat(stradComRef.replace(/,/g, "")).toFixed(2),
+      TotalDue: parseFloat(totalDueRef.replace(/,/g, "")).toFixed(2),
       TotalPaid: "0",
       Journal: false,
       AgentID: agentIdRef,
@@ -571,21 +777,27 @@ async function insertNewVPolicy(
       UnladenWeight: unladenWeightRef,
       TPL: "",
       TPLLimit: "0.00",
-      PremiumPaid: parseFloat(premiumPaidRef.replace(/,/g, '')).toFixed(2),
-      EstimatedValue: parseFloat(estimatedValueSchedVehicleRef.replace(/,/g, '')).toFixed(2),
-      Aircon: parseFloat(airconRef.replace(/,/g, '')).toFixed(2),
-      Stereo: parseFloat(stereoRef.replace(/,/g, '')).toFixed(2),
-      Magwheels: parseFloat(magwheelsRef.replace(/,/g, '')).toFixed(2),
+      PremiumPaid: parseFloat(premiumPaidRef.replace(/,/g, "")).toFixed(2),
+      EstimatedValue: parseFloat(
+        estimatedValueSchedVehicleRef.replace(/,/g, "")
+      ).toFixed(2),
+      Aircon: parseFloat(airconRef.replace(/,/g, "")).toFixed(2),
+      Stereo: parseFloat(stereoRef.replace(/,/g, "")).toFixed(2),
+      Magwheels: parseFloat(magwheelsRef.replace(/,/g, "")).toFixed(2),
       Others: othersSpecifyRef,
-      OthersAmount: parseFloat(othersSpecifyRef_.replace(/,/g, '')).toFixed(2),
-      Deductible: parseFloat(DeductibleRef.replace(/,/g, '')).toFixed(2),
-      Towing: parseFloat(towingRef.replace(/,/g, '')).toFixed(2),
-      RepairLimit: parseFloat(authorizedRepairLimitRef.replace(/,/g, '')).toFixed(2),
+      OthersAmount: parseFloat(othersSpecifyRef_.replace(/,/g, "")).toFixed(2),
+      Deductible: parseFloat(DeductibleRef.replace(/,/g, "")).toFixed(2),
+      Towing: parseFloat(towingRef.replace(/,/g, "")).toFixed(2),
+      RepairLimit: parseFloat(
+        authorizedRepairLimitRef.replace(/,/g, "")
+      ).toFixed(2),
       BodilyInjury: parseFloat(bodyInjuryRef.replace(/,/g, "")).toFixed(2),
-      PropertyDamage: parseFloat(propertyDamageRef.replace(/,/g, "")).toFixed(2),
-      PersonalAccident: parseFloat(personalAccidentRef.replace(/,/g, "")).toFixed(
+      PropertyDamage: parseFloat(propertyDamageRef.replace(/,/g, "")).toFixed(
         2
       ),
+      PersonalAccident: parseFloat(
+        personalAccidentRef.replace(/,/g, "")
+      ).toFixed(2),
       SecI: parseFloat(sectionI_IIRef.replace(/,/g, "")).toFixed(2),
       SecIIPercent: parseFloat(sectionIIIRef.replace(/,/g, "")).toFixed(2),
       ODamage: parseFloat(ownDamageRef.replace(/,/g, "")).toFixed(2),
@@ -598,7 +810,9 @@ async function insertNewVPolicy(
       Mortgagee: mortgageeSelect,
       Denomination: dinomination,
       AOGPercent: parseFloat(aogRef.replace(/,/g, "")).toFixed(2),
-      LocalGovTaxPercent: parseFloat(localGovTaxRef.replace(/,/g, "")).toFixed(2),
+      LocalGovTaxPercent: parseFloat(localGovTaxRef.replace(/,/g, "")).toFixed(
+        2
+      ),
       TPLTypeSection_I_II: typeRef,
       Remarks: "",
     },
@@ -619,7 +833,7 @@ async function insertNewVPolicy(
         cGL_Acct: "Premium Receivable",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
-        Debit: parseFloat(totalDueRef.replace(/,/g, '')),
+        Debit: parseFloat(totalDueRef.replace(/,/g, "")),
         Credit: 0,
         TC: "P/R",
         Remarks: "",
@@ -641,7 +855,7 @@ async function insertNewVPolicy(
         cGL_Acct: "Premium Receivable",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
-        Debit: parseFloat(totalDueRef.replace(/,/g, '')),
+        Debit: parseFloat(totalDueRef.replace(/,/g, "")),
         Credit: 0,
         TC: "P/R",
         Remarks: "",
@@ -666,7 +880,7 @@ async function insertNewVPolicy(
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
         Debit: 0,
-        Credit: parseFloat(totalDueRef.replace(/,/g, '')),
+        Credit: parseFloat(totalDueRef.replace(/,/g, "")),
         TC: "A/P",
         Remarks: "",
         Source_No_Ref_ID,
@@ -688,7 +902,7 @@ async function insertNewVPolicy(
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
         Debit: 0,
-        Credit: parseFloat(totalDueRef.replace(/,/g, '')),
+        Credit: parseFloat(totalDueRef.replace(/,/g, "")),
         TC: "A/P",
         Remarks: "",
         Source_No_Ref_ID,
@@ -712,7 +926,7 @@ async function insertNewVPolicy(
         cGL_Acct: "A/P",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
-        Debit: parseFloat(totalDueRef.replace(/,/g, '')),
+        Debit: parseFloat(totalDueRef.replace(/,/g, "")),
         Credit: 0,
         TC: "P/R",
         Remarks: "",
@@ -734,7 +948,7 @@ async function insertNewVPolicy(
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
         Debit: 0,
-        Credit: parseFloat(rateCost.toString().replace(/,/g, '')),
+        Credit: parseFloat(rateCost.toString().replace(/,/g, "")),
         TC: "CTI",
         Remarks: "",
         Source_No_Ref_ID,
@@ -755,7 +969,9 @@ async function insertNewVPolicy(
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
         Debit: 0,
-        Credit: parseFloat(totalDueRef.replace(/,/g, '')) - parseFloat(rateCost.toString().replace(/,/g, '')),
+        Credit:
+          parseFloat(totalDueRef.replace(/,/g, "")) -
+          parseFloat(rateCost.toString().replace(/,/g, "")),
         TC: "CIN",
         Remarks: "",
         Source_No_Ref_ID,
@@ -953,13 +1169,13 @@ VehiclePolicy.post("/tpl-update-vehicle-policy", async (req, res) => {
     await deleteVehiclePolicy(form_type, PolicyNo, req);
     //delete journal
     await deleteTPLFromJournalBySource(PolicyNo, req);
-   // await deleteJournalBySource(PolicyNo, "PL", req);
+    // await deleteJournalBySource(PolicyNo, "PL", req);
 
     // insert policy
     await insertNewVPolicy({ ...req.body, cStrArea, strArea }, req);
     res.send({ message: "Update Vehicle Policy Successfully", success: true });
   } catch (err: any) {
-    console.log(err.message)
+    console.log(err.message);
     res.send({ message: err.message, success: false });
   }
 });

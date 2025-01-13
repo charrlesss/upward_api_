@@ -84,6 +84,21 @@ export async function getPolicySubAccount(req: Request) {
   const qry = `SELECT Acronym FROM Sub_Account ORDER BY Acronym`
   return await prisma.$queryRawUnsafe(qry) as any
 }
+export async function generateTempID(req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const qry = `SELECT 
+      CONCAT('TP-',
+              CAST((YEAR(NOW()) % 100) AS CHAR),
+              CAST(FORMAT(COUNT(DISTINCT (policyno)) + 1,
+                      '0000')
+                  AS CHAR)) AS 'PolicyNo'
+  FROM
+      Policy
+  WHERE
+      PolicyNo LIKE '%TP-%'`
+  return await prisma.$queryRawUnsafe(qry) as any
+}
+
 
 // ===========================
 
@@ -133,11 +148,12 @@ export async function getTPL_IDS(search: string, req: Request) {
                     AND Explanation = 'CTPL Registration'
                     AND Source_No_Ref_ID <> ''
                     AND (Remarks = '' OR Remarks IS NULL)
-                    AND Source_No like '%%'
+                    AND Source_No like '%${search}%'
                     group by Source_No_Ref_ID
                     order by Source_No;
         
         `
+        console.log(qry)
   return await prisma.$queryRawUnsafe(qry);
 }
 

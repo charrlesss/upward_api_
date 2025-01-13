@@ -80,7 +80,7 @@ ProductionReports.post("/production-report", async (req, res) => {
         })
         const props: any = {
           data: newData,
-          columnWidths: [80, 280, 100, 100, 80, 80, 80, 80, 80, 80, 80, 80, 80],
+          columnWidths: [90, 280, 110, 100, 90, 85, 85, 85, 85, 85, 85, 85, 85],
           headers: [
             { headerName: 'DATE ISSUED', textAlign: "left" },
             { headerName: 'ASSURED NAME', textAlign: "left" },
@@ -112,7 +112,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             'TotalDue'
           ],
           title,
-          PAGE_WIDTH: 18.5 * 72,
+          PAGE_WIDTH: 19 * 72,
           PAGE_HEIGHT: 8.5 * 72,
           MARGIN: { top: 20, right: 10, bottom: 80, left: 10 },
           beforeDraw: (pdfReportGenerator: any) => {
@@ -342,7 +342,7 @@ ProductionReports.post("/production-report", async (req, res) => {
 
         const props: any = {
           data: newData,
-          columnWidths: [80, 100, 250, 90, 90, 90, 90, 90, 90, 90,],
+          columnWidths: [90, 100, 250, 90, 100, 100, 100, 100, 100, 100],
           headers: [
             { headerName: 'DATE ISSUED', textAlign: "left" },
             { headerName: 'POLICY NO', textAlign: "left" },
@@ -368,7 +368,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             'TotalDue'
           ],
           title,
-          PAGE_WIDTH: 15 * 72,
+          PAGE_WIDTH: 16 * 72,
           PAGE_HEIGHT: 8.5 * 72,
           MARGIN: { top: 20, right: 10, bottom: 80, left: 10 },
           beforeDraw: (pdfReportGenerator: any) => {
@@ -459,7 +459,7 @@ ProductionReports.post("/production-report", async (req, res) => {
 
         const props: any = {
           data: newData,
-          columnWidths: [80, 100, 250, 90, 90, 90, 90, 90, 90, 90, 90,],
+          columnWidths: [90, 100, 250, 90, 100, 100, 100, 100, 100, 100, 100,],
           headers: [
             { headerName: 'DATE ISSUED', textAlign: "left" },
             { headerName: 'POLICY NO', textAlign: "left" },
@@ -487,7 +487,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             'TotalDue'
           ],
           title,
-          PAGE_WIDTH: 17 * 72,
+          PAGE_WIDTH: 18 * 72,
           PAGE_HEIGHT: 8.5 * 72,
           MARGIN: { top: 20, right: 10, bottom: 80, left: 10 },
           beforeDraw: (pdfReportGenerator: any) => {
@@ -581,7 +581,7 @@ ProductionReports.post("/production-report", async (req, res) => {
 
         const props: any = {
           data: newData,
-          columnWidths: [80, 100, 250, 90, 90, 90, 90, 90, 90, 90, 90, 90,],
+          columnWidths: [90, 100, 250, 90, 100, 100, 100, 100, 100, 100, 100, 100,],
           headers: [
             { headerName: 'DATE ISSUED', textAlign: "left" },
             { headerName: 'POLICY NO', textAlign: "left" },
@@ -611,7 +611,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             'TotalDue'
           ],
           title,
-          PAGE_WIDTH: 18 * 72,
+          PAGE_WIDTH: 19 * 72,
           PAGE_HEIGHT: 8.5 * 72,
           MARGIN: { top: 20, right: 10, bottom: 80, left: 10 },
           beforeDraw: (pdfReportGenerator: any) => {
@@ -701,7 +701,7 @@ ProductionReports.post("/production-report", async (req, res) => {
 
       const props: any = {
         data: newData,
-        columnWidths: [80, 250, 100, 90, 90, 150, 150, 150, 150, 150, 80, 200],
+        columnWidths: [90, 250, 100, 90, 90, 150, 150, 150, 150, 150, 100, 200],
         headers: [
           { headerName: 'DATE ISSUED', textAlign: "left" },
           { headerName: 'ASSURED NAME', textAlign: "left" },
@@ -731,7 +731,7 @@ ProductionReports.post("/production-report", async (req, res) => {
           'Mortgagee',
         ],
         title,
-        PAGE_WIDTH: 23 * 72,
+        PAGE_WIDTH: 23.5 * 72,
         PAGE_HEIGHT: 8.5 * 72,
         MARGIN: { top: 20, right: 10, bottom: 80, left: 10 },
         beforeDraw: (pdfReportGenerator: any) => {
@@ -849,6 +849,80 @@ ProductionReports.post("/production-report-to-excel", async (req, res) => {
           LGovTax: formatNumber(getSum(newData, 'LGovTax')),
           Misc: formatNumber(getSum(newData, 'Misc')),
           TotalDue: formatNumber(getSum(newData, 'TotalDue'))
+        })
+        drawExcel(res, {
+          columns: [
+            { key: 'DateIssued', width: 14 },
+            { key: 'AssuredName', width: 55 },
+            { key: 'PolicyNo', width: 25 },
+            { key: 'CoverNo', width: 25 },
+            { key: 'EffictiveDate', width: 16 },
+            { key: 'PLimit', width: 16 },
+            { key: 'Premium', width: 17 },
+            { key: 'Subtotal', width: 17 },
+            { key: 'DocStamp', width: 17 },
+            { key: 'Vat', width: 17 },
+            { key: 'LGovTax', width: 17 },
+            { key: 'Misc', width: 17 },
+            { key: 'TotalDue', width: 17 }
+          ],
+          data: newData,
+          beforeDraw: (props: any, worksheet: any) => {
+            title.split('\n').forEach((t: string, idx: number) => {
+              const tt = worksheet.addRow([t]);
+              props.mergeCells(idx + 1, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+              const alignColumns = props.alphabet.slice(0, props.columns.length);
+              props.setAlignment(1, alignColumns, { horizontal: "left", vertical: "middle" })
+              tt.font = { bolder: true };
+            });
+            props.setFontSize([1, 2, 3], 12)
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            // Now, insert the column header row after the custom rows (row 3)
+            const headerRow = worksheet.addRow([
+              'DATE ISSUED',
+              'ASSURED NAME',
+              'POLICY NO',
+              'COC NO',
+              'EFFECTIVE DATE',
+              'TPL COVERAGE',
+              'PREMIUM',
+              'SUB - TOTAL',
+              'DOC. STAMP',
+              'EVAT',
+              'LGT',
+              'STRADCOM',
+              'TOTAL',
+             
+            ]);
+            headerRow.font = { bold: true };
+            props.addBorder(6, props.alphabet.slice(0, props.columns.length), {
+              bottom: { style: 'thin' },
+            })
+
+          },
+          onDraw: (props: any, rowItm: any, rowIdx: number) => {
+            props.setAlignment(rowIdx + 6, ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'], { horizontal: "right", vertical: "middle" })
+          },
+          afterDraw: (props: any, worksheet: any) => {
+            props.boldText(props.data.length + 6, ['A', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'])
+            props.addBorder(props.data.length + 6, ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'], {
+              top: { style: 'thin' },
+            })
+            props.setAlignment(props.data.length + 6, [ 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'], { horizontal: "right", vertical: "middle" })
+            props.mergeCells(props.data.length + 6, 'A', 'E');
+
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            const sig = worksheet.addRow(['Prepared By:                                                                                                                        Checked By:                                                                                                                        Noted By:']);
+            props.mergeCells(props.data.length + 10, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+            const alignColumns = props.alphabet.slice(0, props.columns.length - 2);
+            props.setAlignment(props.data.length + 10, alignColumns, { horizontal: "center", vertical: "middle" })
+            sig.font = { bold: true };
+          },
         })
 
       } else if (req.body.cmbSubAcct === 'COM') {
@@ -974,7 +1048,6 @@ ProductionReports.post("/production-report-to-excel", async (req, res) => {
           },
         })
 
-
       } else if (
         req.body.cmbSubAcct === 'MAR' ||
         req.body.cmbSubAcct === 'MSPR' ||
@@ -1016,6 +1089,75 @@ ProductionReports.post("/production-report-to-excel", async (req, res) => {
         })
 
 
+        drawExcel(res, {
+          columns: [
+            { key: 'DateIssued', width: 14 },
+            { key: 'PolicyNo', width: 25 },
+            { key: 'AssuredName', width: 55 },
+            { key: 'EffictiveDate', width: 16 },
+            { key: 'InsuredValue', width: 25 },
+            { key: 'TotalPremium', width: 16 },
+            { key: 'DocStamp', width: 17 },
+            { key: 'Vat', width: 17 },
+            { key: 'LGovTax', width: 17 },
+            { key: 'TotalDue', width: 17 }
+          ],
+          data: newData,
+          beforeDraw: (props: any, worksheet: any) => {
+            title.split('\n').forEach((t: string, idx: number) => {
+              const tt = worksheet.addRow([t]);
+              props.mergeCells(idx + 1, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+              const alignColumns = props.alphabet.slice(0, props.columns.length);
+              props.setAlignment(1, alignColumns, { horizontal: "left", vertical: "middle" })
+              tt.font = { bolder: true };
+            });
+            props.setFontSize([1, 2, 3], 12)
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            // Now, insert the column header row after the custom rows (row 3)
+            const headerRow = worksheet.addRow([
+              'DATE ISSUED',
+              'POLICY NO',
+              'ASSURED NAME',
+              'EFFECTIVE DATE',
+              'SUM INSURED',
+              'PREMIUM',
+              'DOC. STAMP',
+              'EVAT',
+              'LGT',
+              'TOTAL',
+             
+            ]);
+            headerRow.font = { bold: true };
+            props.addBorder(6, props.alphabet.slice(0, props.columns.length), {
+              bottom: { style: 'thin' },
+            })
+
+          },
+          onDraw: (props: any, rowItm: any, rowIdx: number) => {
+            props.setAlignment(rowIdx + 6, ['F', 'G', 'H', 'I', 'J'], { horizontal: "right", vertical: "middle" })
+          },
+          afterDraw: (props: any, worksheet: any) => {
+            props.boldText(props.data.length + 6, ['A', 'F', 'G', 'H', 'I', 'J'])
+            props.addBorder(props.data.length + 6, ['F', 'G', 'H', 'I', 'J'], {
+              top: { style: 'thin' },
+            })
+            props.setAlignment(props.data.length + 6, [ 'F', 'G', 'H', 'I', 'J'], { horizontal: "right", vertical: "middle" })
+            props.mergeCells(props.data.length + 6, 'A', 'E');
+
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            const sig = worksheet.addRow(['Prepared By:                                                                                                                        Checked By:                                                                                                                        Noted By:']);
+            props.mergeCells(props.data.length + 10, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+            const alignColumns = props.alphabet.slice(0, props.columns.length - 2);
+            props.setAlignment(props.data.length + 10, alignColumns, { horizontal: "center", vertical: "middle" })
+            sig.font = { bold: true };
+          },
+        })
+
       } else if (req.body.cmbSubAcct === "FIRE") {
         const newData = data.map((itm: any) => {
           itm.InsuredValue = formatNumber(parseFloat(itm.InsuredValue.toString().replace(/,/g, '')))
@@ -1054,7 +1196,76 @@ ProductionReports.post("/production-report-to-excel", async (req, res) => {
           TotalDue: formatNumber(getSum(newData, 'TotalDue'))
         })
 
+        drawExcel(res, {
+          columns: [
+            { key: 'DateIssued', width: 14 },
+            { key: 'PolicyNo', width: 25 },
+            { key: 'AssuredName', width: 55 },
+            { key: 'EffictiveDate', width: 16 },
+            { key: 'InsuredValue', width: 25 },
+            { key: 'TotalPremium', width: 16 },
+            { key: 'DocStamp', width: 17 },
+            { key: 'FireTax', width: 17 },
+            { key: 'Vat', width: 17 },
+            { key: 'LGovTax', width: 17 },
+            { key: 'TotalDue', width: 17 }
+          ],
+          data: newData,
+          beforeDraw: (props: any, worksheet: any) => {
+            title.split('\n').forEach((t: string, idx: number) => {
+              const tt = worksheet.addRow([t]);
+              props.mergeCells(idx + 1, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+              const alignColumns = props.alphabet.slice(0, props.columns.length);
+              props.setAlignment(1, alignColumns, { horizontal: "left", vertical: "middle" })
+              tt.font = { bolder: true };
+            });
+            props.setFontSize([1, 2, 3], 12)
 
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            // Now, insert the column header row after the custom rows (row 3)
+            const headerRow = worksheet.addRow([
+              'DATE ISSUED',
+              'POLICY NO',
+              'ASSURED NAME',
+              'EFFECTIVE DATE',
+              'SUM INSURED',
+              'PREMIUM',
+              'DOC. STAMP',
+              'F.S. TAX',
+              'EVAT',
+              'LGT',
+              'TOTAL',
+             
+            ]);
+            headerRow.font = { bold: true };
+            props.addBorder(6, props.alphabet.slice(0, props.columns.length), {
+              bottom: { style: 'thin' },
+            })
+
+          },
+          onDraw: (props: any, rowItm: any, rowIdx: number) => {
+            props.setAlignment(rowIdx + 6, ['F', 'G', 'H', 'I', 'J', 'K'], { horizontal: "right", vertical: "middle" })
+          },
+          afterDraw: (props: any, worksheet: any) => {
+            props.boldText(props.data.length + 6, ['A', 'F', 'G', 'H', 'I', 'J', 'K'])
+            props.addBorder(props.data.length + 6, ['F', 'G', 'H', 'I', 'J', 'K'], {
+              top: { style: 'thin' },
+            })
+            props.setAlignment(props.data.length + 6, [ 'F', 'G', 'H', 'I', 'J', 'K'], { horizontal: "right", vertical: "middle" })
+            props.mergeCells(props.data.length + 6, 'A', 'E');
+
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            const sig = worksheet.addRow(['Prepared By:                                                                                                                        Checked By:                                                                                                                        Noted By:']);
+            props.mergeCells(props.data.length + 10, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+            const alignColumns = props.alphabet.slice(0, props.columns.length - 2);
+            props.setAlignment(props.data.length + 10, alignColumns, { horizontal: "center", vertical: "middle" })
+            sig.font = { bold: true };
+          },
+        })
       } else {
         const newData = data.map((itm: any) => {
           itm.InsuredValue = formatNumber(parseFloat(itm.InsuredValue.toString().replace(/,/g, '')))
@@ -1096,6 +1307,80 @@ ProductionReports.post("/production-report-to-excel", async (req, res) => {
           TotalDue: formatNumber(getSum(newData, 'TotalDue'))
         })
 
+        drawExcel(res, {
+          columns: [
+            { key: 'DateIssued', width: 14 },
+            { key: 'PolicyNo', width: 25 },
+            { key: 'AssuredName', width: 55 },
+            { key: 'EffictiveDate', width: 16 },
+            { key: 'InsuredValue', width: 25 },
+            { key: 'TotalPremium', width: 16 },
+            { key: 'Misc', width: 17 },
+            { key: 'Notarial', width: 17 },
+            { key: 'DocStamp', width: 17 },
+            { key: 'Vat', width: 17 },
+            { key: 'LGovTax', width: 17 },
+            { key: 'TotalDue', width: 17 }
+          ],
+          data: newData,
+          beforeDraw: (props: any, worksheet: any) => {
+            title.split('\n').forEach((t: string, idx: number) => {
+              const tt = worksheet.addRow([t]);
+              props.mergeCells(idx + 1, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+              const alignColumns = props.alphabet.slice(0, props.columns.length);
+              props.setAlignment(1, alignColumns, { horizontal: "left", vertical: "middle" })
+              tt.font = { bolder: true };
+            });
+            props.setFontSize([1, 2, 3], 12)
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            // Now, insert the column header row after the custom rows (row 3)
+            const headerRow = worksheet.addRow([
+              'DATE ISSUED',
+              'POLICY NO',
+              'ASSURED NAME',
+              'EFFECTIVE DATE',
+              'SUM INSURED',
+              'PREMIUM',
+              'MISC FEE',
+              'NOTARIAL FEE',
+              'DOC. STAMP',
+              'EVAT',
+              'LGT',
+              'TOTAL',
+             
+            ]);
+            headerRow.font = { bold: true };
+            props.addBorder(6, props.alphabet.slice(0, props.columns.length), {
+              bottom: { style: 'thin' },
+            })
+
+          },
+          onDraw: (props: any, rowItm: any, rowIdx: number) => {
+            props.setAlignment(rowIdx + 6, ['F', 'G', 'H', 'I', 'J', 'K', 'L'], { horizontal: "right", vertical: "middle" })
+          },
+          afterDraw: (props: any, worksheet: any) => {
+            props.boldText(props.data.length + 6, ['A', 'F', 'G', 'H', 'I', 'J', 'K', 'L'])
+            props.addBorder(props.data.length + 6, ['F', 'G', 'H', 'I', 'J', 'K', 'L'], {
+              top: { style: 'thin' },
+            })
+            props.setAlignment(props.data.length + 6, [ 'F', 'G', 'H', 'I', 'J', 'K', 'L'], { horizontal: "right", vertical: "middle" })
+            props.mergeCells(props.data.length + 6, 'A', 'E');
+
+
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            worksheet.addRow([]);
+            const sig = worksheet.addRow(['Prepared By:                                                                                                                        Checked By:                                                                                                                        Noted By:']);
+            props.mergeCells(props.data.length + 10, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+            const alignColumns = props.alphabet.slice(0, props.columns.length - 2);
+            props.setAlignment(props.data.length + 10, alignColumns, { horizontal: "center", vertical: "middle" })
+            sig.font = { bold: true };
+          },
+        })
+
+
       }
     } else {
       const newData = data.map((itm: any) => {
@@ -1130,6 +1415,79 @@ ProductionReports.post("/production-report-to-excel", async (req, res) => {
         MotorNo: "",
         TotalDue: formatNumber(getSum(newData, 'TotalDue')),
         Mortgagee: "",
+      })
+
+      drawExcel(res, {
+        columns: [
+          { key: 'DateIssued', width: 14 },
+          { key: 'AssuredName', width: 55 },
+          { key: 'PolicyNo', width: 25 },
+          { key: 'EffictiveDate', width: 16 },
+          { key: 'InsuredValue', width: 25 },
+          { key: 'Make', width: 30 },
+          { key: 'BodyType', width: 30 },
+          { key: 'PlateNo', width: 30 },
+          { key: 'ChassisNo', width: 30 },
+          { key: 'MotorNo', width: 30 },
+          { key: 'TotalDue', width: 17 },
+          { key: 'Mortgagee', width: 55 }
+        ],
+        data: newData,
+        beforeDraw: (props: any, worksheet: any) => {
+          title.split('\n').forEach((t: string, idx: number) => {
+            const tt = worksheet.addRow([t]);
+            props.mergeCells(idx + 1, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+            const alignColumns = props.alphabet.slice(0, props.columns.length);
+            props.setAlignment(1, alignColumns, { horizontal: "left", vertical: "middle" })
+            tt.font = { bolder: true };
+          });
+          props.setFontSize([1, 2, 3], 12)
+
+          worksheet.addRow([]);
+          worksheet.addRow([]);
+          // Now, insert the column header row after the custom rows (row 3)
+          const headerRow = worksheet.addRow([
+            'DATE ISSUED',
+            'ASSURED NAME',
+            'POLICY NO',
+            'EFFECTIVE DATE',
+            'SUM INSURED',
+            'MAKE',
+            'BODY TYPE',
+            'PLATE NO',
+            'CHASSIS NO',
+            'ENGINE NO',
+            'TOTAL',
+            'MORTGAGEE',
+           
+          ]);
+          headerRow.font = { bold: true };
+          props.addBorder(6, props.alphabet.slice(0, props.columns.length), {
+            bottom: { style: 'thin' },
+          })
+
+        },
+        onDraw: (props: any, rowItm: any, rowIdx: number) => {
+          props.setAlignment(rowIdx + 6, ['E','K',], { horizontal: "right", vertical: "middle" })
+        },
+        afterDraw: (props: any, worksheet: any) => {
+          props.boldText(props.data.length + 6, ['K', ])
+          props.addBorder(props.data.length + 6, ['K'], {
+            top: { style: 'thin' },
+          })
+          props.setAlignment(props.data.length + 6, [ 'K'], { horizontal: "right", vertical: "middle" })
+          props.mergeCells(props.data.length + 6, 'A', 'E');
+
+
+          worksheet.addRow([]);
+          worksheet.addRow([]);
+          worksheet.addRow([]);
+          const sig = worksheet.addRow(['Prepared By:                                                                                                                        Checked By:                                                                                                                        Noted By:']);
+          props.mergeCells(props.data.length + 10, props.alphabet[0], props.alphabet[props.columns.length - 1]);
+          const alignColumns = props.alphabet.slice(0, props.columns.length - 2);
+          props.setAlignment(props.data.length + 10, alignColumns, { horizontal: "center", vertical: "middle" })
+          sig.font = { bold: true };
+        },
       })
 
     }

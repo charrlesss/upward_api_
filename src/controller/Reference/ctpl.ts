@@ -81,7 +81,6 @@ CTPL.post("/add-ctpl", async (req: Request, res: Response) => {
     const user = await getUserById((req.user as any).UserId);
     const ctplID = await generateUniqueUUID("ctplregistration", "ctplId");
     const { Prefix, NumSeriesFrom, NumSeriesTo, Cost } = req.body;
-    console.log(req.body)
 
     // if (!req.body.Prefix.match(/^[A-Za-z]+$/)) {
     //   return res.send({
