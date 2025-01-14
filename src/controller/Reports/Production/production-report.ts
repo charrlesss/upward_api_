@@ -80,7 +80,7 @@ ProductionReports.post("/production-report", async (req, res) => {
         })
         const props: any = {
           data: newData,
-          columnWidths: [90, 280, 110, 100, 90, 85, 85, 85, 85, 85, 85, 85, 85],
+          columnWidths: [90, 280, 110, 90, 110, 100, 100, 100, 100, 100, 100, 100, 100],
           headers: [
             { headerName: 'DATE ISSUED', textAlign: "left" },
             { headerName: 'ASSURED NAME', textAlign: "left" },
@@ -112,7 +112,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             'TotalDue'
           ],
           title,
-          PAGE_WIDTH: 19 * 72,
+          PAGE_WIDTH: 22 * 72,
           PAGE_HEIGHT: 8.5 * 72,
           MARGIN: { top: 20, right: 10, bottom: 80, left: 10 },
           beforeDraw: (pdfReportGenerator: any) => {
@@ -152,7 +152,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             console.log('pageNumberText')
 
             doc.font('Helvetica');
-            const pageNumberText = `Page ${currentPage} of ${totalPages}`;
+            const pageNumberText = `Page ${currentPage}`;
             doc.text(pageNumberText, 10, pdfReportGenerator.PAGE_HEIGHT - 70, {
               align: 'right',
               width: 100
@@ -212,7 +212,7 @@ ProductionReports.post("/production-report", async (req, res) => {
 
         const props: any = {
           data: newData,
-          columnWidths: [90, 100, 250, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90],
+          columnWidths: [90, 100, 250, 90, 110, 100, 100, 100, 100, 100, 100, 100, 100, 100],
           headers: [
             { headerName: 'DATE ISSUED', textAlign: "left" },
             { headerName: 'POLICY NO', textAlign: "left" },
@@ -246,7 +246,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             'TotalDue'
           ],
           title,
-          PAGE_WIDTH: 20.5 * 72,
+          PAGE_WIDTH: 21.5 * 72,
           PAGE_HEIGHT: 8.5 * 72,
           MARGIN: { top: 20, right: 10, bottom: 80, left: 10 },
           beforeDraw: (pdfReportGenerator: any) => {
@@ -289,7 +289,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             console.log('pageNumberText')
 
             doc.font('Helvetica');
-            const pageNumberText = `Page ${currentPage} of ${totalPages}`;
+            const pageNumberText = `Page ${currentPage}`;
             doc.text(pageNumberText, 10, pdfReportGenerator.PAGE_HEIGHT - 70, {
               align: 'right',
               width: 100
@@ -408,7 +408,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             console.log('pageNumberText')
 
             doc.font('Helvetica');
-            const pageNumberText = `Page ${currentPage} of ${totalPages}`;
+            const pageNumberText = `Page ${currentPage}`;
             doc.text(pageNumberText, 10, pdfReportGenerator.PAGE_HEIGHT - 70, {
               align: 'right',
               width: 100
@@ -527,7 +527,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             console.log('pageNumberText')
 
             doc.font('Helvetica');
-            const pageNumberText = `Page ${currentPage} of ${totalPages}`;
+            const pageNumberText = `Page ${currentPage}`;
             doc.text(pageNumberText, 10, pdfReportGenerator.PAGE_HEIGHT - 70, {
               align: 'right',
               width: 100
@@ -652,7 +652,7 @@ ProductionReports.post("/production-report", async (req, res) => {
             console.log('pageNumberText')
 
             doc.font('Helvetica');
-            const pageNumberText = `Page ${currentPage} of ${totalPages}`;
+            const pageNumberText = `Page ${currentPage}`;
             doc.text(pageNumberText, 10, pdfReportGenerator.PAGE_HEIGHT - 70, {
               align: 'right',
               width: 100
@@ -763,10 +763,8 @@ ProductionReports.post("/production-report", async (req, res) => {
           });
         },
         drawPageNumber: (doc: PDFKit.PDFDocument, currentPage: number, totalPages: number, pdfReportGenerator: any) => {
-          console.log('pageNumberText')
-
           doc.font('Helvetica');
-          const pageNumberText = `Page ${currentPage} of ${totalPages}`;
+          const pageNumberText = `Page ${currentPage}`;
           doc.text(pageNumberText, 10, pdfReportGenerator.PAGE_HEIGHT - 70, {
             align: 'right',
             width: 100

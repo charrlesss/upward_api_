@@ -38,7 +38,7 @@ PDC.post("/add-pdc", async (req, res) => {
     });
   }
 
-  const client = await checkClientID(req.body.PNo, req) as Array<any>
+  const client = (await checkClientID(req.body.PNo, req)) as Array<any>;
   if (client.length <= 0) {
     return res.send({
       message: `${req.body.PNo} is not Found!`,
@@ -66,7 +66,6 @@ PDC.post("/add-pdc", async (req, res) => {
       num++;
 
       if (check.DateDeposit === "") {
-
         await createPDC(
           {
             PDC_ID: newId,
@@ -155,8 +154,7 @@ PDC.post("/update-pdc", async (req, res) => {
     });
   }
 
-
-  const client = await checkClientID(req.body.PNo, req) as Array<any>
+  const client = (await checkClientID(req.body.PNo, req)) as Array<any>;
   if (client.length <= 0) {
     return res.send({
       message: `${req.body.PNo} is not Found!`,
@@ -186,7 +184,6 @@ PDC.post("/update-pdc", async (req, res) => {
     num = parseInt(count, 10);
     let newId = "";
     checks.forEach(async (check: any) => {
-
       newId = num.toString().padStart(count.length, "0");
       num++;
 
@@ -264,6 +261,23 @@ PDC.post("/update-pdc", async (req, res) => {
     });
   }
 });
+PDC.post("/search-pdc-policy-id", async (req, res) => {
+  try {
+    const data = await getPdcPolicyIdAndCLientId(req.body.search, req);
+    res.send({
+      data,
+      success: true,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      bondsPolicy: null,
+    });
+  }
+});
+
 PDC.get("/search-pdc-policy-id", async (req, res) => {
   try {
     const { searchPdcPolicyIds } = req.query;

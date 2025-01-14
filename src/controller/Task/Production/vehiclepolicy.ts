@@ -352,6 +352,8 @@ VehiclePolicy.post("/search-policy-selected", async (req, res) => {
       `SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`,
       req
     );
+
+    console.log(`SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`);
     res.send({
       message: "Search Successfully",
       success: true,
@@ -725,6 +727,7 @@ async function insertNewVPolicy(
     Source_No_Ref_ID = "",
     form_action,
     rateCost = 0,
+    remarksRef
   }: any,
   req: Request
 ) {
@@ -814,7 +817,7 @@ async function insertNewVPolicy(
         2
       ),
       TPLTypeSection_I_II: typeRef,
-      Remarks: "",
+      Remarks: remarksRef,
     },
     req
   );
