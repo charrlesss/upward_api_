@@ -18,7 +18,7 @@ interface PDFReportGeneratorProps {
   boldedRows: Array<number>;
   spanMap: Map<any, any>;
   borderedColumns: Array<any>;
-  beforeDraw: (doc: any) => void | null;
+  beforeDraw: (doc: any,document:PDFKit.PDFDocument) => void | null;
   beforePerPageDraw: (
     pdfReportGenerator: any,
     doc: PDFKit.PDFDocument
@@ -45,7 +45,7 @@ class PDFReportGenerator {
   public boldedRows: Array<number> = [];
   public spanMap = new Map();
   public borderedColumns: Array<any>;
-  public beforeDraw = (doc: any) => {};
+  public beforeDraw = (doc: any,document:PDFKit.PDFDocument) => {};
   public beforePerPageDraw = (
     pdfReportGenerator: any,
     doc: PDFKit.PDFDocument
@@ -70,7 +70,7 @@ class PDFReportGenerator {
     this.PAGE_WIDTH = props.PAGE_WIDTH;
     this.PAGE_HEIGHT = props.PAGE_HEIGHT;
     this.MARGIN = props.MARGIN;
-    this.BASE_FONT_SIZE = 12;
+    this.BASE_FONT_SIZE =  props.BASE_FONT_SIZE || 12;
     this.TITLE_FONT_SIZE = 16;
     this.MIN_ROW_HEIGHT = 20;
 
@@ -394,7 +394,7 @@ class PDFReportGenerator {
     startY = this.drawTitleAndHeader(doc, this.MARGIN.top / 2);
 
     if (this.beforeDraw) {
-      this.beforeDraw(this);
+      this.beforeDraw(this,doc);
     }
 
     this.data.forEach((row: any, rowIndex: any) => {

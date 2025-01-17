@@ -19,6 +19,9 @@ interface DataEntryClientTypes {
   client_branch: string;
   chassis: string;
   engine: string;
+  suffix: string;
+  tin: string;
+  auth_representative?: string;
 }
 
 interface EntryEmployeeType {
@@ -89,12 +92,16 @@ const queryList: any = {
             b.mobile,
             b.telephone,
             concat(c.Acronym,'-',c.ShortName) as NewShortName,
+            c.ShortName as ShortName,
             c.Sub_Acct as sub_account,
             a.sale_officer,
             a.client_mortgagee,
             a.client_branch,
             a.chassis,
-            a.engine
+            a.engine,
+            a.auth_representative,
+            a.suffix,
+            a.tin
         FROM
           entry_client a
             LEFT JOIN
@@ -106,8 +113,6 @@ const queryList: any = {
         OR a.firstname like '%${search}%'
         OR a.lastname like '%${search}%'
         OR a.company like '%${search}%'
-        OR a.chassis like '%${search}%'
-        OR a.engine like '%${search}%'
         ORDER BY a.createdAt desc 
        limit 500
     `,
@@ -628,7 +633,7 @@ export async function getSubAccounts(req: Request) {
   SELECT 
     a.Sub_Acct,
     a.Acronym,
-  CONCAT(a.Acronym, '-', a.ShortName) AS NewShortName
+  a.ShortName
   FROM
     sub_account a`);
 }
@@ -682,4 +687,20 @@ export function getYear() {
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
   return (currentYear % 100).toString();
+}
+
+export async function deleteClientById(client_id: string, req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  const contactId: any = await prisma.$queryRawUnsafe(` 
+   SELECT client_contact_details_id FROM entry_client where entry_client_id = '${client_id}' ;
+`);
+const contact_details_id = contactId[0].client_contact_details_id;
+  await prisma.$queryRawUnsafe(` 
+delete FROM entry_client where entry_client_id = '${client_id}' ;
+`);
+  await prisma.$queryRawUnsafe(` 
+  DELETE FROM contact_details 
+WHERE
+    contact_details_id = '${contact_details_id}' ;
+  `);
 }

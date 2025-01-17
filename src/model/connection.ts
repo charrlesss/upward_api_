@@ -11,6 +11,9 @@ export function PrismaList() {
   const DATABASE_URL_UCSMI ="mysql://root:charles@localhost:3306/upward_insurance_umis";
   const DATABASE_URL_UMIS = "mysql://root:charles@localhost:3306/upward_insurance_umis";
 
+  // const DATABASE_URL_UCSMI ="mysql://root:charles@localhost:3306/new_upward_insurance_ucsmi";
+  // const DATABASE_URL_UMIS = "mysql://root:charles@localhost:3306/new_upward_insurance_ucsmi";
+
   const prismaUMIS = new PrismaClient({
     datasources: { db: { url: DATABASE_URL_UMIS } },
   });

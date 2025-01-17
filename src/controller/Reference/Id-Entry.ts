@@ -13,6 +13,7 @@ import {
   searchEntry,
   updateEntry,
   UpdateId,
+  deleteClientById,
 } from "../../model/Reference/id-entry.model";
 // import { IDGenerator, UpdateId } from "../../model/StoredProcedure";
 import { ExportToExcel } from "../../lib/exporttoexcel";
@@ -305,6 +306,56 @@ ID_Entry.post("/entry-update", async (req, res) => {
   }
 });
 
+ID_Entry.post(
+  "/id-entry-client-update",
+  async (req: Request, res: Response) => {
+    const { userAccess }: any = await VerifyToken(
+      req.cookies["up-ac-login"] as string,
+      process.env.USER_ACCESS as string
+    );
+    if (userAccess.includes("ADMIN")) {
+      return res.send({
+        message: `CAN'T SAVE, ADMIN IS FOR VIEWING ONLY!`,
+        success: false,
+      });
+    }
+
+    if (
+      !(await saveUserLogsCode(req, "edit", JSON.stringify(req.body), "client"))
+    ) {
+      return res.send({ message: "Invalid User Code", success: false });
+    }
+
+    delete req.body.userCodeConfirmation;
+
+    await deleteClientById(req.body.entry_client_id, req);
+
+    const [s, ym, newCount] = req.body.entry_client_id.split("-");
+    const newMonth = ym.substring(0, 2);
+    const newYear = ym.substring(2);
+    req.body.createdAt = new Date();
+    delete req.body.mode;
+    delete req.body.search;
+    try {
+      delete req.body.NewShortName;
+      await CreateClientEntry(req.body, req);
+      await UpdateId("entry client", newCount, newMonth, newYear, req);
+      await saveUserLogs(req, req.body.entry_client_id, "add", "Entry Client");
+
+      res.send({
+        message: "Successfully Create New Client ID Entry",
+        success: true,
+      });
+    } catch (err: any) {
+      console.log(err.message);
+      res.send({
+        success: false,
+        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      });
+    }
+  }
+);
+
 ID_Entry.post("/id-entry-generate-id", async (req: Request, res: Response) => {
   res.send({
     success: false,
@@ -337,6 +388,18 @@ ID_Entry.get("/search-entry", async (req, res) => {
         false,
         req
       ),
+    });
+  } catch (err: any) {
+    res.send({ success: false, message: err.message, entry: [] });
+  }
+});
+
+ID_Entry.post("/search-entry", async (req, res) => {
+  try {
+    res.send({
+      success: true,
+      message: "Successfully Get All Client Entry ",
+      entry: await searchEntry(req.body.entry, req.body.search, false, req),
     });
   } catch (err: any) {
     res.send({ success: false, message: err.message, entry: [] });

@@ -21,9 +21,9 @@ import { generateUniqueFilename } from "../Claims/claims";
 import { v4 as uuidV4 } from "uuid";
 import { IDGenerator, UpdateId } from "../../../model/Reference/id-entry.model";
 import { VerifyToken } from "../../Authentication";
-import { format, formatDate, parseISO } from "date-fns";
-import { defaultFormat } from "../../../lib/defaultDateFormat";
-import { parseDate } from "../../../model/db/stored-procedured";
+import { format } from "date-fns";
+import PDFReportGenerator from "../../../lib/pdf-generator";
+import PDFDocument from "pdfkit";
 const PDC = express.Router();
 
 PDC.post("/add-pdc", async (req, res) => {
@@ -299,6 +299,23 @@ PDC.get("/search-pdc-policy-id", async (req, res) => {
     });
   }
 });
+PDC.post("/search-pdc-banks", async (req, res) => {
+  try {
+    res.send({
+      data: await getPdcBanks(req.body.search, req),
+      success: true,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      bondsPolicy: null,
+    });
+  }
+});
+
 PDC.get("/search-pdc-banks", async (req, res) => {
   try {
     const { searchPdcBanks } = req.query;
@@ -352,6 +369,26 @@ PDC.get("/search-pdc", async (req, res) => {
     });
   }
 });
+
+PDC.post("/search-pdc", async (req, res) => {
+  try {
+    const data = await searchPDC(req.body.search as string, req);
+    res.send({
+      message: "Search PDC Successfully",
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      searchPDC: [],
+    });
+  }
+});
+
 PDC.post("/get-search-pdc-check", async (req, res) => {
   try {
     const searchPDCData = await getSearchPDCheck(req.body.ref_no, req);
@@ -370,6 +407,198 @@ PDC.post("/get-search-pdc-check", async (req, res) => {
     });
   }
 });
+
+PDC.post("/print", async (req, res) => {
+  try {
+    console.log(req.body);
+
+    if (req.body.printOption === "labeling") {
+      const outputFilePath = "manok.pdf";
+      const doc = new PDFDocument({
+        size: [612, 792],
+        margin: 0,
+      });
+      const writeStream = fs.createWriteStream(outputFilePath);
+      doc.pipe(writeStream);
+      doc.fontSize(9);
+      doc.text("UCSMI", 0, 40, {
+        align: "center",
+        baseline: "middle",
+      });
+      doc.text(req.body.state.name, 0, 52, {
+        align: "center",
+        baseline: "middle",
+      });
+      doc.text(req.body.state.pno, 0, 64, {
+        align: "center",
+        baseline: "middle",
+      });
+
+      doc.text(req.body.state.ref, 0, 94, {
+        align: "center",
+        baseline: "middle",
+      });
+
+
+      doc.end();
+      writeStream.on("finish", (e: any) => {
+        console.log(`PDF created successfully at: ${outputFilePath}`);
+        const readStream = fs.createReadStream(outputFilePath);
+        readStream.pipe(res);
+
+        readStream.on("end", () => {
+          fs.unlink(outputFilePath, (err) => {
+            if (err) {
+              console.error("Error deleting file:", err);
+            } else {
+              console.log(`File ${outputFilePath} deleted successfully.`);
+            }
+          });
+        });
+      });
+      return;
+    } else {
+      const newData = req.body.pdcTableData.map((itm: any, idx: number) => {
+        return { ...itm, seq: idx + 1 };
+      });
+      let PAGE_WIDTH = 612;
+      let PAGE_HEIGHT = 792;
+      const props: any = {
+        data: newData,
+        BASE_FONT_SIZE: 8,
+        columnWidths: [100, 100, 220, 90, 50],
+        headers: [
+          { headerName: "CHECK NO", textAlign: "left" },
+          { headerName: "DATE", textAlign: "left" },
+          { headerName: "BANK", textAlign: "left" },
+          { headerName: "AMOUNT", textAlign: "right" },
+          { headerName: "SEQ", textAlign: "right" },
+        ],
+        keys: ["Check_No", "Check_Date", "BankName", "Check_Amnt", "seq"],
+        title: "",
+        PAGE_WIDTH,
+        PAGE_HEIGHT,
+        MARGIN: { top: 250, right: 10, bottom: 80, left: 10 },
+        beforeDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+          doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 0, 40, {
+            align: "center",
+            baseline: "middle",
+          });
+          doc.text("Post Date Checks Receipt", 0, 52, {
+            align: "center",
+            baseline: "middle",
+          });
+
+          doc.fontSize(9);
+          // first line
+          doc.font("Helvetica-Bold");
+          doc.text("P.N. No. :", 20, 85, {
+            align: "left",
+          });
+          doc.font("Helvetica");
+          doc.text(req.body.state.PNo, 85, 85, {
+            align: "left",
+          });
+          doc.font("Helvetica-Bold");
+          doc.text("Reference No :", PAGE_WIDTH - 150, 85, {
+            align: "left",
+          });
+          doc.font("Helvetica");
+          doc.text(req.body.state.Ref_No, PAGE_WIDTH - 80, 85, {
+            align: "left",
+          });
+
+          // second line
+          doc.font("Helvetica-Bold");
+          doc.text("Client Name  :", 20, 100, {
+            align: "left",
+          });
+          doc.font("Helvetica");
+          doc.text(req.body.state.Name, 85, 100, {
+            align: "left",
+          });
+          doc.font("Helvetica-Bold");
+          doc.text("Date Received :", PAGE_WIDTH - 150, 100, {
+            align: "left",
+          });
+          doc.font("Helvetica");
+          doc.text(req.body.state.Date, PAGE_WIDTH - 80, 100, {
+            align: "left",
+          });
+          // third line
+          doc.font("Helvetica-Bold");
+          doc.text("Remarks :", 20, 115, {
+            align: "left",
+          });
+          doc.font("Helvetica");
+          doc.text(req.body.state.Remarks, 85, 115, {
+            align: "left",
+            width: PAGE_WIDTH - 150,
+          });
+
+          doc.fontSize(9);
+          doc.font("Helvetica-Bold");
+        },
+        beforePerPageDraw: (
+          pdfReportGenerator: any,
+          doc: PDFKit.PDFDocument
+        ) => {
+          doc.font("Helvetica");
+          doc.text(
+            "Prepared : __________________     Checked : __________________      Approved : ___________________",
+            30,
+            pdfReportGenerator.PAGE_HEIGHT - 70,
+            {
+              align: "center",
+              width: PAGE_WIDTH - 60,
+            }
+          );
+        },
+        drawPageNumber: (
+          doc: PDFKit.PDFDocument,
+          currentPage: number,
+          totalPages: number,
+          pdfReportGenerator: any
+        ) => {
+          doc.font("Helvetica");
+          const pageNumberText = `Page ${currentPage}`;
+          doc.text(
+            pageNumberText,
+            PAGE_WIDTH - 130,
+            pdfReportGenerator.PAGE_HEIGHT - 35,
+            {
+              align: "right",
+              width: 100,
+            }
+          );
+
+          doc.text(
+            format(new Date(), "MM/dd/yyyy"),
+            -25,
+            pdfReportGenerator.PAGE_HEIGHT - 35,
+            {
+              align: "right",
+              width: 100,
+            }
+          );
+        },
+      };
+      const pdfReportGenerator = new PDFReportGenerator(props);
+      return pdfReportGenerator.generatePDF(res);
+    }
+    res.send({
+      message: "Search PDC Check Successfully",
+      success: true,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+    });
+  }
+});
+
 function UploadFile(filesArr: Array<any>, uploadDir: string, res: Response) {
   const obj: any = [];
   filesArr.forEach((file: any) => {
