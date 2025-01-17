@@ -27,7 +27,10 @@ import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { qry_id_policy_sub } from "../../../model/db/views";
-import { __executeQuery, executeQuery } from "../../../model/Task/Production/policy";
+import {
+  __executeQuery,
+  executeQuery,
+} from "../../../model/Task/Production/policy";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 const Deposit = express.Router();
 
@@ -49,7 +52,6 @@ Deposit.get("/get-cash-collection", async (req, res) => {
 });
 Deposit.get("/get-check-collection", async (req, res) => {
   try {
-
     res.send({
       message: "Successfully Get Check Collection.",
       success: true,
@@ -83,6 +85,24 @@ Deposit.get("/getBanks", async (req, res) => {
     });
   }
 });
+Deposit.post("/getBanks", async (req, res) => {
+  const { bankDepositSearch } = req.query;
+  try {
+    res.send({
+      message: "Successfully Get Deposit Banks.",
+      success: true,
+      data: await getBanksFromDeposit(req.body.search, req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      banks: [],
+    });
+  }
+});
 Deposit.get("/get-deposit-slipcode", async (req, res) => {
   try {
     res.send({
@@ -105,7 +125,10 @@ Deposit.post("/add-deposit", async (req, res) => {
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
-  const BankAcctCode = await __executeQuery(`SELECT * FROM bankaccounts where Account_No = '${req.body.BankAcctCode}'`, req) as Array<any>
+  const BankAcctCode = (await __executeQuery(
+    `SELECT * FROM bankaccounts where Account_No = '${req.body.BankAcctCode}'`,
+    req
+  )) as Array<any>;
   if (BankAcctCode.length <= 0) {
     return res.send({
       message: `${req.body.BankAcctCode} is not Found!`,
@@ -119,7 +142,7 @@ Deposit.post("/add-deposit", async (req, res) => {
       success: false,
     });
   }
-  console.log(req.body)
+  console.log(req.body);
 
   try {
     if ((await findDepositBySlipCode(req.body.depositSlip, req)).length > 0) {
@@ -172,9 +195,25 @@ Deposit.get("/search-deposit", async (req, res) => {
     });
   }
 });
+Deposit.post("/search-deposit", async (req, res) => {
+  try {
+    const data: any = await searchDeposit(req.body.search, req);
+    res.send({
+      message: "Successfully Search Deposit.",
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      success: false,
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+    });
+  }
+});
 Deposit.post("/search-cash-check", async (req, res) => {
   try {
-    const { IDEntryWithPolicy } = qry_id_policy_sub()
+    const { IDEntryWithPolicy } = qry_id_policy_sub();
     const cashKeys: any = {
       Pap_1000: "1,000.00",
       Pap_500: "500.00",
@@ -192,13 +231,16 @@ Deposit.post("/search-cash-check", async (req, res) => {
       Cnt_05: ".05",
       Cnt_01: ".01",
     };
-    const dt = await __executeQuery(`SELECT  *  FROM deposit_slip where slipcode = '${req.body.SlipCode}'`, req) as Array<any>
+    const dt = (await __executeQuery(
+      `SELECT  *  FROM deposit_slip where slipcode = '${req.body.SlipCode}'`,
+      req
+    )) as Array<any>;
     if (dt.length > 0) {
-      const obj: any = {}
-      obj.refBankAcctCode = dt[0].SlipCode
-      obj.refDate = dt[0].Date
-      obj.refBankAcctCode = dt[0].BankAccount.toString()
-      obj.refBankAcctName = dt[0].AccountName.toString()
+      const obj: any = {};
+      obj.refBankAcctCode = dt[0].SlipCode;
+      obj.refDate = dt[0].Date;
+      obj.refBankAcctCode = dt[0].BankAccount.toString();
+      obj.refBankAcctName = dt[0].AccountName.toString();
 
       const sql = `
       SELECT 
@@ -219,18 +261,19 @@ Deposit.post("/search-cash-check", async (req, res) => {
           LEFT JOIN (${IDEntryWithPolicy}) id_entry  on a.IDNo = id_entry.IDNo
         WHERE
             a.Inactive = 0 and a.Account_No='${obj.refBankAcctCode}'
-            `
-      const bankAccountDetails = await __executeQuery(sql, req) as Array<any>
+            `;
+      const bankAccountDetails = (await __executeQuery(sql, req)) as Array<any>;
       if (bankAccountDetails.length > 0) {
-        obj.refBankAcctCodeTag = bankAccountDetails[0].IDNo
-        obj.refBankAcctNameTag = bankAccountDetails[0].Desc
-        obj.refAcctID = bankAccountDetails[0].Account_ID
-        obj.refAcctName = bankAccountDetails[0].Short
-        obj.refShortName = bankAccountDetails[0].client_name
-        obj.refClassification = bankAccountDetails[0].Sub_Acct
-        obj.refSubAccount = bankAccountDetails[0].ShortName
+        obj.refBankAcctCodeTag = bankAccountDetails[0].IDNo;
+        obj.refBankAcctNameTag = bankAccountDetails[0].Desc;
+        obj.refAcctID = bankAccountDetails[0].Account_ID;
+        obj.refAcctName = bankAccountDetails[0].Short;
+        obj.refShortName = bankAccountDetails[0].client_name;
+        obj.refClassification = bankAccountDetails[0].Sub_Acct;
+        obj.refSubAccount = bankAccountDetails[0].ShortName;
       }
-      const cash_breakdown = await __executeQuery(`SELECT 
+      const cash_breakdown = (await __executeQuery(
+        `SELECT 
         Pap_1000,
         Pap_500,
         Pap_100,
@@ -246,29 +289,30 @@ Deposit.post("/search-cash-check", async (req, res) => {
         Cnt_10,
         Cnt_05,
         Cnt_01
-        FROM Cash_Breakdown WHERE Slip_Code = '${req.body.SlipCode}'`, req) as Array<any>
-      const newBreakDown: any = []
-      const cashBreakDownToArray: Array<any> = Object.entries(cash_breakdown[0])
+        FROM Cash_Breakdown WHERE Slip_Code = '${req.body.SlipCode}'`,
+        req
+      )) as Array<any>;
+      const newBreakDown: any = [];
+      const cashBreakDownToArray: Array<any> = Object.entries(
+        cash_breakdown[0]
+      );
       cashBreakDownToArray.forEach((items: Array<any>) => {
         if (cashKeys[items[0]]) {
-          const price = parseFloat(cashKeys[items[0]].replace(/,/g, ""))
+          const price = parseFloat(cashKeys[items[0]].replace(/,/g, ""));
           const newItems = {
             value1: cashKeys[items[0]],
             value2: items[1],
             value3:
               parseInt(items[1]) > 0
-                ? (
-                  price *
-                  parseInt(items[1])
-                ).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })
+                ? (price * parseInt(items[1])).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
                 : "0.00",
           };
-          newBreakDown.push(newItems)
+          newBreakDown.push(newItems);
         }
-      })
+      });
 
       res.send({
         message: "Successfully Search Deposit Cash And Check.",
@@ -277,13 +321,10 @@ Deposit.post("/search-cash-check", async (req, res) => {
           obj,
           cash: await getCashCollection(req.body.SlipCode, false, req),
           checks: await getCheckCollection(req.body.SlipCode, false, req),
-          cash_breakdown: newBreakDown
-        }
+          cash_breakdown: newBreakDown,
+        },
       });
     }
-
-
-
   } catch (error: any) {
     console.log(error.message);
     res.send({
@@ -298,7 +339,10 @@ Deposit.post("/update-deposit", async (req, res) => {
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
-  const BankAcctCode = await __executeQuery(`SELECT * FROM bankaccounts where Account_No = '${req.body.BankAcctCode}'`, req) as Array<any>
+  const BankAcctCode = (await __executeQuery(
+    `SELECT * FROM bankaccounts where Account_No = '${req.body.BankAcctCode}'`,
+    req
+  )) as Array<any>;
   if (BankAcctCode.length <= 0) {
     return res.send({
       message: `${req.body.BankAcctCode} is not Found!`,
@@ -306,7 +350,7 @@ Deposit.post("/update-deposit", async (req, res) => {
       collectionID: null,
     });
   }
-  
+
   if (userAccess.includes("ADMIN")) {
     return res.send({
       message: `CAN'T UPDATE, ADMIN IS FOR VIEWING ONLY!`,
@@ -340,7 +384,7 @@ Deposit.post("/update-deposit", async (req, res) => {
 });
 
 async function addDeposit(req: any) {
-  const { IDEntryWithPolicy } = qry_id_policy_sub()
+  const { IDEntryWithPolicy } = qry_id_policy_sub();
 
   const selectedCollection = JSON.parse(req.body.selectedCollection);
   const tableRowsInputValue = JSON.parse(req.body.tableRowsInputValue);
@@ -393,8 +437,10 @@ async function addDeposit(req: any) {
 
       await addCashCheckInDeposit(
         {
-          Date_Deposit: Cnt > 1 ? null : defaultFormat(new Date(req.body.depositdate)),
-          Slip_Code: Cnt > 1 ? null : defaultFormat(new Date(req.body.depositdate)),
+          Date_Deposit:
+            Cnt > 1 ? null : defaultFormat(new Date(req.body.depositdate)),
+          Slip_Code:
+            Cnt > 1 ? null : defaultFormat(new Date(req.body.depositdate)),
           Account_ID: req.body.AcctID,
           Account_Name: req.body.AcctName,
           Debit: Amount[i].toFixed(2),
@@ -410,13 +456,13 @@ async function addDeposit(req: any) {
   }
   for (let i = 0; i < selectedCollection.length; i++) {
     const selectedCollectionValue = selectedCollection[i];
-    let Check_Date = ''
-    if (selectedCollectionValue.Check_No !== '' && selectedCollectionValue.Check_No !== null && selectedCollectionValue.Check_No !== undefined) {
-      Check_Date = defaultFormat(
-        new Date(selectedCollectionValue.Check_Date)
-
-      )
-
+    let Check_Date = "";
+    if (
+      selectedCollectionValue.Check_No !== "" &&
+      selectedCollectionValue.Check_No !== null &&
+      selectedCollectionValue.Check_No !== undefined
+    ) {
+      Check_Date = defaultFormat(new Date(selectedCollectionValue.Check_Date));
     }
 
     await addCashCheckInDeposit(
@@ -438,7 +484,6 @@ async function addDeposit(req: any) {
       },
       req
     );
-
   }
   await addCashBreakDown(
     {
@@ -464,8 +509,11 @@ async function addDeposit(req: any) {
   );
 
   for (let i = 0; i < 2; i++) {
-
-    const getClientSubAccount: any = await executeQuery(IDEntryWithPolicy, req.body.BankAcctCodeTag, req)
+    const getClientSubAccount: any = await executeQuery(
+      IDEntryWithPolicy,
+      req.body.BankAcctCodeTag,
+      req
+    );
 
     if (Amount[i] !== 0) {
       addJournal(
@@ -493,7 +541,11 @@ async function addDeposit(req: any) {
   for (const selectedCollectionValue of selectedCollection) {
     // const selectedCollectionValue = selectedCollection[i];
     const IsCheck = selectedCollectionValue.Check_No !== "";
-    const __getClientSubAccount: any = await executeQuery(IDEntryWithPolicy, selectedCollectionValue.IDNo, req)
+    const __getClientSubAccount: any = await executeQuery(
+      IDEntryWithPolicy,
+      selectedCollectionValue.IDNo,
+      req
+    );
 
     addJournal(
       {
@@ -502,7 +554,9 @@ async function addDeposit(req: any) {
         Source_Type: "DC",
         Source_No: req.body.depositSlip,
         Explanation: "",
-        Check_Date: IsCheck ? defaultFormat(new Date(selectedCollectionValue.Check_Date)) : "",
+        Check_Date: IsCheck
+          ? defaultFormat(new Date(selectedCollectionValue.Check_Date))
+          : "",
         Check_No: IsCheck ? selectedCollectionValue.Check_No : "",
         Check_Bank: IsCheck ? selectedCollectionValue.Bank : "",
         Remarks: IsCheck ? selectedCollectionValue.DRRemarks : "",
