@@ -78,7 +78,8 @@ SELECT
             IF(a.IDType = 'Policy'
                 AND c.PolicyType = 'COM'
                 OR c.PolicyType = 'TPL', CONCAT('C: ', d.ChassisNo, '  ', 'E: ', d.MotorNo), '') AS remarks,
-            IFNULL(d.ChassisNo, '') AS chassis
+            IFNULL(d.ChassisNo, '') AS chassis,
+             a.address
     FROM
         (SELECT 
         *

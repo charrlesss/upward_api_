@@ -99,7 +99,7 @@ Collection.post("/add-collection", async (req, res) => {
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
   );
-  const client = await checkClientID(req.body.PNo, req) as Array<any>
+  const client = (await checkClientID(req.body.PNo, req)) as Array<any>;
   if (client.length <= 0) {
     return res.send({
       message: `${req.body.PNo} is not Found!`,
@@ -184,6 +184,24 @@ Collection.get("/search-collection", async (req, res) => {
     });
   }
 });
+
+Collection.post("/search-collection", async (req, res) => {
+  try {
+    res.send({
+      message: "Search Collection Successfully",
+      success: true,
+      data: await getCollections(req.body.search, req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      collection: [],
+    });
+  }
+});
+
 Collection.post("/update-collection", async (req, res) => {
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
@@ -196,7 +214,7 @@ Collection.post("/update-collection", async (req, res) => {
     });
   }
 
-  const client = await checkClientID(req.body.PNo, req) as Array<any>
+  const client = (await checkClientID(req.body.PNo, req)) as Array<any>;
   if (client.length <= 0) {
     return res.send({
       message: `${req.body.PNo} is not Found!`,
@@ -260,18 +278,18 @@ Collection.post("/on-print", async (req, res) => {
   }
 });
 async function AddCollection(req: any) {
-  const { IDEntryWithPolicy } = qry_id_policy_sub()
-  const getClientSubAccount: any = await executeQuery(IDEntryWithPolicy, req.body.PNo, req)
-
+  const { IDEntryWithPolicy } = qry_id_policy_sub();
+  const getClientSubAccount: any = await executeQuery(
+    IDEntryWithPolicy,
+    req.body.PNo,
+    req
+  );
 
   const debit = JSON.parse(req.body.debit);
   const credit = JSON.parse(req.body.credit);
 
-
   const TotalRows =
     debit.length >= credit.length ? debit.length : credit.length;
-
-
 
   for (let i = 0; i <= TotalRows - 1; i++) {
     let Payment = "";
@@ -298,7 +316,9 @@ async function AddCollection(req: any) {
       Payment = debit[i].Payment;
       Debit = debit[i].Amount;
       CheckNo = debit[i].Check_No;
-      CheckDate = debit[i].Check_Date ? defaultFormat(new Date(debit[i].Check_Date)) : "";
+      CheckDate = debit[i].Check_Date
+        ? defaultFormat(new Date(debit[i].Check_Date))
+        : "";
       Bank = debit[i].Bank_Branch;
       DRCode = debit[i].Acct_Code;
       DRTitle = debit[i].Acct_Title;
@@ -318,16 +338,13 @@ async function AddCollection(req: any) {
       CRInvoiceNo = credit[i].invoiceNo;
     }
 
-    const ColDate =
-      i === 0
-        ? defaultFormat(new Date(req.body.Date))
-        : null;
+    const ColDate = i === 0 ? defaultFormat(new Date(req.body.Date)) : null;
     const OR = i === 0 ? req.body.ORNo : "";
     const PNo = i === 0 ? req.body.PNo : "";
     const Name = i === 0 ? req.body.Name : "";
 
     const newCollection = {
-      Date: ColDate  ,
+      Date: ColDate,
       ORNo: OR,
       IDNo: PNo,
       Name: Name,
@@ -383,7 +400,9 @@ async function AddCollection(req: any) {
     const Payment = debit[i].Payment;
     const Debit = debit[i].Amount;
     const CheckNo = debit[i].Check_No ?? "";
-    const CheckDate = debit[i].Check_Date ? defaultFormat(new Date(debit[i].Check_Date)) : "";
+    const CheckDate = debit[i].Check_Date
+      ? defaultFormat(new Date(debit[i].Check_Date))
+      : "";
     const Bank = debit[i].Bank_Branch ?? "";
     const DRCode = transaction.Acct_Code;
     const DRTitle = transaction.Acct_Title;

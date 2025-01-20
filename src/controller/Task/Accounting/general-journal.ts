@@ -27,6 +27,71 @@ import { VerifyToken } from "../../Authentication";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 const GeneralJournal = express.Router();
 
+/// new
+
+GeneralJournal.post(
+  "/general-journal/search-general-journal",
+  async (req, res) => {
+    try {
+      res.send({
+        message: "Successfully get get general journal id",
+        success: true,
+        data: await searchGeneralJournal(req.body.search, req),
+      });
+    } catch (error: any) {
+      console.log(error.message);
+
+      res.send({
+        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+GeneralJournal.post("/general-journal/get-chart-account", async (req, res) => {
+  try {
+    res.send({
+      message: "Successfully get chart account",
+      success: true,
+      data: await getChartOfAccount(req.body.search, req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      data: [],
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+    });
+  }
+});
+GeneralJournal.post(
+  "/general-journal/get-transaction-account",
+  async (req, res) => {
+    try {
+      console.log('qweqweeeee')
+      res.send({
+        message: "Successfully get transaction account",
+        success: true,
+        data: await getTransactionAccount(
+          req.body.search as string,
+          req
+        ),
+      });
+    } catch (error: any) {
+      console.log(error.message);
+
+      res.send({
+        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+
+//// old
 GeneralJournal.post(
   "/general-journal/add-general-journal",
   async (req, res) => {
@@ -36,8 +101,9 @@ GeneralJournal.post(
     );
     if (userAccess.includes("ADMIN")) {
       return res.send({
-        message: `CAN'T ${req.body.hasSelected ? "UPDATE" : "SAVE"
-          }, ADMIN IS FOR VIEWING ONLY!`,
+        message: `CAN'T ${
+          req.body.hasSelected ? "UPDATE" : "SAVE"
+        }, ADMIN IS FOR VIEWING ONLY!`,
         success: false,
       });
     }
@@ -138,7 +204,7 @@ GeneralJournal.post(
 GeneralJournal.post(
   "/general-journal/void-general-journal",
   async (req, res) => {
-    console.log(req.body)
+    console.log(req.body);
     const { userAccess }: any = await VerifyToken(
       req.cookies["up-ac-login"] as string,
       process.env.USER_ACCESS as string
@@ -469,8 +535,9 @@ async function RPTComputation(jobs: Array<any>, req: Request) {
 
 function RPTComputationDate(jobTransactionDate: any) {
   const month = getMonth(new Date(jobTransactionDate)) + 1;
-  const from = `${month.toString().length > 1 ? month : "0" + month
-    }-01-${getYear(new Date(jobTransactionDate))}`;
+  const from = `${
+    month.toString().length > 1 ? month : "0" + month
+  }-01-${getYear(new Date(jobTransactionDate))}`;
   const to = format(endOfMonth(new Date(jobTransactionDate)), "MM-dd-yyyy");
 
   return { from, to };
