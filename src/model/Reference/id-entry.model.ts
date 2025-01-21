@@ -31,6 +31,7 @@ interface EntryEmployeeType {
   sub_account: string;
   address: string;
   entry_employee_id: string;
+  suffix?: string;
 }
 
 interface EntryAgentType {
@@ -43,6 +44,8 @@ interface EntryAgentType {
   telephone: string;
   address: string;
   sub_account: string;
+  suffix?: string;
+
 }
 
 interface EntryFixedAssetsType {
@@ -125,6 +128,7 @@ const queryList: any = {
         a.middlename,
         a.lastname,
         a.address,
+         a.suffix,
         CONCAT(b.Acronym, '-', b.ShortName) AS NewShortName,
         (DATE_FORMAT(a.createdAt, '%Y-%m-%d')) as createdAt,
         b.Sub_Acct as sub_account
@@ -148,11 +152,14 @@ const queryList: any = {
       a.lastname,
       a.middlename,
       a.address,
+      a.suffix,
       (DATE_FORMAT(a.createdAt, '%Y-%m-%d')) as createdAt,
       b.email,
       b.mobile,
       b.telephone,
-      a.sub_account
+      a.sub_account,
+      a.suffix,
+      a.position
     FROM
       entry_agent a
       LEFT JOIN

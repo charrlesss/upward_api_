@@ -277,7 +277,6 @@ PDC.post("/search-pdc-policy-id", async (req, res) => {
     });
   }
 });
-
 PDC.get("/search-pdc-policy-id", async (req, res) => {
   try {
     const { searchPdcPolicyIds } = req.query;
@@ -315,7 +314,6 @@ PDC.post("/search-pdc-banks", async (req, res) => {
     });
   }
 });
-
 PDC.get("/search-pdc-banks", async (req, res) => {
   try {
     const { searchPdcBanks } = req.query;
@@ -586,10 +584,7 @@ PDC.post("/print", async (req, res) => {
       const pdfReportGenerator = new PDFReportGenerator(props);
       return pdfReportGenerator.generatePDF(res);
     }
-    res.send({
-      message: "Search PDC Check Successfully",
-      success: true,
-    });
+   
   } catch (error: any) {
     console.log(error.message);
     res.send({

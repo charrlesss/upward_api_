@@ -1037,6 +1037,8 @@ model entry_agent {
   update                   DateTime        @default(now())
   contact_details          contact_details @relation(fields: [agent_contact_details_id], references: [contact_details_id], map: "Entry_Agent_agent_contact_details_id_fkey")
   sub_account              String          @db.VarChar(500)
+  suffix                   String          @default("") @db.VarChar(550)
+  position                   String          @default("") @db.VarChar(550)
 }
 
 model entry_client {
@@ -1063,14 +1065,15 @@ model entry_client {
 }
 
 model entry_employee {
-  entry_employee_id String   @id
-  firstname         String   @default("") @db.VarChar(225)
-  middlename        String   @default("") @db.VarChar(225)
-  lastname          String   @default("") @db.VarChar(225)
-  sub_account       String   @default("") @db.VarChar(225)
-  address           String   @db.Text
-  createdAt         DateTime @default(now())
-  update            DateTime @default(now())
+  entry_employee_id String @id
+  firstname         String @default("") @db.VarChar(225)
+  middlename        String @default("") @db.VarChar(225)
+  lastname          String @default("") @db.VarChar(225)
+  sub_account       String @default("") @db.VarChar(225)
+  suffix            String @default("") @db.VarChar(550)
+  address   String   @db.Text
+  createdAt DateTime @default(now())
+  update    DateTime @default(now())
 }
 
 model entry_fixed_assets {
