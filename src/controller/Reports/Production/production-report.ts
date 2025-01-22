@@ -118,6 +118,7 @@ ProductionReports.post("/production-report", async (req, res) => {
           beforeDraw: (pdfReportGenerator: any) => {
             pdfReportGenerator.SpanRow(newData.length - 1, 0, 3);
             pdfReportGenerator.boldRow(newData.length - 1);
+
             pdfReportGenerator.borderColumnInRow(newData.length - 1, [
               { column: 7, key: 'Subtotal' },
               { column: 8, key: 'DocStamp' },
@@ -1553,13 +1554,13 @@ ProductionReports.post("/get-production-report-desk", async (req, res) => {
 });
 
 
-function formatNumber(num: number) {
+export function formatNumber(num: number) {
   return (num || 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
 }
-function getSum(data: Array<any>, key: string): number {
+export function getSum(data: Array<any>, key: string): number {
   if (data.length <= 0) {
     return 0
   }
