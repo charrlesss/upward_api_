@@ -18,7 +18,7 @@ interface PDFReportGeneratorProps {
   boldedRows: Array<number>;
   spanMap: Map<any, any>;
   borderedColumns: Array<any>;
-  beforeDraw: (doc: any,document:PDFKit.PDFDocument) => void | null;
+  beforeDraw: (doc: any, document: PDFKit.PDFDocument) => void | null;
   beforePerPageDraw: (
     pdfReportGenerator: any,
     doc: PDFKit.PDFDocument
@@ -29,6 +29,7 @@ interface PDFReportGeneratorProps {
     totalPages: number,
     pdfReportGenerator: any
   ) => void;
+  addMarginInFirstPage: number;
 }
 class PDFReportGenerator {
   public data: Array<any> = [];
@@ -45,7 +46,7 @@ class PDFReportGenerator {
   public boldedRows: Array<number> = [];
   public spanMap = new Map();
   public borderedColumns: Array<any>;
-  public beforeDraw = (doc: any,document:PDFKit.PDFDocument) => {};
+  public beforeDraw = (doc: any, document: PDFKit.PDFDocument) => {};
   public beforePerPageDraw = (
     pdfReportGenerator: any,
     doc: PDFKit.PDFDocument
@@ -59,6 +60,7 @@ class PDFReportGenerator {
   public scaledColumns: any = [];
   public scaledFontSize: number = 0;
   public scaledRowHeight: number = 0;
+  public addMarginInFirstPage: number = 0;
 
   constructor(props: PDFReportGeneratorProps) {
     this.data = props.data;
@@ -70,7 +72,7 @@ class PDFReportGenerator {
     this.PAGE_WIDTH = props.PAGE_WIDTH;
     this.PAGE_HEIGHT = props.PAGE_HEIGHT;
     this.MARGIN = props.MARGIN;
-    this.BASE_FONT_SIZE =  props.BASE_FONT_SIZE || 12;
+    this.BASE_FONT_SIZE = props.BASE_FONT_SIZE || 12;
     this.TITLE_FONT_SIZE = 16;
     this.MIN_ROW_HEIGHT = 20;
 
@@ -80,6 +82,7 @@ class PDFReportGenerator {
     this.beforeDraw = props.beforeDraw;
     this.beforePerPageDraw = props.beforePerPageDraw;
     this.drawPageNumber = props.drawPageNumber;
+    this.addMarginInFirstPage = props.addMarginInFirstPage || 0;
   }
 
   boldRow(rowIndex: number) {
@@ -213,7 +216,7 @@ class PDFReportGenerator {
 
     let startX = this.MARGIN.left;
     this.headers.forEach((header, colIndex) => {
-      startX += this.scaledColumns[colIndex] || 50;;
+      startX += this.scaledColumns[colIndex] || 50;
     });
     return headerStartY + maxHeaderHeight;
   }
@@ -321,7 +324,7 @@ class PDFReportGenerator {
       startX += colWidth;
     });
   }
-  getDrawRowHeight(doc: PDFKit.PDFDocument,rowIndex: number) {
+  getDrawRowHeight(doc: PDFKit.PDFDocument, rowIndex: number) {
     const isBold = this.boldedRows.includes(rowIndex);
 
     // Apply bold font if necessary
@@ -333,14 +336,9 @@ class PDFReportGenerator {
     let startX = this.MARGIN.left;
     // Check if the current row has a span
     const spanInfo = this.spanMap.get(rowIndex);
-    const {
-      columnIndex,
-      spanLength,
-    } = spanInfo || {};
+    const { columnIndex, spanLength } = spanInfo || {};
 
     this.keys.forEach((key, colIndex) => {
-    
-
       // Calculate the column width (spanned width if applicable)
       const colSpan = spanInfo && colIndex === columnIndex ? spanLength : 1;
       const colWidth = this.columnWidths
@@ -385,20 +383,21 @@ class PDFReportGenerator {
 
     this.calculateScaling();
 
-    let _startY = this.MARGIN.top + 60;
-    _startY = this.getTitleAndHeaderHeight(doc, this.MARGIN.top / 2);
-    const totalPages = this.getTotalPage(this.data, doc, _startY) ;
+    // let _startY = this.MARGIN.top + 60;
+    // _startY = this.getTitleAndHeaderHeight(doc, this.MARGIN.top / 2);
+    // const totalPages = this.getTotalPage(this.data, doc, _startY) ;
 
     let startY = this.MARGIN.top + 60;
     let currentPage = 1;
-    startY = this.drawTitleAndHeader(doc, this.MARGIN.top / 2);
+    startY = this.drawTitleAndHeader(doc, (this.MARGIN.top / 2) + this.addMarginInFirstPage);
 
     if (this.beforeDraw) {
-      this.beforeDraw(this,doc);
+      this.beforeDraw(this, doc);
     }
 
     this.data.forEach((row: any, rowIndex: any) => {
       const rowHeight = this.calculateRowHeight(doc, row);
+
       if (
         startY + rowHeight + this.scaledRowHeight >
         this.PAGE_HEIGHT - this.MARGIN.bottom
@@ -406,7 +405,7 @@ class PDFReportGenerator {
         if (this.beforePerPageDraw) {
           this.beforePerPageDraw(this, doc);
         }
-        this.drawPageNumber(doc, currentPage, totalPages, this);
+        this.drawPageNumber(doc, currentPage, 0, this);
         doc.addPage();
         currentPage += 1;
         startY = this.drawTitleAndHeader(doc, this.MARGIN.top / 2);
@@ -418,7 +417,7 @@ class PDFReportGenerator {
     if (this.beforePerPageDraw) {
       this.beforePerPageDraw(this, doc);
     }
-    this.drawPageNumber(doc, currentPage, totalPages, this);
+    this.drawPageNumber(doc, currentPage, 0, this);
     doc.end();
     writeStream.on("finish", (e: any) => {
       console.log(`PDF created successfully at: ${outputFilePath}`);

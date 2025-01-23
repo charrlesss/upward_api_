@@ -303,7 +303,6 @@ export async function printModel(req: Request, OR_Num: string) {
   `;
   const qry1 = `SELECT * FROM collection WHERE  Official_Receipt = '${OR_Num}'`;
 
-  console.log(qry);
   return {
     data: await prisma.$queryRawUnsafe(qry),
     data1: await prisma.$queryRawUnsafe(qry1),

@@ -27,7 +27,6 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 
 const CashDisbursement = express.Router();
-
 CashDisbursement.get("/search-payto-clients-name", async (req, res) => {
   try {
     const { searchPdcPolicyIds } = req.query;
@@ -49,7 +48,6 @@ CashDisbursement.get("/search-payto-clients-name", async (req, res) => {
     });
   }
 });
-
 CashDisbursement.get("/cash-disbursement/generate-id", async (req, res) => {
   try {
     res.send({
@@ -66,7 +64,6 @@ CashDisbursement.get("/cash-disbursement/generate-id", async (req, res) => {
     });
   }
 });
-
 CashDisbursement.post(
   "/cash-disbursement/add-cash-disbursement",
   async (req, res) => {
@@ -188,7 +185,6 @@ CashDisbursement.post(
     }
   }
 );
-
 CashDisbursement.post(
   "/cash-disbursement/void-cash-disbursement",
   async (req, res) => {
@@ -237,7 +233,6 @@ CashDisbursement.post(
     }
   }
 );
-
 CashDisbursement.get(
   "/cash-disbursement/search-cash-disbursement",
   async (req, res) => {
@@ -258,7 +253,6 @@ CashDisbursement.get(
     }
   }
 );
-
 CashDisbursement.post(
   "/cash-disbursement/search-cash-disbursement",
   async (req, res) => {
@@ -278,7 +272,6 @@ CashDisbursement.post(
     }
   }
 );
-
 CashDisbursement.post(
   "/cash-disbursement/get-selected-search-cash-disbursement",
   async (req, res) => {
@@ -304,9 +297,6 @@ CashDisbursement.post(
     }
   }
 );
-
-
-
 CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
   try {
     console.log(req.body.check);
@@ -804,8 +794,7 @@ CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
     });
   }
 });
-
-function AmountToWords(amount: number) {
+export function AmountToWords(amount: number) {
   const formattedAmount = amount.toFixed(2);
   const ln = formattedAmount.length - 3;
   const a = numberToWords(parseInt(formattedAmount.substring(0, ln), 10));
@@ -898,7 +887,6 @@ function numberToWords(num: number) {
 
   return word.trim();
 }
-
 const drawTextWithLetterSpacing = (
   doc: PDFKit.PDFDocument,
   text: string,

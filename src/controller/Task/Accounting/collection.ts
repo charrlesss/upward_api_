@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Response } from "express";
 import {
   TransactionAndChartAccount,
   collectionIDGenerator,
@@ -27,6 +27,10 @@ import { qry_id_policy_sub } from "../../../model/db/views";
 import { executeQuery } from "../../../model/Task/Production/policy";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 import { checkClientID } from "../../../model/Task/Accounting/pdc.model";
+import PDFDocument from "pdfkit";
+import fs from "fs";
+import { height } from "pdfkit/js/page";
+import { AmountToWords } from "./cash-disbursement";
 
 const Collection = express.Router();
 
@@ -184,7 +188,6 @@ Collection.get("/search-collection", async (req, res) => {
     });
   }
 });
-
 Collection.post("/search-collection", async (req, res) => {
   try {
     res.send({
@@ -201,7 +204,6 @@ Collection.post("/search-collection", async (req, res) => {
     });
   }
 });
-
 Collection.post("/update-collection", async (req, res) => {
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
@@ -259,15 +261,96 @@ Collection.post("/get-drcode-drtitle-from-collection", async (req, res) => {
     });
   }
 });
-Collection.post("/on-print", async (req, res) => {
+// Collection.post("/on-print", async (req, res) => {
+//   try {
+//     console.log(req.body);
+//     const { data, data1 }: any = await printModel(req, req.body.ORNo);
+
+//     res.send({
+//       message: "Print Collection Successfully!",
+//       success: true,
+//       data,
+//       data1,
+//     });
+//   } catch (error: any) {
+//     console.log(error.message);
+//     res.send({
+//       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+//       success: false,
+//     });
+//   }
+// });
+Collection.post("/print-or", async (req, res) => {
   try {
-    console.log(req.body);
-    const { data, data1 } = await printModel(req, req.body.ORNo);
-    res.send({
-      message: "Print Collection Successfully!",
-      success: true,
-      data,
-      data1,
+    const { data, data1 }: any = await printModel(req, req.body.ORNo);
+    const dataToPrint = { ...data[0], ...data1[0] };
+    console.log(dataToPrint);
+    const PAGE_WIDTH = 612;
+    const PAGE_HEIGHT = 792;
+    const outputFilePath = "manok.pdf";
+    const doc = new PDFDocument({
+      size: [PAGE_WIDTH, PAGE_HEIGHT],
+      margin: 0,
+    });
+
+    const writeStream = fs.createWriteStream(outputFilePath);
+    doc.pipe(writeStream);
+    drawOfficialReceiptPDF({
+      res,
+      doc,
+      writeStream,
+      PAGE_HEIGHT,
+      PAGE_WIDTH,
+      outputFilePath,
+      footerText: "Original Copy",
+      dataToPrint,
+    });
+
+    drawOfficialReceiptPDF({
+      res,
+      doc,
+      writeStream,
+      PAGE_HEIGHT,
+      PAGE_WIDTH,
+      outputFilePath,
+      footerText: "Duplicate Copy",
+      dataToPrint,
+      adjustHeigth: 400,
+    });
+
+    // LINE HALF
+    doc
+      .moveTo(5, PAGE_HEIGHT / 2)
+      .lineTo(PAGE_WIDTH - 5, PAGE_HEIGHT / 2)
+      .dash(1, { space: 2 })
+      .stroke();
+
+    doc.addPage();
+    drawOfficialReceiptPDF({
+      res,
+      doc,
+      writeStream,
+      PAGE_HEIGHT,
+      PAGE_WIDTH,
+      outputFilePath,
+      footerText: "Triplicate Copy",
+      dataToPrint,
+    });
+    doc.end();
+    writeStream.on("finish", (e: any) => {
+      console.log(`PDF created successfully at: ${outputFilePath}`);
+      const readStream = fs.createReadStream(outputFilePath);
+      readStream.pipe(res);
+
+      readStream.on("end", () => {
+        fs.unlink(outputFilePath, (err) => {
+          if (err) {
+            console.error("Error deleting file:", err);
+          } else {
+            console.log(`File ${outputFilePath} deleted successfully.`);
+          }
+        });
+      });
     });
   } catch (error: any) {
     console.log(error.message);
@@ -277,6 +360,366 @@ Collection.post("/on-print", async (req, res) => {
     });
   }
 });
+
+function drawOfficialReceiptPDF({
+  res,
+  doc,
+  writeStream,
+  PAGE_HEIGHT,
+  PAGE_WIDTH,
+  outputFilePath,
+  footerText,
+  dataToPrint,
+  adjustHeigth = 0,
+}: any) {
+  doc.fontSize(10);
+  doc.font("Helvetica-Bold");
+  doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 0, 45 + adjustHeigth, {
+    align: "center",
+    baseline: "middle",
+  });
+  doc.fontSize(8);
+  doc.font("Helvetica");
+  doc.text(
+    "No. 1197 Azure Business Center EDSA-Munoz, Katipunan, Quezon City",
+    0,
+    62 + adjustHeigth,
+    {
+      align: "center",
+      baseline: "middle",
+    }
+  );
+  doc.text("Tel. No. 8921-0154 / upward.csmi@gmail.com", 0, 74 + adjustHeigth, {
+    align: "center",
+    baseline: "middle",
+  });
+
+  doc.fontSize(9);
+  doc.font("Helvetica-Bold");
+  doc.text("COLLECTION RECEIPT", 5, 105 + adjustHeigth, {
+    align: "left",
+  });
+  const txtOR = `No: ${dataToPrint.ORNo}`;
+  const textWidth = doc.widthOfString(txtOR);
+
+  doc.text(txtOR, PAGE_WIDTH - (textWidth + 5), 105 + adjustHeigth, {
+    align: "left",
+    width: textWidth + 5,
+  });
+
+  //SECTION 1
+  // ======================
+  doc
+    .moveTo(5, 145 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 145 + adjustHeigth)
+    .stroke();
+
+  doc
+    .moveTo(PAGE_WIDTH - 200, 120 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 200, 145 + adjustHeigth)
+    .stroke();
+  doc.font("Helvetica");
+  doc.fontSize(8);
+  doc.text("Payor's Name & I.D. No:", 10, 125 + adjustHeigth, {
+    align: "left",
+    width: 110,
+  });
+  doc.fontSize(9);
+  doc.font("Helvetica-Bold");
+  const idNoText = `${dataToPrint.CRLoanName} (${dataToPrint.ID_No})`;
+  autoAdjustTextHeigth(doc, idNoText, 112, 128 + adjustHeigth, 290, 22);
+  doc.fontSize(8);
+  doc.font("Helvetica");
+  doc.text("Transaction Date:", PAGE_WIDTH - 190, 125 + adjustHeigth, {
+    align: "left",
+    width: 80,
+  });
+  doc.fontSize(9);
+  doc.font("Helvetica-Bold");
+  doc.text(
+    format(new Date(dataToPrint.Date_OR), "MMMM dd, yyyy"),
+    PAGE_WIDTH - 110,
+    128 + adjustHeigth,
+    {
+      align: "left",
+      width: 100,
+    }
+  );
+
+  // ======================
+
+  //SECTION 2
+  // ======================
+  doc
+    .moveTo(5, 170 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 170 + adjustHeigth)
+    .stroke();
+  doc.fontSize(8);
+  doc.font("Helvetica");
+  doc.text("Payor's Address:", 10, 150 + adjustHeigth, {
+    align: "left",
+    width: 110,
+  });
+  doc.fontSize(9);
+  doc.font("Helvetica-Bold");
+  const addressText = dataToPrint.PayorAddress ?? "";
+  autoAdjustTextHeigth(
+    doc,
+    addressText,
+    112,
+    153 + adjustHeigth,
+    PAGE_WIDTH - 135,
+    22
+  );
+
+  // ======================
+
+  //SECTION 3
+  // ======================
+  doc
+    .moveTo(5, 195 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 195 + adjustHeigth)
+    .stroke();
+  doc.fontSize(8);
+  doc.font("Helvetica");
+  doc.text("Amount Received:", 10, 175 + adjustHeigth, {
+    align: "left",
+    width: 75,
+  });
+  doc.fontSize(9);
+  const wordsTobumText = AmountToWords(
+    parseFloat(dataToPrint.Credit.toString().replace(/,/g, ""))
+  );
+  doc.font("Helvetica-Bold");
+  autoAdjustTextHeigth(doc, wordsTobumText, 112, 178 + adjustHeigth, 350, 22);
+  doc.fontSize(11);
+  doc.text(
+    `(Php ${formatNumber(
+      parseFloat(dataToPrint.Credit.toString().replace(/,/g, ""))
+    )})`,
+    460,
+    178 + adjustHeigth,
+    {
+      align: "center",
+      width: 120,
+    }
+  );
+  doc.fontSize(9);
+
+  // ======================
+
+  //SECTION 4
+  // ======================
+  doc
+    .moveTo(5, 245 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 245 + adjustHeigth)
+    .stroke();
+  doc.font("Helvetica");
+  doc.fontSize(8);
+  doc.text("Items Paid:", 10, 205 + adjustHeigth, {
+    align: "left",
+    width: 60,
+  });
+  // account
+  doc.fontSize(9);
+  doc.font("Helvetica-Bold");
+  autoAdjustTextHeigth(
+    doc,
+    dataToPrint.CRTitle,
+    112,
+    220 + adjustHeigth,
+    350,
+    22
+  );
+  doc.font("Helvetica");
+  doc.text("Total :", 10, 230 + adjustHeigth, {
+    align: "left",
+    width: 60,
+  });
+
+  doc.font("Helvetica-Bold");
+
+  // top
+  doc.text(
+    formatNumber(parseFloat(dataToPrint.Debit.toString().replace(/,/g, ""))),
+    460,
+    205 + adjustHeigth,
+    {
+      align: "center",
+      width: 120,
+    }
+  );
+
+  // bottom
+  doc.text(
+    formatNumber(parseFloat(dataToPrint.Credit.toString().replace(/,/g, ""))),
+    460,
+    230 + adjustHeigth,
+    {
+      align: "center",
+      width: 120,
+    }
+  );
+  doc.font("Helvetica");
+  doc.fontSize(8);
+  // ======================
+
+  //SECTION 5
+  // ======================
+  doc
+    .moveTo(5, 295 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 295 + adjustHeigth)
+    .stroke();
+
+  let adjsutH = 50;
+  doc.text("Form of Payment:", 10, 205 + adjsutH + adjustHeigth, {
+    align: "left",
+    width: 80,
+  });
+
+  // account
+  doc.font("Helvetica-Bold");
+  doc.fontSize(9);
+  autoAdjustTextHeigth(
+    doc,
+    dataToPrint.Payment === 'Check' ? `Check - ${format(new Date(dataToPrint.Check_Date), "MM/dd/yyyy")} - ${
+      dataToPrint.Check_No
+    } ${dataToPrint.Bank}` :
+    "Cash",
+    112,
+    220 + adjsutH + adjustHeigth,
+    350,
+    22
+  );
+
+  doc.font("Helvetica");
+  doc.fontSize(8);
+  doc.text("Total :", 10, 230 + adjsutH + adjustHeigth, {
+    align: "left",
+    width: 80,
+  });
+  doc.font("Helvetica-Bold");
+  doc.fontSize(9);
+  // top
+  doc.text(
+    formatNumber(parseFloat(dataToPrint.Debit.toString().replace(/,/g, ""))),
+    460,
+    205 + adjsutH + adjustHeigth,
+    {
+      align: "center",
+      width: 120,
+    }
+  );
+
+  // bottom
+  doc.text(
+    formatNumber(parseFloat(dataToPrint.Credit.toString().replace(/,/g, ""))),
+    460,
+    230 + adjsutH + adjustHeigth,
+    {
+      align: "center",
+      width: 120,
+    }
+  );
+  doc.font("Helvetica");
+  doc.fontSize(8);
+  // ======================
+
+  //SECTION 6
+  // ======================
+  doc
+    .moveTo(5, 320 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 320 + adjustHeigth)
+    .stroke();
+
+  doc.text("Cashier's Name & Signature / Date:", 10, 305 + adjustHeigth, {
+    align: "left",
+    width: 250,
+  });
+
+  // ======================
+
+  //SECTION 7
+  // ======================
+  doc.text(
+    "Payor's Acknowledgement Signature / Date:",
+    10,
+    PAGE_HEIGHT / 2 - 65 + adjustHeigth,
+    {
+      align: "left",
+      width: 250,
+    }
+  );
+
+  // ======================
+  // TOP
+  doc
+    .moveTo(5, 120 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 120 + adjustHeigth)
+    .stroke();
+
+  doc
+    .moveTo(5, 120 + adjustHeigth)
+    .lineTo(5, PAGE_HEIGHT / 2 - 50 + adjustHeigth)
+    .stroke(); //LEFT
+
+  doc
+    .moveTo(PAGE_WIDTH - 5, 120 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, PAGE_HEIGHT / 2 - 50 + adjustHeigth)
+    .stroke(); //RIGTH
+
+  // BOTTOM
+  doc
+    .moveTo(5, PAGE_HEIGHT / 2 - 50 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, PAGE_HEIGHT / 2 - 50 + adjustHeigth)
+    .stroke();
+
+  doc.fontSize(8);
+  doc.font("Helvetica-Bold");
+  doc.text(
+    `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+    5,
+    PAGE_HEIGHT / 2 - 40 + adjustHeigth,
+    {
+      align: "left",
+      width: 300,
+    }
+  );
+
+  const textWidth1 = doc.widthOfString(footerText);
+  doc.text(
+    footerText,
+    PAGE_WIDTH - (textWidth1 + 5),
+    PAGE_HEIGHT / 2 - 40 + adjustHeigth,
+    {
+      align: "left",
+      width: textWidth1 + 5,
+    }
+  );
+}
+function autoAdjustTextHeigth(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  const idNoTextH = doc.heightOfString(text, {
+    align: "left",
+    width,
+    height,
+  });
+  let adjustIDNoTextH = 0;
+  if (idNoTextH > 11) {
+    adjustIDNoTextH = 5;
+  }
+  doc.text(text, x, y - adjustIDNoTextH, {
+    align: "left",
+    width,
+    height,
+  });
+}
 async function AddCollection(req: any) {
   const { IDEntryWithPolicy } = qry_id_policy_sub();
   const getClientSubAccount: any = await executeQuery(
@@ -469,5 +912,12 @@ async function AddCollection(req: any) {
       req
     );
   }
+}
+
+export function formatNumber(num: number) {
+  return (num || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 export default Collection;
