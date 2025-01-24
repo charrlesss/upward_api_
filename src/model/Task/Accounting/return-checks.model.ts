@@ -2,7 +2,6 @@ import { Request } from "express";
 import { PrismaList } from "../../connection";
 const { CustomPrismaClient } = PrismaList();
 
-
 const clientDetails = `
 select * from (
     SELECT 
@@ -86,7 +85,7 @@ FROM
     ) a
     WHERE
      a.Name is not null 
-`
+`;
 
 export async function GenerateReturnCheckID(req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
@@ -104,37 +103,34 @@ export async function getCheckList(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
-    SELECT  
-			Temp_SlipCode AS DepoSlip, 
-			date_FORMAT(CAST(deposit.Temp_SlipDate AS DATE),'%m/%d/%Y') AS DepoDate,  
-			deposit.Check_No AS Check_No, 
-			ifnull(date_FORMAT(CAST(deposit.Check_Date AS DATE),'%m/%d/%Y'),deposit.Check_Date) AS Check_Date, 
-			format(deposit.Credit,2) AS Amount, 
-			deposit.Bank, 
-			Official_Receipt, 
-			date_FORMAT(Date_OR,'%m/%d/%Y') AS Date_OR, 
-			BankAccount,
-      MAX(Deposit_ID) as TempID
-		FROM (deposit LEFT JOIN deposit_slip ON deposit.Temp_SlipCode = deposit_slip.SlipCode) 
-			LEFT JOIN (SELECT Official_Receipt, Date_OR 
-      FROM collection GROUP BY Official_Receipt, Date_OR) 
-			OR_Number ON deposit.Ref_No = OR_Number.Official_Receipt 
-		GROUP BY 
-			deposit.Temp_SlipCode, 
-			deposit.Temp_SlipDate, 
-			deposit.Ref_No, 
-			OR_Number.Date_OR, 
-			deposit_slip.BankAccount, 
-			deposit.Credit, 
-			deposit.Check_Date, 
-			deposit.Check_No, deposit.Bank, Official_Receipt, BankAccount 
-		HAVING (((OR_Number.Date_OR) Is Not Null) AND 
-		((deposit.Check_No)<>'')) AND (Check_No LIKE '%${search}%' OR Bank LIKE '%${search}%') 
-        ORDER BY deposit.Check_Date  desc
-        limit 50
+        SELECT 
+    Temp_SlipCode AS Deposit_Slip,
+    FORMAT(CAST(Deposit.Temp_SlipDate AS DATE),
+        'MM/dd/yyyy') AS Depo_Date,
+    Deposit.Check_No AS Check_No,
+    Deposit.Check_Date ,
+    FORMAT(Deposit.Credit, 2) AS Amount,
+    Deposit.Bank,
+    Official_Receipt,
+    FORMAT(Date_OR, 'MM/dd/yyyy') AS Date_OR,
+    BankAccount,
+     DATE_FORMAT(STR_TO_DATE(Deposit.Check_Date, '%m/%d/%Y'), '%Y-%d-%m') AS _formatted_date
+FROM
+    (Deposit
+    LEFT JOIN Deposit_Slip ON Deposit.Temp_SlipCode = Deposit_Slip.SlipCode)
+        LEFT JOIN
+    (SELECT 
+        Official_Receipt, Date_OR
+    FROM
+        Collection
+    GROUP BY Official_Receipt , Date_OR) OR_Number ON Deposit.Ref_No = OR_Number.Official_Receipt
+GROUP BY Deposit.Temp_SlipCode , Deposit.Temp_SlipDate , Deposit.Ref_No , OR_Number.Date_OR , Deposit_Slip.BankAccount , Deposit.Credit , Deposit.Check_Date , Deposit.Check_No , Deposit.Bank , Official_Receipt , BankAccount
+HAVING (((OR_Number.Date_OR) IS NOT NULL)
+    AND ((Deposit.Check_No) <> ''))
+    AND (Check_No LIKE '%${search}%' OR Bank LIKE '%${search}%')
+ORDER BY Deposit.Check_Date Desc
+LIMIT 100
   `);
-
-  
 }
 export async function getCreditOnSelectedCheck(
   BankAccount: string,
@@ -180,9 +176,9 @@ export async function getDebitOnSelectedCheck(
       a.Official_Receipt = '${Official_Receipt}'
       AND a.CRCode <> ''
       
-  `
+  `;
   // dito na stop
-  console.log(qry)
+  console.log(qry);
   return await prisma.$queryRawUnsafe(qry);
 }
 export async function getBranchName(req: Request) {

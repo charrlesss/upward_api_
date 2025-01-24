@@ -39,10 +39,10 @@ ReturnCheck.get("/get-new-return-check-id", async (req, res) => {
     });
   }
 });
-ReturnCheck.get("/get-check-list", async (req, res) => {
+ReturnCheck.post("/get-check-list", async (req, res) => {
   try {
     const checkList = await getCheckList(
-      req.query.checkListSearch as string,
+      req.body.search,
       req
     );
     res.send({

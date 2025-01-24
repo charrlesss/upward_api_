@@ -339,7 +339,7 @@ ID_Entry.post(
     try {
       delete req.body.NewShortName;
       await CreateClientEntry(req.body, req);
-      await UpdateId("entry client", newCount, newMonth, newYear, req);
+      // await UpdateId("entry client", newCount, newMonth, newYear, req);
       await saveUserLogs(req, req.body.entry_client_id, "add", "Entry Client");
 
       res.send({

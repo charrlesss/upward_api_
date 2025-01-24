@@ -116,7 +116,7 @@ const queryList: any = {
         OR a.firstname like '%${search}%'
         OR a.lastname like '%${search}%'
         OR a.company like '%${search}%'
-        ORDER BY a.createdAt desc 
+        ORDER BY a.entry_client_id desc 
        limit 500
     `,
   },

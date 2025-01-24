@@ -26,6 +26,7 @@ import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 import PDFReportGenerator from "../../../lib/pdf-generator";
+import { formatNumber, getSum } from "../../Reports/Production/production-report";
 const GeneralJournal = express.Router();
 
 /// new
@@ -71,14 +72,11 @@ GeneralJournal.post(
   "/general-journal/get-transaction-account",
   async (req, res) => {
     try {
-      console.log('qweqweeeee')
+      console.log("qweqweeeee");
       res.send({
         message: "Successfully get transaction account",
         success: true,
-        data: await getTransactionAccount(
-          req.body.search as string,
-          req
-        ),
+        data: await getTransactionAccount(req.body.search as string, req),
       });
     } catch (error: any) {
       console.log(error.message);
@@ -91,121 +89,206 @@ GeneralJournal.post(
     }
   }
 );
-GeneralJournal.post(
-  "/general-journal/print",
-  async (req, res) => {
-    try {
-      const PAGE_WIDTH = 635;
-      const PAGE_HEIGHT = 792;
-      const newData = req.body.generalJournal
-      const props: any = {
-        data: newData,
-        columnWidths: [60, 132, 101, 152, 85, 85],
-        headers: [
-          { headerName: 'ACCT #', textAlign: "left" },
-          { headerName: 'ACCOUNT TITLE', textAlign: "left" },
-          { headerName: 'ID NO.', textAlign: "left" },
-          { headerName: 'IDENTITY', textAlign: "left" },
-          { headerName: 'DEBIT', textAlign: "right" },
-          { headerName: 'CREDIT', textAlign: "right" },
-        ],
-        keys: [
-          'code',
-          'acctName',
-          'IDNo',
-          'ClientName',
-          'debit',
-          'credit',
-        ],
-        title:"",
-        BASE_FONT_SIZE:8,
-        PAGE_WIDTH,
-        PAGE_HEIGHT,
-        addMarginInFirstPage:100,
-        MARGIN: { top: 10, right: 10, bottom: 80, left: 10 },
-        beforeDraw: (pdfReportGenerator: any,doc:PDFKit.PDFDocument) => {
-          // pdfReportGenerator.SpanRow(newData.length - 1, 0, 3);
-          // pdfReportGenerator.boldRow(newData.length - 1);
+GeneralJournal.post("/general-journal/print", async (req, res) => {
+  try {
+    const PAGE_WIDTH = 635;
+    const PAGE_HEIGHT = 792;
+    const newData = req.body.generalJournal;
+    console.log(req.body)
+    newData.push({
+      code: "",
+      acctName: "",
+      IDNo: "",
+      ClientName: "TOTAL : ",
+      debit: formatNumber(getSum(newData,'debit')),
+      credit: formatNumber(getSum(newData,'credit')),
+    });
 
-          pdfReportGenerator.borderColumnInRow(newData.length - 1, [
-            { column: 0, key: 'code' },
-            { column: 1, key: 'acctName' },
-            { column: 2, key: 'IDNo' },
-            { column: 3, key: 'ClientName' },
-            { column: 4, key: 'debit' },
-            { column: 5, key: 'credit' }
-          ], {
-            top: true,
-            bottom: true,
-            left: false,
-            right: false
-          });
-          doc.font('Helvetica-Bold');
-          doc.fontSize(16)
-          doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 10, 50, {
-            align: 'left',
-            width: 400,
-          });
-          doc.fontSize(14)
-          doc.text("Journal Voucher", 10, 72, {
-            align: 'left',
-            width: 400,
-          });
-          doc.fontSize(11)
-      
-          doc.text("JV No. : 2412-006", PAGE_WIDTH - 120, 105, {
-            align: 'left',
-            width: 130,
-          });
-          doc.text("Date : 2024-12-13", PAGE_WIDTH - 120, 125, {
-            align: 'left',
-            width: 130,
-          });
+    newData.push({
+      code: "EXPLANATION",
+      acctName: "",
+      IDNo: "",
+      ClientName: "",
+      debit: "",
+      credit: "",
+    });
+    newData.push({
+      code: `${req.body.JVExp}`,
+      acctName: "",
+      IDNo: "",
+      ClientName: "",
+      debit: "",
+      credit: "",
+    });
 
-        },
-        beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
-          doc.fontSize(9)
+    newData.push({
+      code: `
 
-          // doc.font('Helvetica');
-          // doc.text("Prepared By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100) - 300), pdfReportGenerator.PAGE_HEIGHT - 50, {
-          //   align: 'right',
-          //   width: 100,
-          // });
-          // doc.text("Checked By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100)), pdfReportGenerator.PAGE_HEIGHT - 50, {
-          //   align: 'right',
-          //   width: 100,
-          // });
-          // doc.text("Noted By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100) + 300), pdfReportGenerator.PAGE_HEIGHT - 50, {
-          //   align: 'right',
-          //   width: 100,
-          // });
-        },
-        drawPageNumber: (doc: PDFKit.PDFDocument, currentPage: number, totalPages: number, pdfReportGenerator: any) => {
-          console.log('pageNumberText')
+    ____________________                   ____________________                   ____________________
+        Prepared By                                       Checked By                                      Approved By
+      `,
+      acctName: "",
+      IDNo: "",
+      ClientName: "",
+      debit: "",
+      credit: "",
+    });
+    const props: any = {
+      data: newData,
+      columnWidths: [60, 132, 101, 152, 85, 85],
+      headers: [
+        { headerName: "ACCT #", textAlign: "left" },
+        { headerName: "ACCOUNT TITLE", textAlign: "left" },
+        { headerName: "ID NO.", textAlign: "left" },
+        { headerName: "IDENTITY", textAlign: "left" },
+        { headerName: "DEBIT", textAlign: "right" },
+        { headerName: "CREDIT", textAlign: "right" },
+      ],
+      keys: ["code", "acctName", "IDNo", "ClientName", "debit", "credit"],
+      title: "",
+      BASE_FONT_SIZE: 8,
+      PAGE_WIDTH,
+      PAGE_HEIGHT,
+      addMarginInFirstPage: 100,
+      MARGIN: { top: 10, right: 10, bottom: 30, left: 10 },
+      addHeaderBorderBottom: true,
+      beforeDraw: (pdfReportGenerator: PDFReportGenerator, doc: PDFKit.PDFDocument) => {
+        console.log("HELLOW")
+        // 
+        // pdfReportGenerator.boldRow(newData.length - 1);
 
-          doc.font('Helvetica');
-          const pageNumberText = `Page ${currentPage}`;
-          doc.text(pageNumberText, 10, pdfReportGenerator.PAGE_HEIGHT - 70, {
-            align: 'right',
-            width: 100
-          });
+        pdfReportGenerator.borderColumnInRow(newData.length - 4, [
+          { column: 0, key: 'code' },
+          { column: 1, key: 'acctName' },
+          { column: 2, key: 'IDNo' },
+          { column: 3, key: 'ClientName' },
+          { column: 4, key: 'debit' },
+          { column: 5, key: 'credit' }
+        ], {
+          top: true,
+          bottom: false,
+          left: false,
+          right: false
+        });
+        pdfReportGenerator.borderColumnInRow(newData.length - 3, [
+          { column: 0, key: 'code' },
+          { column: 1, key: 'acctName' },
+          { column: 2, key: 'IDNo' },
+          { column: 3, key: 'ClientName' },
+          { column: 4, key: 'debit' },
+          { column: 5, key: 'credit' }
+        ], {
+          top: true,
+          bottom: false,
+          left: false,
+          right: false
+        });
+        pdfReportGenerator.borderColumnInRow(newData.length - 2, [
+          { column: 0, key: 'code' },
+          { column: 1, key: 'acctName' },
+          { column: 2, key: 'IDNo' },
+          { column: 3, key: 'ClientName' },
+          { column: 4, key: 'debit' },
+          { column: 5, key: 'credit' }
+        ], {
+          top: true,
+          bottom: false,
+          left: false,
+          right: false
+        });
 
+        
 
-        }
-      }
-      const pdfReportGenerator = new PDFReportGenerator(props)
-      return pdfReportGenerator.generatePDF(res)
-    } catch (error: any) {
-      console.log(error.message);
+        pdfReportGenerator.setAlignment(newData.length - 4 ,3,'center')
+        pdfReportGenerator.boldRow(newData.length - 4);
 
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        data: [],
-      });
-    }
+        pdfReportGenerator.SpanRow(newData.length - 3, 0, 6);
+        pdfReportGenerator.setAlignment(newData.length - 3 ,0,'center')
+        pdfReportGenerator.boldRow(newData.length - 3);
+
+        pdfReportGenerator.SpanRow(newData.length - 2, 0, 6);
+        pdfReportGenerator.setAlignment(newData.length - 2 ,0,'center')
+        pdfReportGenerator.boldRow(newData.length - 2);
+
+        pdfReportGenerator.SpanRow(newData.length - 1, 0, 6);
+        pdfReportGenerator.setAlignment(newData.length - 1 ,0,'center')
+        pdfReportGenerator.boldRow(newData.length - 1);
+
+        doc.font("Helvetica-Bold");
+        doc.fontSize(16);
+        doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 10, 50, {
+          align: "left",
+          width: 400,
+        });
+        doc.fontSize(14);
+        doc.text("Journal Voucher", 10, 72, {
+          align: "left",
+          width: 400,
+        });
+        doc.fontSize(11);
+        doc.text(`JV No. : ${req.body.JVNo}`, PAGE_WIDTH - 120, 105, {
+          align: "left",
+          width: 130,
+        });
+        doc.text(`Date   : ${format(new Date(req.body.JVDate),'MM/dd/yyyy')}`, PAGE_WIDTH - 120, 125, {
+          align: "left",
+          width: 130,
+        });
+      },
+      beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+        doc.fontSize(9);
+
+        // doc.font('Helvetica');
+        // doc.text("Prepared By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100) - 300), pdfReportGenerator.PAGE_HEIGHT - 50, {
+        //   align: 'right',
+        //   width: 100,
+        // });
+        // doc.text("Checked By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100)), pdfReportGenerator.PAGE_HEIGHT - 50, {
+        //   align: 'right',
+        //   width: 100,
+        // });
+        // doc.text("Noted By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100) + 300), pdfReportGenerator.PAGE_HEIGHT - 50, {
+        //   align: 'right',
+        //   width: 100,
+        // });
+      },
+      drawPageNumber: (
+        doc: PDFKit.PDFDocument,
+        currentPage: number,
+        totalPages: number,
+        pdfReportGenerator: any
+      ) => {
+        doc.font("Helvetica");
+        const pageNumberText = `Page ${currentPage}`;
+        doc.text(pageNumberText, PAGE_WIDTH - 120, pdfReportGenerator.PAGE_HEIGHT - 35, {
+          align: "right",
+          width: 100,
+        });
+
+        doc.text(
+          `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+          -45,
+          pdfReportGenerator.PAGE_HEIGHT - 35,
+          {
+            align: "right",
+            width: 200,
+          }
+        );
+
+      },
+    };
+    const pdfReportGenerator = new PDFReportGenerator(props);
+    return pdfReportGenerator.generatePDF(res);
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
   }
-);
+});
 //// old
 GeneralJournal.post(
   "/general-journal/add-general-journal",
