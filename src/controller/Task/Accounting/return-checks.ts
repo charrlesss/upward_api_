@@ -20,7 +20,34 @@ import {
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
+import { __executeQuery } from "../../../model/Task/Production/policy";
 const ReturnCheck = express.Router();
+// new ============
+
+ReturnCheck.post("/return-check/load-entries", async (req, res) => {
+  const qry1 = `SELECT Account_ID, Short, BankAccounts.IDNo FROM BankAccounts LEFT JOIN Chart_Account ON BankAccounts.Account_ID = Chart_Account.Acct_Code WHERE Account_No = '${req.body.Account_No}'`;
+  const qry2 = `SELECT * FROM Collection WHERE Official_Receipt = '${req.body.ORNo}' and CRCode IS NOT NULL`;
+
+  try {
+    res.send({
+      message: "Successfully Get New Return Check ID.",
+      success: true,
+      dt1: await __executeQuery(qry1,req),
+      dt2: await __executeQuery(qry2,req),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      dt1: [],
+      dt2: [],
+    });
+  }
+});
+
+//// old ===============
 
 ReturnCheck.get("/get-new-return-check-id", async (req, res) => {
   try {
@@ -41,10 +68,7 @@ ReturnCheck.get("/get-new-return-check-id", async (req, res) => {
 });
 ReturnCheck.post("/get-check-list", async (req, res) => {
   try {
-    const checkList = await getCheckList(
-      req.body.search,
-      req
-    );
+    const checkList = await getCheckList(req.body.search, req);
     res.send({
       message: "Successfully Get Check List",
       success: true,
