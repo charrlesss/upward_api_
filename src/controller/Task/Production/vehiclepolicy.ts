@@ -397,20 +397,20 @@ VehiclePolicy.post("/save", async (req, res) => {
       req
     );
 
-    const rate = (
-      (await getRate(
-        req.body.accountRef,
-        "Vehicle",
-        req.body.dinomination,
-        req
-      )) as Array<any>
-    )[0];
-    if (rate == null) {
-      return res.send({
-        message: "Please setup commission rate for this account and Line",
-        success: false,
-      });
-    }
+    // const rate = (
+    //   (await getRate(
+    //     req.body.accountRef,
+    //     "Vehicle",
+    //     req.body.dinomination,
+    //     req
+    //   )) as Array<any>
+    // )[0];
+    // if (rate == null) {
+    //   return res.send({
+    //     message: "Please setup commission rate for this account and Line",
+    //     success: false,
+    //   });
+    // }
 
     const subAccount = (
       (await getClientById(req.body.clientIDRef, req)) as Array<any>
@@ -454,21 +454,21 @@ VehiclePolicy.post("/com-update-regular", async (req, res) => {
       return res.send({ message: "Invalid User Code", success: false });
     }
     //get Commision rate
-    const rate = (
-      (await getRate(
-        req.body.accountRef,
-        "Vehicle",
-        req.body.dinomination,
-        req
-      )) as Array<any>
-    )[0];
+    // const rate = (
+    //   (await getRate(
+    //     req.body.accountRef,
+    //     "Vehicle",
+    //     req.body.dinomination,
+    //     req
+    //   )) as Array<any>
+    // )[0];
 
-    if (rate == null) {
-      return res.send({
-        message: "Please setup commission rate for this account and Line",
-        success: false,
-      });
-    }
+    // if (rate == null) {
+    //   return res.send({
+    //     message: "Please setup commission rate for this account and Line",
+    //     success: false,
+    //   });
+    // }
 
     const subAccount = (
       (await getClientById(req.body.clientIDRef, req)) as Array<any>

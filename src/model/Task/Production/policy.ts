@@ -259,3 +259,7 @@ export async function __executeQuery(qry:string ,req:Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.$queryRawUnsafe(qry)
 }
+export async function __executeQueryWithParams(qry:string,params:any[] ,req:Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+  return await prisma.$queryRawUnsafe(qry,...params)
+}

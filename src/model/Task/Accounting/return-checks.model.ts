@@ -87,34 +87,20 @@ FROM
      a.Name is not null 
 `;
 
-export async function GenerateReturnCheckID(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
-  return await prisma.$queryRawUnsafe(`
-    SELECT 
-      concat(DATE_FORMAT(NOW(), '%y%m'),'-',if(concat(a.year,a.month) <> DATE_FORMAT(NOW(), '%y%m'),'001',
-      concat(LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1))) as return_check_id   
-    FROM
-        id_sequence a
-    WHERE
-      a.type = 'return-check'`);
-}
 export async function getCheckList(search: string, req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
         SELECT 
     Temp_SlipCode AS Deposit_Slip,
-    FORMAT(CAST(Deposit.Temp_SlipDate AS DATE),
-        'MM/dd/yyyy') AS Depo_Date,
+    date_format(Deposit.Temp_SlipDate,'%m/%d/%Y' ) AS Depo_Date,
     Deposit.Check_No AS Check_No,
-    Deposit.Check_Date ,
+    date_format(Deposit.Check_Date ,'%m/%d/%Y') as Check_Date,
     FORMAT(Deposit.Credit, 2) AS Amount,
     Deposit.Bank,
     Official_Receipt,
-    FORMAT(Date_OR, 'MM/dd/yyyy') AS Date_OR,
-    BankAccount,
-     DATE_FORMAT(STR_TO_DATE(Deposit.Check_Date, '%m/%d/%Y'), '%Y-%d-%m') AS _formatted_date
+     date_format(Date_OR,'%m/%d/%Y' )AS Date_OR,
+    BankAccount
 FROM
     (Deposit
     LEFT JOIN Deposit_Slip ON Deposit.Temp_SlipCode = Deposit_Slip.SlipCode)
@@ -132,6 +118,20 @@ ORDER BY Deposit.Check_Date Desc
 LIMIT 100
   `);
 }
+//// ================ old
+export async function GenerateReturnCheckID(req: Request) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+  return await prisma.$queryRawUnsafe(`
+    SELECT 
+      concat(DATE_FORMAT(NOW(), '%y%m'),'-',if(concat(a.year,a.month) <> DATE_FORMAT(NOW(), '%y%m'),'001',
+      concat(LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1))) as return_check_id   
+    FROM
+        id_sequence a
+    WHERE
+      a.type = 'return-check'`);
+}
+
 export async function getCreditOnSelectedCheck(
   BankAccount: string,
   req: Request

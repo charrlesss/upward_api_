@@ -20,20 +20,171 @@ import {
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
-import { __executeQuery } from "../../../model/Task/Production/policy";
+import {
+  __executeQuery,
+  __executeQueryWithParams,
+} from "../../../model/Task/Production/policy";
+import { selectClient } from "../../../model/Task/Accounting/pdc.model";
+import { format } from "date-fns";
 const ReturnCheck = express.Router();
 // new ============
 
 ReturnCheck.post("/return-check/load-entries", async (req, res) => {
-  const qry1 = `SELECT Account_ID, Short, BankAccounts.IDNo FROM BankAccounts LEFT JOIN Chart_Account ON BankAccounts.Account_ID = Chart_Account.Acct_Code WHERE Account_No = '${req.body.Account_No}'`;
-  const qry2 = `SELECT * FROM Collection WHERE Official_Receipt = '${req.body.ORNo}' and CRCode IS NOT NULL`;
+  const qry1 = await __executeQuery(
+    `SELECT Account_ID, Short, BankAccounts.IDNo FROM BankAccounts LEFT JOIN Chart_Account ON BankAccounts.Account_ID = Chart_Account.Acct_Code WHERE Account_No = '${req.body.Account_No}'`,
+    req
+  );
+  const qry2 = await __executeQuery(
+    `
+    SELECT 
+      a.*, 
+      if(b.ShortName is not null and b.ShortName <> '', b.ShortName ,'Head Office') as ShortName, 
+      if(b.Acronym is not null and b.Acronym <> '', b.Acronym ,'HO') as SubAcct
+  FROM
+      Collection a
+          LEFT JOIN
+      (SELECT 
+          b.ShortName, b.Acronym, a.IDNo
+      FROM
+          (SELECT 
+          *
+      FROM
+          (SELECT 
+          'Client' AS IDType,
+              aa.entry_client_id AS IDNo,
+              aa.sub_account,
+              IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                  AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS Shortname,
+              aa.entry_client_id AS client_id,
+              aa.address
+      FROM
+          entry_client aa UNION ALL SELECT 
+          'Agent' AS IDType,
+              aa.entry_agent_id AS IDNo,
+              aa.sub_account,
+              CONCAT(IF(aa.lastname IS NOT NULL
+                  AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS Shortname,
+              aa.entry_agent_id AS client_id,
+              aa.address
+      FROM
+          entry_agent aa UNION ALL SELECT 
+          'Employee' AS IDType,
+              aa.entry_employee_id AS IDNo,
+              aa.sub_account,
+              CONCAT(IF(aa.lastname IS NOT NULL
+                  AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS Shortname,
+              aa.entry_employee_id AS client_id,
+              aa.address
+      FROM
+          entry_employee aa UNION ALL SELECT 
+          'Supplier' AS IDType,
+              aa.entry_supplier_id AS IDNo,
+              aa.sub_account,
+              IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                  AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS Shortname,
+              aa.entry_supplier_id AS client_id,
+              aa.address
+      FROM
+          entry_supplier aa UNION ALL SELECT 
+          'Fixed Assets' AS IDType,
+              aa.entry_fixed_assets_id AS IDNo,
+              aa.sub_account,
+              aa.fullname AS Shortname,
+              aa.entry_fixed_assets_id AS client_id,
+              aa.description AS address
+      FROM
+          entry_fixed_assets aa UNION ALL SELECT 
+          'Others' AS IDType,
+              aa.entry_others_id AS IDNo,
+              aa.sub_account,
+              aa.description AS Shortname,
+              aa.entry_others_id AS client_id,
+              aa.description AS address
+      FROM
+          entry_others aa) id_entry UNION ALL SELECT 
+          'Policy' AS IDType,
+              a.PolicyNo AS IDNo,
+              b.sub_account,
+              b.Shortname,
+              a.IDNo AS client_id,
+              b.address
+      FROM
+          policy a
+      LEFT JOIN (SELECT 
+          *
+      FROM
+          (SELECT 
+          'Client' AS IDType,
+              aa.entry_client_id AS IDNo,
+              aa.sub_account,
+              IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                  AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS Shortname,
+              aa.entry_client_id AS client_id,
+              aa.address
+      FROM
+          entry_client aa UNION ALL SELECT 
+          'Agent' AS IDType,
+              aa.entry_agent_id AS IDNo,
+              aa.sub_account,
+              CONCAT(IF(aa.lastname IS NOT NULL
+                  AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS Shortname,
+              aa.entry_agent_id AS client_id,
+              aa.address
+      FROM
+          entry_agent aa UNION ALL SELECT 
+          'Employee' AS IDType,
+              aa.entry_employee_id AS IDNo,
+              aa.sub_account,
+              CONCAT(IF(aa.lastname IS NOT NULL
+                  AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS Shortname,
+              aa.entry_employee_id AS client_id,
+              aa.address
+      FROM
+          entry_employee aa UNION ALL SELECT 
+          'Supplier' AS IDType,
+              aa.entry_supplier_id AS IDNo,
+              aa.sub_account,
+              IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                  AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS Shortname,
+              aa.entry_supplier_id AS client_id,
+              aa.address
+      FROM
+          entry_supplier aa UNION ALL SELECT 
+          'Fixed Assets' AS IDType,
+              aa.entry_fixed_assets_id AS IDNo,
+              aa.sub_account,
+              aa.fullname AS Shortname,
+              aa.entry_fixed_assets_id AS client_id,
+              aa.description AS address
+      FROM
+          entry_fixed_assets aa UNION ALL SELECT 
+          'Others' AS IDType,
+              aa.entry_others_id AS IDNo,
+              aa.sub_account,
+              aa.description AS Shortname,
+              aa.entry_others_id AS client_id,
+              aa.description AS address
+      FROM
+          entry_others aa) id_entry) b ON a.IDNo = b.IDNo) a
+      LEFT JOIN sub_account b ON a.sub_account = b.Sub_Acct
+      LEFT JOIN policy c ON a.IDNo = c.PolicyNo
+      LEFT JOIN vpolicy d ON c.PolicyNo = d.PolicyNo) b ON b.IDNo = IF(a.CRLoanID <> ''
+              AND a.CRLoanID IS NOT NULL,
+          a.CRLoanID,
+          a.ID_No)
+  WHERE
+      a.Official_Receipt = '${req.body.ORNo}'
+          AND a.CRCode IS NOT NULL
+    `,
+    req
+  );
 
   try {
     res.send({
       message: "Successfully Get New Return Check ID.",
       success: true,
-      dt1: await __executeQuery(qry1,req),
-      dt2: await __executeQuery(qry2,req),
+      dt1: qry1,
+      dt2: qry2,
     });
   } catch (error: any) {
     console.log(error.message);
@@ -43,6 +194,224 @@ ReturnCheck.post("/return-check/load-entries", async (req, res) => {
       success: false,
       dt1: [],
       dt2: [],
+    });
+  }
+});
+
+ReturnCheck.post("/get-check-list", async (req, res) => {
+  try {
+    const checkList = await getCheckList(req.body.search, req);
+    res.send({
+      message: "Successfully Get Check List",
+      success: true,
+      checkList,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      checkList: [],
+    });
+  }
+});
+ReturnCheck.post("/return-checks/save", async (req, res) => {
+  try {
+    const BranchCode = "HO";
+    const BranchName = "Head Office";
+    await __executeQuery(
+      `DELETE FROM Return_Checks WHERE RC_No ='${req.body.refNo}'`,
+      req
+    );
+
+    req.body.dgvSelChecks.forEach(async (selCheckItm: any, index: number) => {
+      const insertQuery = `
+      INSERT INTO \`return_checks\`
+      (\`Area\`,
+      \`RC_Date\`,
+      \`RC_No\`,
+      \`Explanation\`,
+      \`Check_No\`,
+      \`Date_Deposit\`,
+       \`Amount\`,
+       \`Reason\`,
+       \`Bank\`,
+       \`Check_Date\`,
+       \`Date_Return\`,
+       \`SlipCode\`,
+       \`ORNum\`,
+       \`BankAccnt\`,
+       \`nSort\`,
+      \`Date_Collect\`,
+      \`Temp_RCNo\`)
+      VALUES
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?);
+    `;
+      await __executeQueryWithParams(
+        insertQuery,
+        [
+          BranchCode,
+          req.body.date,
+          req.body.refNo,
+          req.body.explanation,
+          selCheckItm[4],
+          selCheckItm[3],
+          parseFloat(selCheckItm[6].toString().replace(/,/g,'')),
+          selCheckItm[9],
+          selCheckItm[7],
+          selCheckItm[5],
+          selCheckItm[10],
+          selCheckItm[2],
+          selCheckItm[0],
+          selCheckItm[8],
+          (index + 1).toString().padStart(2, "00"),
+          selCheckItm[1],
+          `${req.body.refNo}${(parseInt(req.body.refNo.split("-")[1]) + index)
+            .toString()
+            .padStart(2, "0")}`,
+        ],
+        req
+      );
+
+      await __executeQueryWithParams(
+        `UPDATE PDC SET SlipCode = '', ORNum = '' WHERE Check_No = ?`,
+        [selCheckItm[4]],
+        req
+      );
+
+      // Update Journal
+      await __executeQueryWithParams(
+        `UPDATE Journal SET TC = 'RTC' WHERE Check_No = ? AND Source_No = ? AND Source_Type = 'OR'`,
+        [selCheckItm[4], selCheckItm[0]],
+        req
+      );
+    });
+
+    await __executeQueryWithParams(
+      `DELETE FROM Journal WHERE Source_No = ? AND Source_Type = 'RC'`,
+      [req.body.refNo],
+      req
+    );
+
+    for (const accountingEntrItm of req.body.dgvAccountingEntry) {
+      const journalQuery = `
+      INSERT INTO \`journal\`
+      (\`Branch_Code\`,
+      \`Date_Entry\`,
+
+      \`Source_Type\`,
+      \`Source_No\`,
+      \`Explanation\`,
+      \`GL_Acct\`,
+      \`cGL_Acct\`,
+      \`Sub_Acct\`,
+      \`cSub_Acct\`,
+      \`ID_No\`,
+      \`cID_No\`,
+      \`Debit\`,
+
+      \`Credit\`,
+      \`Check_Date\`,
+      \`Check_No\`,
+      \`Check_Bank\`,
+      \`Check_Return\`,
+      \`Check_Deposit\`,
+      \`Check_Collect\`,
+      \`Check_Reason\`,
+      \`TC\`,
+      \`Source_No_Ref_ID\`)
+      VALUES
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?);
+    `;
+      await __executeQueryWithParams(
+        journalQuery,
+        [
+          BranchCode,
+          req.body.date,
+          'RC',
+          req.body.refNo,
+          req.body.explanation,
+          accountingEntrItm[0],
+          accountingEntrItm[1],
+          BranchCode,
+          BranchName,
+          accountingEntrItm[4],
+
+          accountingEntrItm[5],
+          parseFloat(accountingEntrItm[2].toString().replace(/,/g,'')),
+          parseFloat(accountingEntrItm[3].toString().replace(/,/g,'')),
+          accountingEntrItm[10],
+          accountingEntrItm[8],
+          accountingEntrItm[9],
+          accountingEntrItm[11],
+          accountingEntrItm[14],
+          accountingEntrItm[15],
+          accountingEntrItm[12],
+
+          'RTC',
+          ''
+        ],
+        req
+      );
+    }
+
+    await saveUserLogs(
+      req,
+      req.body.refNo,
+      req.body.mode === "add" ? "edit" : "update",
+      "Return Check"
+    );
+    res.send({
+      message: "Successfully Save Return Check",
+      success: true,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      checkList: [],
+    });
+  }
+});
+ReturnCheck.get("/return-checks/generate-id", async (req, res) => {
+  try {
+    const yyMM = format(new Date(), "yyMM");
+    const rows: any = await __executeQuery(
+      `
+      SELECT CONCAT(
+        SUBSTRING(RC_No, 1, LENGTH(RC_No) - 8), 
+        LEFT(RIGHT(RC_No, 8), 4), 
+        '-', 
+        LPAD(CAST(RIGHT(RC_No, 3) AS UNSIGNED) + 1, 3, '0')
+      ) AS NewRefCode
+      FROM Return_Checks
+      WHERE LEFT(RIGHT(RC_No, 8), 4) = DATE_FORMAT(CURDATE(), '%y%m')
+      GROUP BY RC_No
+      ORDER BY CAST(RIGHT(RC_No, 3) AS UNSIGNED) DESC
+      LIMIT 1;
+      `,
+      req
+    );
+
+    let newRefCode = `${yyMM}-001`;
+
+    if (rows.length > 0) {
+      newRefCode = rows[0].NewRefCode;
+    }
+
+    res.send({
+      message: "Successfully Get Check List",
+      success: true,
+      newRefCode,
+    });
+  } catch (error: any) {
+    console.log(error.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      newRefCode: "",
     });
   }
 });
@@ -66,24 +435,7 @@ ReturnCheck.get("/get-new-return-check-id", async (req, res) => {
     });
   }
 });
-ReturnCheck.post("/get-check-list", async (req, res) => {
-  try {
-    const checkList = await getCheckList(req.body.search, req);
-    res.send({
-      message: "Successfully Get Check List",
-      success: true,
-      checkList,
-    });
-  } catch (error: any) {
-    console.log(error.message);
 
-    res.send({
-      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-      success: false,
-      checkList: [],
-    });
-  }
-});
 ReturnCheck.post("/get-modal-return-check-data", async (req, res) => {
   try {
     res.send({
