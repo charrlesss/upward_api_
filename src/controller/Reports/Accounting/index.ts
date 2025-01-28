@@ -15,6 +15,7 @@ import GeneralJournalBookGJB from "./general-journal-book-gjb";
 import ProductionBookPB from "./production-book-pb";
 import VatBookVB from "./vat-book-vb";
 import AgingAccounts from "./aging-accounts";
+import accountingReporting from "./accounting-report";
 
 const AccountingReport = express.Router();
 
@@ -34,5 +35,6 @@ AccountingReport.use("/accounting/", GeneralJournalBookGJB);
 AccountingReport.use("/accounting/", ProductionBookPB);
 AccountingReport.use("/accounting/", VatBookVB);
 AccountingReport.use("/accounting/", AgingAccounts);
+AccountingReport.use("/accounting/", accountingReporting);
 
 export default AccountingReport;
