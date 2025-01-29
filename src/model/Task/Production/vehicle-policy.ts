@@ -112,7 +112,7 @@ export async function getTPL_IDS(search: string, req: Request) {
         SELECT 
             Prefix
         FROM
-            upward_insurance_umis.ctplregistration
+            ctplregistration
             where Prefix <> '' AND Prefix is not null
         GROUP BY Prefix;
         `

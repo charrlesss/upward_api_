@@ -32,6 +32,7 @@ interface PDFReportGeneratorProps {
   addMarginInFirstPage: number;
   addHeaderBorderTop:boolean
   addHeaderBorderBottom:boolean
+  setRowFontSize:number
   
 }
 class PDFReportGenerator {
@@ -68,6 +69,7 @@ class PDFReportGenerator {
   public addHeaderBorderBottom: boolean = false;
   public alignText: boolean = false;
   public alignmentMap  =new Map();
+  public setRowFontSize  = 0;
 
 
   constructor(props: PDFReportGeneratorProps) {
@@ -94,6 +96,8 @@ class PDFReportGenerator {
     this.addHeaderBorderTop = props.addHeaderBorderTop || true;
     this.addHeaderBorderBottom = props.addHeaderBorderBottom || false;
     this.alignmentMap = new Map();
+    
+    this.setRowFontSize = props.setRowFontSize || 0;
 
   }
   setAlignment(
@@ -128,7 +132,7 @@ class PDFReportGenerator {
     const scaleFactor = Math.min(1, availableWidth / contentWidth);
 
     this.scaledColumns = this.columnWidths.map((width) => width * scaleFactor);
-    this.scaledFontSize = this.BASE_FONT_SIZE * scaleFactor;
+    this.scaledFontSize = (this.BASE_FONT_SIZE * scaleFactor);
     this.scaledRowHeight = this.BASE_FONT_SIZE * 1.2 * scaleFactor;
   }
 
@@ -283,6 +287,10 @@ class PDFReportGenerator {
       doc.font("Helvetica");
     }
 
+    if(this.setRowFontSize > 0){
+      doc.fontSize(9);
+    }
+
     let startX = this.MARGIN.left;
 
     const alignRow = this.alignmentMap.get(rowIndex)
@@ -434,7 +442,6 @@ class PDFReportGenerator {
 
     return currentPage;
   }
-
   generatePDF(res: Response) {
     const outputFilePath = "manok.pdf";
     const doc = new PDFDocument({

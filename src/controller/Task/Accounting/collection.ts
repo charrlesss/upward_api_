@@ -31,6 +31,7 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import { height } from "pdfkit/js/page";
 import { AmountToWords } from "./cash-disbursement";
+import { getSum } from "../../Reports/Production/production-report";
 
 const Collection = express.Router();
 
@@ -153,13 +154,12 @@ Collection.post("/add-collection", async (req, res) => {
     });
   }
 });
-Collection.get("/get-collection-data-search", async (req, res) => {
-  const { ORNo } = req.query;
+Collection.post("/get-collection-data-search", async (req, res) => {
   try {
     res.send({
       message: "Search Collection Successfully",
       success: true,
-      collection: await getSearchCollection(ORNo as string, req),
+      collection: await getSearchCollection(req.body.ORNo as string, req),
     });
   } catch (error: any) {
     console.log(error.message);
@@ -261,30 +261,77 @@ Collection.post("/get-drcode-drtitle-from-collection", async (req, res) => {
     });
   }
 });
-// Collection.post("/on-print", async (req, res) => {
-//   try {
-//     console.log(req.body);
-//     const { data, data1 }: any = await printModel(req, req.body.ORNo);
-
-//     res.send({
-//       message: "Print Collection Successfully!",
-//       success: true,
-//       data,
-//       data1,
-//     });
-//   } catch (error: any) {
-//     console.log(error.message);
-//     res.send({
-//       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-//       success: false,
-//     });
-//   }
-// });
 Collection.post("/print-or", async (req, res) => {
   try {
-    const { data, data1 }: any = await printModel(req, req.body.ORNo);
-    const dataToPrint = { ...data[0], ...data1[0] };
-    console.log(dataToPrint);
+    const dataCollection = (await getSearchCollection(
+      req.body.ORNo as string,
+      req
+    )) as Array<any>;
+    const debit: Array<any> = [];
+    const credit: Array<any> = [];
+
+    const ORNo = dataCollection[0].ORNo;
+    const Date_OR = dataCollection[0].Date_OR;
+    const ID_No = dataCollection[0].CRLoanID;
+    const CRLoanName = dataCollection[0].CRLoanName;
+
+    for (let i = 0; i <= dataCollection.length - 1; i++) {
+      if (
+        dataCollection[i].Payment !== null &&
+        dataCollection[i].Payment.toString() !== ""
+      ) {
+        const isCash = dataCollection[i].Payment === "Cash";
+        debit.push({
+          Payment: dataCollection[i].Payment,
+          Amount: formatNumber(
+            parseFloat(dataCollection[i].Debit.toString().replace(/,/g, ""))
+          ),
+          Check_No: isCash ? "" : dataCollection[i].Check_No,
+          Check_Date: isCash
+            ? ""
+            : format(new Date(dataCollection[i].Check_Date), "yyyy-MM-dd"),
+          Bank_Branch: isCash ? "" : dataCollection[i].Bank,
+          Acct_Code: dataCollection[i].DRCode,
+          Acct_Title: dataCollection[i].DRTitle,
+          Deposit_Slip: dataCollection[i].SlipCode,
+          Cntr: "",
+          Remarks: dataCollection[i].DRRemarks,
+          TC: isCash ? "CSH" : "CHK",
+          Bank: dataCollection[i].Bank_Code,
+          BankName: dataCollection[i].BankName,
+        });
+      }
+
+      if (
+        dataCollection[i].Purpose !== null &&
+        dataCollection[i].Purpose.toString() !== ""
+      ) {
+        credit.push({
+          temp_id: `${i}`,
+          transaction: dataCollection[i].Purpose,
+          amount: formatNumber(
+            parseFloat(dataCollection[i].Credit.toString().replace(/,/g, ""))
+          ),
+          Remarks: dataCollection[i].CRRemarks,
+          Code: dataCollection[i].CRCode,
+          Title: dataCollection[i].CRTitle,
+          TC: dataCollection[i].TC,
+          Account_No: dataCollection[i].CRLoanID,
+          Name: dataCollection[i].CRLoanName,
+          VATType: dataCollection[i].CRVATType,
+          invoiceNo: dataCollection[i].CRInvoiceNo,
+        });
+      }
+    }
+
+    const dataToPrint = {
+      ORNo,
+      Date_OR,
+      ID_No,
+      CRLoanName,
+      debit,
+      credit,
+    };
     const PAGE_WIDTH = 612;
     const PAGE_HEIGHT = 792;
     const outputFilePath = "manok.pdf";
@@ -295,7 +342,7 @@ Collection.post("/print-or", async (req, res) => {
 
     const writeStream = fs.createWriteStream(outputFilePath);
     doc.pipe(writeStream);
-    drawOfficialReceiptPDF({
+    const totalHeight = drawOfficialReceiptPDF({
       res,
       doc,
       writeStream,
@@ -305,37 +352,74 @@ Collection.post("/print-or", async (req, res) => {
       footerText: "Original Copy",
       dataToPrint,
     });
+    const PAGE_HEIGHT__ = PAGE_HEIGHT / 2 - 20;
+    if (totalHeight > PAGE_HEIGHT__) {
+      doc.addPage();
+      drawOfficialReceiptPDF({
+        res,
+        doc,
+        writeStream,
+        PAGE_HEIGHT,
+        PAGE_WIDTH,
+        outputFilePath,
+        footerText: "Duplicate Copy",
+        dataToPrint,
+      });
+      doc.addPage();
+      drawOfficialReceiptPDF({
+        res,
+        doc,
+        writeStream,
+        PAGE_HEIGHT,
+        PAGE_WIDTH,
+        outputFilePath,
+        footerText: "Triplicate Copy",
+        dataToPrint,
+      });
+      doc.end();
+      writeStream.on("finish", (e: any) => {
+        console.log(`PDF created successfully at: ${outputFilePath}`);
+        const readStream = fs.createReadStream(outputFilePath);
+        readStream.pipe(res);
 
-    drawOfficialReceiptPDF({
-      res,
-      doc,
-      writeStream,
-      PAGE_HEIGHT,
-      PAGE_WIDTH,
-      outputFilePath,
-      footerText: "Duplicate Copy",
-      dataToPrint,
-      adjustHeigth: 400,
-    });
+        readStream.on("end", () => {
+          fs.unlink(outputFilePath, (err) => {
+            if (err) {
+              console.error("Error deleting file:", err);
+            } else {
+              console.log(`File ${outputFilePath} deleted successfully.`);
+            }
+          });
+        });
+      });
 
-    // LINE HALF
-    doc
-      .moveTo(5, PAGE_HEIGHT / 2)
-      .lineTo(PAGE_WIDTH - 5, PAGE_HEIGHT / 2)
-      .dash(1, { space: 2 })
-      .stroke();
+      return;
+    } else {
+      drawOfficialReceiptPDF({
+        res,
+        doc,
+        writeStream,
+        PAGE_HEIGHT,
+        PAGE_WIDTH,
+        outputFilePath,
+        footerText: "Duplicate Copy",
+        dataToPrint,
+        adjustHeigth: PAGE_HEIGHT / 2,
+        dashOn: true,
+      });
+      doc.addPage();
+      drawOfficialReceiptPDF({
+        res,
+        doc,
+        writeStream,
+        PAGE_HEIGHT,
+        PAGE_WIDTH,
+        outputFilePath,
+        footerText: "Triplicate Copy",
+        dataToPrint,
+      });
+    }
 
-    doc.addPage();
-    drawOfficialReceiptPDF({
-      res,
-      doc,
-      writeStream,
-      PAGE_HEIGHT,
-      PAGE_WIDTH,
-      outputFilePath,
-      footerText: "Triplicate Copy",
-      dataToPrint,
-    });
     doc.end();
     writeStream.on("finish", (e: any) => {
       console.log(`PDF created successfully at: ${outputFilePath}`);
@@ -360,7 +444,6 @@ Collection.post("/print-or", async (req, res) => {
     });
   }
 });
-
 function drawOfficialReceiptPDF({
   res,
   doc,
@@ -371,7 +454,18 @@ function drawOfficialReceiptPDF({
   footerText,
   dataToPrint,
   adjustHeigth = 0,
+  dashOn = false,
 }: any) {
+  if (dashOn) {
+    doc
+      .dash(2, { space: 4 }) // dot size: 2, space: 4
+      .moveTo(10, 0 + adjustHeigth) // starting point
+      .lineTo(PAGE_WIDTH - 10, 0 + adjustHeigth) // ending point
+      .stroke();
+
+    doc.undash();
+  }
+
   doc.fontSize(10);
   doc.font("Helvetica-Bold");
   doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 0, 45 + adjustHeigth, {
@@ -487,16 +581,12 @@ function drawOfficialReceiptPDF({
     width: 75,
   });
   doc.fontSize(9);
-  const wordsTobumText = AmountToWords(
-    parseFloat(dataToPrint.Credit.toString().replace(/,/g, ""))
-  );
+  const wordsTobumText = AmountToWords(getSum(dataToPrint.debit, "Amount"));
   doc.font("Helvetica-Bold");
   autoAdjustTextHeigth(doc, wordsTobumText, 112, 178 + adjustHeigth, 350, 22);
   doc.fontSize(11);
   doc.text(
-    `(Php ${formatNumber(
-      parseFloat(dataToPrint.Credit.toString().replace(/,/g, ""))
-    )})`,
+    `(Php ${formatNumber(getSum(dataToPrint.debit, "Amount"))})`,
     460,
     178 + adjustHeigth,
     {
@@ -508,12 +598,9 @@ function drawOfficialReceiptPDF({
 
   // ======================
 
-  //SECTION 4
+  // SECTION 4
   // ======================
-  doc
-    .moveTo(5, 245 + adjustHeigth)
-    .lineTo(PAGE_WIDTH - 5, 245 + adjustHeigth)
-    .stroke();
+
   doc.font("Helvetica");
   doc.fontSize(8);
   doc.text("Items Paid:", 10, 205 + adjustHeigth, {
@@ -523,128 +610,139 @@ function drawOfficialReceiptPDF({
   // account
   doc.fontSize(9);
   doc.font("Helvetica-Bold");
-  autoAdjustTextHeigth(
-    doc,
-    dataToPrint.CRTitle,
-    112,
-    220 + adjustHeigth,
-    350,
-    22
-  );
+  let rowH = 0;
+  for (let index = 0; index < dataToPrint.credit.length; index++) {
+    autoAdjustTextHeigth(
+      doc,
+      dataToPrint.credit[index].Title,
+      112,
+      210 + rowH + adjustHeigth,
+      150,
+      22
+    );
+
+    autoAdjustTextHeigth(
+      doc,
+      dataToPrint.credit[index].amount,
+      410,
+      210 + rowH + adjustHeigth,
+      150,
+      22,
+      "right"
+    );
+    rowH += 13;
+  }
+  rowH += 12;
   doc.font("Helvetica");
-  doc.text("Total :", 10, 230 + adjustHeigth, {
+  doc.text("Total :", 10, 200 + rowH + adjustHeigth, {
     align: "left",
     width: 60,
   });
-
   doc.font("Helvetica-Bold");
 
   // top
   doc.text(
-    formatNumber(parseFloat(dataToPrint.Debit.toString().replace(/,/g, ""))),
-    460,
-    205 + adjustHeigth,
+    formatNumber(getSum(dataToPrint.credit, "amount")),
+    410,
+    200 + rowH + adjustHeigth,
     {
-      align: "center",
-      width: 120,
+      align: "right",
+      width: 150,
     }
   );
 
-  // bottom
-  doc.text(
-    formatNumber(parseFloat(dataToPrint.Credit.toString().replace(/,/g, ""))),
-    460,
-    230 + adjustHeigth,
-    {
-      align: "center",
-      width: 120,
-    }
-  );
+  rowH += 15;
+  doc
+    .moveTo(5, 200 + rowH + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 200 + rowH + adjustHeigth)
+    .stroke();
+
   doc.font("Helvetica");
   doc.fontSize(8);
   // ======================
 
   //SECTION 5
   // ======================
-  doc
-    .moveTo(5, 295 + adjustHeigth)
-    .lineTo(PAGE_WIDTH - 5, 295 + adjustHeigth)
-    .stroke();
 
-  let adjsutH = 50;
-  doc.text("Form of Payment:", 10, 205 + adjsutH + adjustHeigth, {
-    align: "left",
-    width: 80,
-  });
-
-  // account
-  doc.font("Helvetica-Bold");
-  doc.fontSize(9);
-  autoAdjustTextHeigth(
-    doc,
-    dataToPrint.Payment === 'Check' ? `Check - ${format(new Date(dataToPrint.Check_Date), "MM/dd/yyyy")} - ${
-      dataToPrint.Check_No
-    } ${dataToPrint.Bank}` :
-    "Cash",
-    112,
-    220 + adjsutH + adjustHeigth,
-    350,
-    22
-  );
-
-  doc.font("Helvetica");
-  doc.fontSize(8);
-  doc.text("Total :", 10, 230 + adjsutH + adjustHeigth, {
+  let adjsutH = 0;
+  doc.text("Form of Payment:", 10, 210 + rowH + adjsutH + adjustHeigth, {
     align: "left",
     width: 80,
   });
   doc.font("Helvetica-Bold");
-  doc.fontSize(9);
-  // top
-  doc.text(
-    formatNumber(parseFloat(dataToPrint.Debit.toString().replace(/,/g, ""))),
-    460,
-    205 + adjsutH + adjustHeigth,
-    {
-      align: "center",
-      width: 120,
-    }
-  );
 
-  // bottom
-  doc.text(
-    formatNumber(parseFloat(dataToPrint.Credit.toString().replace(/,/g, ""))),
-    460,
-    230 + adjsutH + adjustHeigth,
-    {
-      align: "center",
-      width: 120,
-    }
-  );
+  for (let index = 0; index < dataToPrint.debit.length; index++) {
+    autoAdjustTextHeigth(
+      doc,
+      dataToPrint.debit[index].Payment,
+      112,
+      215 + rowH + adjustHeigth,
+      150,
+      22
+    );
+
+    autoAdjustTextHeigth(
+      doc,
+      dataToPrint.debit[index].Amount,
+      410,
+      215 + rowH + adjustHeigth,
+      150,
+      22,
+      "right"
+    );
+    rowH += 13;
+  }
+
   doc.font("Helvetica");
   doc.fontSize(8);
-  // ======================
+  doc.text("Total :", 10, 220 + rowH + adjsutH + adjustHeigth, {
+    align: "left",
+    width: 80,
+  });
+  doc.font("Helvetica-Bold");
+  doc.fontSize(8);
 
-  //SECTION 6
-  // ======================
+  doc.text(
+    formatNumber(getSum(dataToPrint.debit, "Amount")),
+    410,
+    220 + rowH + adjustHeigth,
+    {
+      align: "right",
+      width: 150,
+    }
+  );
+
+  rowH += 13;
   doc
-    .moveTo(5, 320 + adjustHeigth)
-    .lineTo(PAGE_WIDTH - 5, 320 + adjustHeigth)
+    .moveTo(5, 230 + rowH + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 230 + rowH + adjustHeigth)
     .stroke();
 
-  doc.text("Cashier's Name & Signature / Date:", 10, 305 + adjustHeigth, {
-    align: "left",
-    width: 250,
-  });
+  // //SECTION 6
+  // // ======================
+  doc
+    .moveTo(5, 260 + rowH + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 260 + rowH + adjustHeigth)
+    .stroke();
 
-  // ======================
+  doc.text(
+    "Cashier's Name & Signature / Date:",
+    10,
+    235 + rowH + adjustHeigth,
+    {
+      align: "left",
+      width: 250,
+    }
+  );
+
+  // // ======================
 
   //SECTION 7
   // ======================
   doc.text(
     "Payor's Acknowledgement Signature / Date:",
     10,
-    PAGE_HEIGHT / 2 - 65 + adjustHeigth,
+    270 + rowH + adjustHeigth,
     {
       align: "left",
       width: 250,
@@ -660,18 +758,18 @@ function drawOfficialReceiptPDF({
 
   doc
     .moveTo(5, 120 + adjustHeigth)
-    .lineTo(5, PAGE_HEIGHT / 2 - 50 + adjustHeigth)
+    .lineTo(5, 290 + rowH + adjustHeigth)
     .stroke(); //LEFT
 
   doc
     .moveTo(PAGE_WIDTH - 5, 120 + adjustHeigth)
-    .lineTo(PAGE_WIDTH - 5, PAGE_HEIGHT / 2 - 50 + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 290 + rowH + adjustHeigth)
     .stroke(); //RIGTH
 
   // BOTTOM
   doc
-    .moveTo(5, PAGE_HEIGHT / 2 - 50 + adjustHeigth)
-    .lineTo(PAGE_WIDTH - 5, PAGE_HEIGHT / 2 - 50 + adjustHeigth)
+    .moveTo(5, 290 + rowH + adjustHeigth)
+    .lineTo(PAGE_WIDTH - 5, 290 + rowH + adjustHeigth)
     .stroke();
 
   doc.fontSize(8);
@@ -679,7 +777,7 @@ function drawOfficialReceiptPDF({
   doc.text(
     `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
     5,
-    PAGE_HEIGHT / 2 - 40 + adjustHeigth,
+    295 + rowH + adjustHeigth,
     {
       align: "left",
       width: 300,
@@ -690,12 +788,15 @@ function drawOfficialReceiptPDF({
   doc.text(
     footerText,
     PAGE_WIDTH - (textWidth1 + 5),
-    PAGE_HEIGHT / 2 - 40 + adjustHeigth,
+    295 + rowH + adjustHeigth,
     {
       align: "left",
       width: textWidth1 + 5,
     }
   );
+  const totalHeight = 295 + rowH + adjustHeigth;
+
+  return totalHeight;
 }
 function autoAdjustTextHeigth(
   doc: PDFKit.PDFDocument,
@@ -703,7 +804,8 @@ function autoAdjustTextHeigth(
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
+  align: "center" | "left" | "justify" | "right" | undefined = "left"
 ) {
   const idNoTextH = doc.heightOfString(text, {
     align: "left",
@@ -715,7 +817,7 @@ function autoAdjustTextHeigth(
     adjustIDNoTextH = 5;
   }
   doc.text(text, x, y - adjustIDNoTextH, {
-    align: "left",
+    align,
     width,
     height,
   });
@@ -913,7 +1015,6 @@ async function AddCollection(req: any) {
     );
   }
 }
-
 export function formatNumber(num: number) {
   return (num || 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,

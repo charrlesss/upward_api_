@@ -353,12 +353,29 @@ VehiclePolicy.post("/search-policy-selected", async (req, res) => {
       req
     );
 
-    console.log(`SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`);
+    const data3 = await __executeQuery(
+      `
+     SELECT 
+                MIN(Source_No) as Source_No,
+                MIN(Debit) as Cost
+            FROM
+                journal
+            WHERE
+                cGL_Acct = 'CTPL Inventory'
+                    AND Explanation = 'CTPL Registration'
+                    AND (Remarks <> '' OR Remarks IS not NULL)
+                    AND Source_No = '${req.body.policyNo}'
+                    group by Source_No_Ref_ID
+                    order by Source_No;`,
+      req
+    );
+
     res.send({
       message: "Search Successfully",
       success: true,
       data1,
       data2,
+      data3,
     });
   } catch (err: any) {
     console.log(err.message);
@@ -487,6 +504,7 @@ VehiclePolicy.post("/com-update-regular", async (req, res) => {
     await insertNewVPolicy({ ...req.body, cStrArea, strArea }, req);
     res.send({ message: "Update Vehicle Policy Successfully", success: true });
   } catch (err: any) {
+    console.log(err.message);
     res.send({ message: err.message, success: false });
   }
 });
@@ -726,8 +744,8 @@ async function insertNewVPolicy(
     cStrArea,
     Source_No_Ref_ID = "",
     form_action,
-    rateCost = 0,
-    remarksRef
+    rateCostRef = 0,
+    remarksRef,
   }: any,
   req: Request
 ) {
@@ -951,7 +969,7 @@ async function insertNewVPolicy(
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
         Debit: 0,
-        Credit: parseFloat(rateCost.toString().replace(/,/g, "")),
+        Credit: parseFloat(rateCostRef.toString().replace(/,/g, "")),
         TC: "CTI",
         Remarks: "",
         Source_No_Ref_ID,
@@ -974,7 +992,7 @@ async function insertNewVPolicy(
         Debit: 0,
         Credit:
           parseFloat(totalDueRef.replace(/,/g, "")) -
-          parseFloat(rateCost.toString().replace(/,/g, "")),
+          parseFloat(rateCostRef.toString().replace(/,/g, "")),
         TC: "CIN",
         Remarks: "",
         Source_No_Ref_ID,

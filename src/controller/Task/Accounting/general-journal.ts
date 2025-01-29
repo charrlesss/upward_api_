@@ -135,7 +135,7 @@ GeneralJournal.post("/general-journal/print", async (req, res) => {
     });
     const props: any = {
       data: newData,
-      columnWidths: [60, 132, 101, 152, 85, 85],
+      columnWidths: [50, 100, 90, 130, 85, 85],
       headers: [
         { headerName: "ACCT #", textAlign: "left" },
         { headerName: "ACCOUNT TITLE", textAlign: "left" },
@@ -146,17 +146,14 @@ GeneralJournal.post("/general-journal/print", async (req, res) => {
       ],
       keys: ["code", "acctName", "IDNo", "ClientName", "debit", "credit"],
       title: "",
+      setRowFontSize:9,
       BASE_FONT_SIZE: 8,
       PAGE_WIDTH,
       PAGE_HEIGHT,
-      addMarginInFirstPage: 100,
-      MARGIN: { top: 10, right: 10, bottom: 30, left: 10 },
+      // addMarginInFirstPage: 40,
+      MARGIN: { top: 70, right: 40, bottom: 30, left: 40 },
       addHeaderBorderBottom: true,
       beforeDraw: (pdfReportGenerator: PDFReportGenerator, doc: PDFKit.PDFDocument) => {
-        console.log("HELLOW")
-        // 
-        // pdfReportGenerator.boldRow(newData.length - 1);
-
         pdfReportGenerator.borderColumnInRow(newData.length - 4, [
           { column: 0, key: 'code' },
           { column: 1, key: 'acctName' },
@@ -213,44 +210,36 @@ GeneralJournal.post("/general-journal/print", async (req, res) => {
         pdfReportGenerator.SpanRow(newData.length - 1, 0, 6);
         pdfReportGenerator.setAlignment(newData.length - 1 ,0,'center')
         pdfReportGenerator.boldRow(newData.length - 1);
+   
+
+      },
+      beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+            // 
+        // pdfReportGenerator.boldRow(newData.length - 1);
+
+       
 
         doc.font("Helvetica-Bold");
         doc.fontSize(16);
-        doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 10, 50, {
+        doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 40, 20, {
           align: "left",
           width: 400,
         });
         doc.fontSize(14);
-        doc.text("Journal Voucher", 10, 72, {
+        doc.text("Journal Voucher", 40, 37, {
           align: "left",
           width: 400,
         });
         doc.fontSize(11);
-        doc.text(`JV No. : ${req.body.JVNo}`, PAGE_WIDTH - 120, 105, {
+        doc.text(`JV No. : ${req.body.JVNo}`, PAGE_WIDTH - 155, 50, {
           align: "left",
           width: 130,
         });
-        doc.text(`Date   : ${format(new Date(req.body.JVDate),'MM/dd/yyyy')}`, PAGE_WIDTH - 120, 125, {
+        doc.text(`Date   : ${format(new Date(req.body.JVDate),'MM/dd/yyyy')}`, PAGE_WIDTH - 155, 65, {
           align: "left",
           width: 130,
         });
-      },
-      beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
         doc.fontSize(9);
-
-        // doc.font('Helvetica');
-        // doc.text("Prepared By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100) - 300), pdfReportGenerator.PAGE_HEIGHT - 50, {
-        //   align: 'right',
-        //   width: 100,
-        // });
-        // doc.text("Checked By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100)), pdfReportGenerator.PAGE_HEIGHT - 50, {
-        //   align: 'right',
-        //   width: 100,
-        // });
-        // doc.text("Noted By:", (((pdfReportGenerator.PAGE_WIDTH / 2) - 100) + 300), pdfReportGenerator.PAGE_HEIGHT - 50, {
-        //   align: 'right',
-        //   width: 100,
-        // });
       },
       drawPageNumber: (
         doc: PDFKit.PDFDocument,
@@ -260,14 +249,14 @@ GeneralJournal.post("/general-journal/print", async (req, res) => {
       ) => {
         doc.font("Helvetica");
         const pageNumberText = `Page ${currentPage}`;
-        doc.text(pageNumberText, PAGE_WIDTH - 120, pdfReportGenerator.PAGE_HEIGHT - 35, {
+        doc.text(pageNumberText, PAGE_WIDTH - 160, pdfReportGenerator.PAGE_HEIGHT - 35, {
           align: "right",
           width: 100,
         });
 
         doc.text(
           `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
-          -45,
+          -35,
           pdfReportGenerator.PAGE_HEIGHT - 35,
           {
             align: "right",
