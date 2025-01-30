@@ -9,6 +9,18 @@ import {
 
 import { clients_view, qryJournal } from "./views";
 
+// {
+//   title: 'UPWARD MANAGEMENT INSURANCE SERVICES\n' +
+//     ' Schedule of Accounts\n' +
+//     'January 30, 2025',
+//   account: '7.10.06',
+//   accountName: 'Communications Expense',
+//   subsiText: 'ALL',
+//   date: '2025-01-30',
+//   sort: 'Name',
+//   order: 'Ascending'
+// }
+
 export function parseDate(vbDate: any) {
   const datePart = vbDate.slice(0, 10); // Extracts first 10 characters
   const [month , day, year] = datePart.split('/');

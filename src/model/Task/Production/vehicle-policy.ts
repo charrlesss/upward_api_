@@ -86,16 +86,17 @@ export async function getPolicySubAccount(req: Request) {
 }
 export async function generateTempID(req: Request) {
   const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-  const qry = `SELECT 
-      CONCAT('TP-',
-              CAST((YEAR(NOW()) % 100) AS CHAR),
-              CAST(FORMAT(COUNT(DISTINCT (policyno)) + 1,
-                      '0000')
-                  AS CHAR)) AS 'PolicyNo'
-  FROM
-      Policy
-  WHERE
-      PolicyNo LIKE '%TP-%'`
+  const qry = `
+  SELECT 
+      CONCAT('TP-', 
+            RIGHT(YEAR(NOW()), 2), 
+            LPAD(MONTH(NOW()), 2, '0'), 
+            '-', 
+            LPAD(COALESCE(MAX(CAST(SUBSTRING_INDEX(PolicyNo, '-', -1) AS UNSIGNED)) + 1, 1), 3, '0')
+      ) AS PolicyNo
+  FROM Policy
+  WHERE PolicyNo LIKE CONCAT('TP-', RIGHT(YEAR(NOW()), 2), LPAD(MONTH(NOW()), 2, '0'), '-%');
+`
   return await prisma.$queryRawUnsafe(qry) as any
 }
 
