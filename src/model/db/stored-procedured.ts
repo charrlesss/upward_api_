@@ -1470,18 +1470,14 @@ export function PostDatedCheckRegistered(
   type: string,
   pdcField: string,
   pdcBranch: string,
-  _dateFrom: string,
-  _dateTo: string
+  dateFrom: any,
+  dateTo: any
 ) {
-  const dateFrom = parseDate(_dateFrom)
-  const dateTo = parseDate(_dateTo)
+
   let sSort = "";
   let sWhere = "";
-  const formattedDateFrom = format(
-    new Date(dateFrom.getFullYear(), dateFrom.getMonth(), 1),
-    "yyyy-MM-dd"
-  );
-  const formattedDateTo = format(lastDayOfMonth(dateTo), "yyyy-MM-dd");
+  const formattedDateFrom =format(new Date(dateFrom), "yyyy-MM-dd")
+  const formattedDateTo = format(new Date(dateTo), "yyyy-MM-dd");
 
   if (sortField === "Name") {
     sSort = `ORDER BY Name ${sortOrder === "Ascending" ? "ASC" : "DESC"}`;

@@ -1,5 +1,8 @@
 import express, { Request, Response } from "express";
-import { AgingAccountsReport } from "../../../model/db/stored-procedured";
+import {
+  AgingAccountsReport,
+  PostDatedCheckRegistered,
+} from "../../../model/db/stored-procedured";
 import { PrismaList } from "../../../model/connection";
 import { __executeQuery } from "../../../model/Task/Production/policy";
 import { qry_id_policy_sub, qryJournal } from "../../../model/db/views";
@@ -37,7 +40,6 @@ accountingReporting.post("/report/get-chart-account", async (req, res) => {
     });
   }
 });
-
 accountingReporting.post("/report/get-list-of-insurance", async (req, res) => {
   try {
     res.send({
@@ -54,11 +56,45 @@ accountingReporting.post("/report/get-list-of-insurance", async (req, res) => {
     });
   }
 });
+accountingReporting.post("/report/sub-account", async (req, res) => {
+  try {
+    res.send({
+      message: "Successfully get Sub Account",
+      success: true,
+      data: await __executeQuery(
+        `SELECT Acronym FROM Sub_Account order by Acronym asc`,
+        req
+      ),
+    });
+  } catch (err: any) {
+    res.send({
+      message: err.message,
+      success: false,
+      data: [],
+    });
+  }
+});
+// Schedule Account
 accountingReporting.post(
   "/report/generate-report-schedule-of-account",
   async (req, res) => {
     try {
       ScheduleAccounts(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+// Post Dated Check Registry
+accountingReporting.post(
+  "/report/generate-report-post-dated-checks-registry",
+  async (req, res) => {
+    try {
+      PostDatedChecksRegistry(req, res);
     } catch (err: any) {
       res.send({
         message: err.message,
@@ -411,18 +447,14 @@ async function ScheduleAccounts(req: Request, res: Response) {
     Debit: "",
     Credit: "",
     Balance: formatNumber(getSum(data, "Balance")),
-  })
+  });
 
-  
   const headerIndecxs = getIndexes(
     result,
     (item: any) => item.glAcct === "sym"
   );
 
-  const totalFooter = getIndexes(
-    result,
-    (item: any) => item.glAcct === "ttf"
-  );
+  const totalFooter = getIndexes(result, (item: any) => item.glAcct === "ttf");
 
   let PAGE_WIDTH = 612;
   let PAGE_HEIGHT = 792;
@@ -442,7 +474,6 @@ async function ScheduleAccounts(req: Request, res: Response) {
     PAGE_HEIGHT,
     MARGIN: { top: 70, right: 40, bottom: 30, left: 60 },
     adjustRowXPostion: (rowIndex: number) => {
-      
       if (headerIndecxs.includes(rowIndex)) {
         return 25;
       } else {
@@ -454,16 +485,15 @@ async function ScheduleAccounts(req: Request, res: Response) {
       pdfReportGenerator: PDFReportGenerator,
       doc: PDFKit.PDFDocument
     ) => {
-      pdfReportGenerator.setAlignment(result.length -1 ,1,'right')
-      pdfReportGenerator.boldRow(result.length -1);
+      pdfReportGenerator.setAlignment(result.length - 1, 1, "right");
+      pdfReportGenerator.boldRow(result.length - 1);
 
       headerIndecxs.forEach((itm: number) => {
         pdfReportGenerator.boldRow(itm);
-      })
-      
+      });
 
       totalFooter.forEach((itm: number) => {
-        pdfReportGenerator.setAlignment(itm ,1,'right')
+        pdfReportGenerator.setAlignment(itm, 1, "right");
         pdfReportGenerator.boldRow(itm);
 
         pdfReportGenerator.borderColumnInRow(
@@ -481,7 +511,6 @@ async function ScheduleAccounts(req: Request, res: Response) {
           }
         );
       });
-
     },
     beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
       doc.font("Helvetica-Bold");
@@ -524,5 +553,252 @@ async function ScheduleAccounts(req: Request, res: Response) {
   };
   const pdfReportGenerator = new PDFReportGenerator(props);
   return pdfReportGenerator.generatePDF(res);
+}
+async function PostDatedChecksRegistry(req: Request, res: Response) {
+  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+
+  const title = req.body.title;
+  const dateFrom = format(new Date(req.body.dateFrom), "yyyy-MM-dd");
+  const dateTo = format(new Date(req.body.dateTo), "yyyy-MM-dd");
+  let qry = "";
+  let sortQry = "";
+  let whereQry = "";
+  if ((req.body.sort = "Name")) {
+    sortQry = `Order By Name ${
+      req.body.order === "Ascending" ? "ASC" : "DESC"
+    }`;
+  } else if ((req.body.sort = "Check Date")) {
+    sortQry = `Order By Check_Date ${
+      req.body.order === "Ascending" ? "ASC" : "DESC"
+    }`;
+  } else if ((req.body.sort = "Date Received")) {
+    sortQry = `Order By Date ${
+      req.body.order === "Ascending" ? "ASC" : "DESC"
+    }`;
+  }
+
+  if (req.body.type === "All") {
+  } else if (req.body.type === "Rent") {
+    whereQry = `AND PNo like '%rent%'`;
+  } else if (req.body.type === "Loan") {
+    whereQry = `AND PNo like '%rent%'`;
+  }
+
+  switch (req.body.field) {
+    case "Check Date":
+      if (req.body.branch === "All") {
+        qry = `
+          SELECT PDC.* From PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}')
+        AND (((PDC.PDC_Remarks)<>'Fully Paid' And (PDC.PDC_Remarks)<>'Foreclosed') Or ((PDC.PDC_Remarks)='Replaced' Or (PDC.PDC_Remarks) IS NULL Or (PDC.PDC_Remarks)='')) AND ((PDC.PDC_Status)<>'Pulled Out'))  ${whereQry} ${sortQry}`;
+      } else {
+        qry = `
+        SELECT 
+        PDC.* From PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}') 
+        AND ((PDC.PDC_Remarks)<>'Fully Paid' Or (PDC.PDC_Remarks)='Replaced' Or (PDC.PDC_Remarks) IS NULL Or (PDC.PDC_Remarks)='') AND ((PDC.PDC_Status)<>'Pulled Out')) ${whereQry} ${sortQry}
+        `;
+      }
+      break;
+    case "Date Received":
+      if (req.body.branch === "All") {
+        qry = `
+          SELECT PDC.* From PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}')
+        AND (((PDC.PDC_Remarks)<>'Fully Paid' And (PDC.PDC_Remarks)<>'Foreclosed') Or ((PDC.PDC_Remarks)='Replaced' Or (PDC.PDC_Remarks) IS NULL Or (PDC.PDC_Remarks)='')) AND ((PDC.PDC_Status)<>'Pulled Out'))  ${whereQry} ${sortQry}`;
+      } else {
+        qry = `
+            SELECT PDC.* From PDC WHERE (((PDC.Date)>='${dateFrom}' And (PDC.Date)<='${dateTo}') 
+            AND ((PDC.PDC_Remarks)<>'Fully Paid' Or (PDC.PDC_Remarks)='Replaced' Or (PDC.PDC_Remarks) IS NULL Or (PDC.PDC_Remarks)='') AND ((PDC.PDC_Status)<>'Pulled Out')) ${whereQry} ${sortQry}
+
+        `;
+      }
+      break;
+  }
+  const data = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
+
+  function groupData(_data: any) {
+    const groupedData: any = {};
+    _data.forEach((item: any) => {
+      const month = format(new Date(item.Check_Date), "yyyy-MM"); // Group by Month (YYYY-MM)
+      const date = format(new Date(item.Check_Date), "yyyy-MM-dd"); // Group by Date (YYYY-MM-dd)
+
+      if (!groupedData[month]) {
+        groupedData[month] = {};
+      }
+      if (!groupedData[month][date]) {
+        groupedData[month][date] = [];
+      }
+      groupedData[month][date].push(item);
+    });
+    const sortedData: any = [];
+    const _sort = Object.keys(groupedData).sort();
+
+    _sort.forEach((month) => {
+      const dailyDataArray = groupedData[month];
+      const dailyKey: any = Object.keys(dailyDataArray);
+
+      dailyKey.forEach((daily: any) => {
+        sortedData.push({
+          PDC_ID: "",
+          Ref_No: "",
+          PNo: "",
+          IDNo: "",
+          Date: `${format(new Date(daily), "MMMM dd, yyyy")}`,
+          Name: "",
+          Remarks: "",
+          Bank: "",
+          Branch: "",
+          Check_Date: ``,
+          Check_No: "",
+          Check_Amnt: "",
+          Check_Remarks: "",
+          SlipCode: "",
+          DateDepo: "",
+          ORNum: "",
+          PDC_Status: "",
+          Date_Stored: "",
+          Date_Endorsed: "",
+          Date_Pulled_Out: "",
+          PDC_Remarks: "",
+          mark: "",
+        });
+        dailyDataArray[daily].forEach((itm: any) => {
+          sortedData.push(itm);
+        });
+        sortedData.push({
+          PDC_ID: "",
+          Ref_No: "",
+          PNo: "",
+          IDNo: "",
+          Date: ``,
+          Name: "",
+          Remarks: "",
+          Bank: "",
+          Branch: "",
+          Check_Date: `DAILY TOTAL ${formatNumber(
+            getSum(dailyDataArray[daily], "Check_Amnt")
+          )}`,
+          Check_No: "",
+          Check_Amnt: "",
+          Check_Remarks: "",
+          SlipCode: "",
+          DateDepo: "",
+          ORNum: "",
+          PDC_Status: "",
+          Date_Stored: "",
+          Date_Endorsed: "",
+          Date_Pulled_Out: "",
+          PDC_Remarks: "",
+          mark: "",
+        });
+      });
+
+      sortedData.push({
+        PDC_ID: "",
+        Ref_No: "",
+        PNo: "",
+        IDNo: "",
+        Date: "",
+        Name: "",
+        Remarks: "",
+        Bank: "",
+        Branch: "",
+        Check_Date: `MONTH OF ${format(new Date(dailyKey[0]), "MMMM")}`,
+        Check_No: "",
+        Check_Amnt: "",
+        Check_Remarks: "",
+        SlipCode: "",
+        DateDepo: "",
+        ORNum: "",
+        PDC_Status: "",
+        Date_Stored: "",
+        Date_Endorsed: "",
+        Date_Pulled_Out: "",
+        PDC_Remarks: "",
+        mark: "",
+      });
+    });
+    return sortedData;
+  }
+
+  res.send({
+    data: groupData(data),
+  });
+  // let PAGE_WIDTH = 612;
+  // let PAGE_HEIGHT = 792;
+  // const props: any = {
+  //   data: data,
+  //   columnWidths: [80, 80, 100, 60, 60, 60, 60, 60, 50],
+  //   headers: [
+  //     { headerName: "DATE RECEIVED", textAlign: "left" },
+  //     { headerName: "ACCT NO.", textAlign: "left" },
+  //     { headerName: "NAME", textAlign: "right" },
+  //     { headerName: "CHECK DATE", textAlign: "right" },
+  //     { headerName: "BANK", textAlign: "right" },
+  //     { headerName: "CHECK #", textAlign: "right" },
+  //     { headerName: "AMOUNT", textAlign: "right" },
+  //     { headerName: "OR #", textAlign: "right" },
+  //     { headerName: "REMARKS", textAlign: "right" },
+  //   ],
+  //   keys: [
+  //     "Date",
+  //     "PNo",
+  //     "Name",
+  //     "Check_Date:",
+  //     "Bank",
+  //     "Check_No",
+  //     "Check_Amnt",
+  //     "ORNum",
+  //     "Check_Amnt",
+  //   ],
+  //   title: "",
+  //   setRowFontSize: 10,
+  //   BASE_FONT_SIZE: 8,
+  //   PAGE_WIDTH,
+  //   PAGE_HEIGHT,
+  //   MARGIN: { top: 70, right: 40, bottom: 30, left: 60 },
+  //   beforeDraw: (
+  //     pdfReportGenerator: PDFReportGenerator,
+  //     doc: PDFKit.PDFDocument
+  //   ) => {},
+  //   beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+  //     doc.font("Helvetica-Bold");
+  //     doc.fontSize(10);
+  //     doc.text(title, 40, 20, {
+  //       align: "left",
+  //       width: 400,
+  //     });
+
+  //     doc.fontSize(8);
+  //   },
+  //   drawPageNumber: (
+  //     doc: PDFKit.PDFDocument,
+  //     currentPage: number,
+  //     totalPages: number,
+  //     pdfReportGenerator: any
+  //   ) => {
+  //     doc.font("Helvetica");
+  //     const pageNumberText = `Page ${currentPage}`;
+  //     doc.text(
+  //       pageNumberText,
+  //       PAGE_WIDTH - 160,
+  //       pdfReportGenerator.PAGE_HEIGHT - 35,
+  //       {
+  //         align: "right",
+  //         width: 100,
+  //       }
+  //     );
+
+  //     doc.text(
+  //       `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+  //       -35,
+  //       pdfReportGenerator.PAGE_HEIGHT - 35,
+  //       {
+  //         align: "right",
+  //         width: 200,
+  //       }
+  //     );
+  //   },
+  // };
+  // const pdfReportGenerator = new PDFReportGenerator(props);
+  // return pdfReportGenerator.generatePDF(res);
 }
 export default accountingReporting;
