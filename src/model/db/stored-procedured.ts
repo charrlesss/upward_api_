@@ -1348,7 +1348,7 @@ export function DepositedCollections(
         DATE_FORMAT(Deposit.Date_Deposit, '%m/%d/%Y') as Date_Deposit , 
         Deposit.Slip_Code, 
         Deposit.Account_ID, 
-        if(Deposit.Slip_Code is null,Deposit.IDNo ,c.Identity) as IDNo,
+        ifnull(Deposit.IDNo, c.Identity) as IDNo,
         Deposit.Bank, 
         Check_No AS cCheck_No, 
         Deposit.Debit, 

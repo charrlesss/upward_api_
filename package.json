@@ -4,8 +4,10 @@
   "description": "company system",
   "main": "server.ts",
   "scripts": {
-    "start": "nodemon --exec  ts-node ./server.ts",
-    "sub_server": "nodemon --exec  ts-node ./sub-server.ts"
+    "start_ucsmi": "nodemon --exec  ts-node ./server.ucsmi.ts",
+    "start_umis": "nodemon --exec  ts-node ./server.umis.ts",
+    "sub_server": "nodemon --exec  ts-node ./sub-server.ts",
+    "start_both":  "concurrently \"npm run start_umis\" \"npm run start_ucsmi\""
   },
   "author": "",
   "license": "ISC",
@@ -20,6 +22,7 @@
     "@types/passport": "^1.0.12",
     "@types/pdfkit": "^0.13.7",
     "@types/uuid": "^9.0.4",
+    "concurrently": "^9.1.2",
     "nodemon": "^3.0.1",
     "prisma": "^5.2.0",
     "typescript": "^5.2.2"

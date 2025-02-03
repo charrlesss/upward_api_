@@ -3,18 +3,17 @@ import cors from "cors";
 import router from "./src/controller";
 import path from "path";
 import cookieParser from "cookie-parser";
-import env from 'dotenv'
+import env from "dotenv";
 import { createIdSequence } from "./src/model/StoredProcedure";
 
-env.config()
+env.config({ path: ".env.ucsmi" });
 const PORT = process.env.PORT;
 
 const corsOptions = {
   origin: ["http://localhost:3000", "http://localhost:4000", "/", "*"],
   credentials: true,
   optionSuccessStatus: 200,
-}; 
-
+};
 
 async function main() {
   const app = express();

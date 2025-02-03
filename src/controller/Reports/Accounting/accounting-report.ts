@@ -426,15 +426,6 @@ async function ScheduleAccounts(req: Request, res: Response) {
     return result;
   };
 
-  const getIndexes = (array: Array<any>, condition: any) => {
-    return array.reduce((indexes, item, index) => {
-      if (condition(item)) {
-        indexes.push(index); // Store the index if condition is met
-      }
-      return indexes;
-    }, []);
-  };
-
   const result = formatReport(data);
   result.push({
     groupHeader: "",
@@ -612,7 +603,7 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
       }
       break;
   }
-  const data = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
+  const data_ = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
 
   function groupData(_data: any) {
     const groupedData: any = {};
@@ -632,12 +623,12 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
     const _sort = Object.keys(groupedData).sort();
 
     _sort.forEach((month) => {
-      const dailyDataArray = groupedData[month];
-      const dailyKey: any = Object.keys(dailyDataArray);
-
+      const monthDataArray = groupedData[month];
+      const dailyKey: any = Object.keys(monthDataArray);
+      let monthlyTotal = 0;
       dailyKey.forEach((daily: any) => {
         sortedData.push({
-          PDC_ID: "",
+          PDC_ID: "dd",
           Ref_No: "",
           PNo: "",
           IDNo: "",
@@ -660,11 +651,17 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
           PDC_Remarks: "",
           mark: "",
         });
-        dailyDataArray[daily].forEach((itm: any) => {
+        monthDataArray[daily].forEach((itm: any) => {
+          itm.Check_Date = format(new Date(itm.Check_Date), "MM/dd/yyyy");
+          itm.Check_Amnt = formatNumber(
+            parseFloat(itm.Check_Amnt.toString().replace(/,/g, ""))
+          );
+          itm.Date = format(new Date(itm.Date), "MM/dd/yyyy");
           sortedData.push(itm);
         });
+        monthlyTotal += getSum(monthDataArray[daily], "Check_Amnt");
         sortedData.push({
-          PDC_ID: "",
+          PDC_ID: "dta",
           Ref_No: "",
           PNo: "",
           IDNo: "",
@@ -673,11 +670,11 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
           Remarks: "",
           Bank: "",
           Branch: "",
-          Check_Date: `DAILY TOTAL ${formatNumber(
-            getSum(dailyDataArray[daily], "Check_Amnt")
-          )}`,
+          Check_Date: `DAILY TOTAL`,
           Check_No: "",
-          Check_Amnt: "",
+          Check_Amnt: `${formatNumber(
+            getSum(monthDataArray[daily], "Check_Amnt")
+          )}`,
           Check_Remarks: "",
           SlipCode: "",
           DateDepo: "",
@@ -692,7 +689,7 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
       });
 
       sortedData.push({
-        PDC_ID: "",
+        PDC_ID: "mt",
         Ref_No: "",
         PNo: "",
         IDNo: "",
@@ -701,9 +698,9 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
         Remarks: "",
         Bank: "",
         Branch: "",
-        Check_Date: `MONTH OF ${format(new Date(dailyKey[0]), "MMMM")}`,
+        Check_Date: `MONTH of ${format(new Date(dailyKey[0]), "MMMM")}`,
         Check_No: "",
-        Check_Amnt: "",
+        Check_Amnt: formatNumber(monthlyTotal),
         Check_Remarks: "",
         SlipCode: "",
         DateDepo: "",
@@ -718,87 +715,180 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
     });
     return sortedData;
   }
+  const data = groupData(data_);
 
-  res.send({
-    data: groupData(data),
+  data.push({
+    PDC_ID: "",
+    Ref_No: "",
+    PNo: "",
+    IDNo: "",
+    Date: `TOTAL # OF CHECK(S) : ${data_.length}`,
+    Name: "",
+    Remarks: "",
+    Bank: "",
+    Branch: "",
+    Check_Date: "GRAND TOTAL",
+    Check_No: "",
+    Check_Amnt: formatNumber(getSum(data_, "Check_Amnt")),
+    Check_Remarks: "",
+    SlipCode: "",
+    DateDepo: "",
+    ORNum: "",
+    PDC_Status: "",
+    Date_Stored: "",
+    Date_Endorsed: "",
+    Date_Pulled_Out: "",
+    PDC_Remarks: "",
+    mark: "",
   });
-  // let PAGE_WIDTH = 612;
-  // let PAGE_HEIGHT = 792;
-  // const props: any = {
-  //   data: data,
-  //   columnWidths: [80, 80, 100, 60, 60, 60, 60, 60, 50],
-  //   headers: [
-  //     { headerName: "DATE RECEIVED", textAlign: "left" },
-  //     { headerName: "ACCT NO.", textAlign: "left" },
-  //     { headerName: "NAME", textAlign: "right" },
-  //     { headerName: "CHECK DATE", textAlign: "right" },
-  //     { headerName: "BANK", textAlign: "right" },
-  //     { headerName: "CHECK #", textAlign: "right" },
-  //     { headerName: "AMOUNT", textAlign: "right" },
-  //     { headerName: "OR #", textAlign: "right" },
-  //     { headerName: "REMARKS", textAlign: "right" },
-  //   ],
-  //   keys: [
-  //     "Date",
-  //     "PNo",
-  //     "Name",
-  //     "Check_Date:",
-  //     "Bank",
-  //     "Check_No",
-  //     "Check_Amnt",
-  //     "ORNum",
-  //     "Check_Amnt",
-  //   ],
-  //   title: "",
-  //   setRowFontSize: 10,
-  //   BASE_FONT_SIZE: 8,
-  //   PAGE_WIDTH,
-  //   PAGE_HEIGHT,
-  //   MARGIN: { top: 70, right: 40, bottom: 30, left: 60 },
-  //   beforeDraw: (
-  //     pdfReportGenerator: PDFReportGenerator,
-  //     doc: PDFKit.PDFDocument
-  //   ) => {},
-  //   beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
-  //     doc.font("Helvetica-Bold");
-  //     doc.fontSize(10);
-  //     doc.text(title, 40, 20, {
-  //       align: "left",
-  //       width: 400,
-  //     });
 
-  //     doc.fontSize(8);
-  //   },
-  //   drawPageNumber: (
-  //     doc: PDFKit.PDFDocument,
-  //     currentPage: number,
-  //     totalPages: number,
-  //     pdfReportGenerator: any
-  //   ) => {
-  //     doc.font("Helvetica");
-  //     const pageNumberText = `Page ${currentPage}`;
-  //     doc.text(
-  //       pageNumberText,
-  //       PAGE_WIDTH - 160,
-  //       pdfReportGenerator.PAGE_HEIGHT - 35,
-  //       {
-  //         align: "right",
-  //         width: 100,
-  //       }
-  //     );
+  const dailyTotalIndexes = getIndexes(
+    data,
+    (item: any) => item.PDC_ID === "dta"
+  );
 
-  //     doc.text(
-  //       `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
-  //       -35,
-  //       pdfReportGenerator.PAGE_HEIGHT - 35,
-  //       {
-  //         align: "right",
-  //         width: 200,
-  //       }
-  //     );
-  //   },
-  // };
-  // const pdfReportGenerator = new PDFReportGenerator(props);
-  // return pdfReportGenerator.generatePDF(res);
+  const dailyDateIndexes = getIndexes(
+    data,
+    (item: any) => item.PDC_ID === "dd"
+  );
+  const monthTotalIndexes = getIndexes(
+    data,
+    (item: any) => item.PDC_ID === "mt"
+  );
+
+  let PAGE_WIDTH = 712;
+  let PAGE_HEIGHT = 892;
+  const props: any = {
+    data: data,
+    columnWidths: [90, 80, 150, 80, 60, 80, 80, 60],
+    headers: [
+      { headerName: "DATE RECEIVED", textAlign: "left" },
+      { headerName: "ACCT NO.", textAlign: "left" },
+      { headerName: "NAME", textAlign: "left" },
+      { headerName: "CHECK DATE", textAlign: "left" },
+      { headerName: "BANK", textAlign: "left" },
+      { headerName: "CHECK #", textAlign: "left" },
+      { headerName: "AMOUNT", textAlign: "right" },
+      { headerName: "OR #", textAlign: "left" },
+    ],
+    keys: [
+      "Date",
+      "PNo",
+      "Name",
+      "Check_Date",
+      "Bank",
+      "Check_No",
+      "Check_Amnt",
+      "ORNum",
+    ],
+    title: title,
+    adjustTitleFontSize:6,
+    setRowFontSize: 10,
+    BASE_FONT_SIZE: 6,
+    PAGE_WIDTH,
+    PAGE_HEIGHT,
+    MARGIN: { top: 80, right: 20, bottom: 30, left: 20 },
+    beforeDraw: (
+      pdfReportGenerator: PDFReportGenerator,
+      doc: PDFKit.PDFDocument
+    ) => {
+      pdfReportGenerator.boldRow(data.length - 1);
+      pdfReportGenerator.SpanRow(data.length - 1, 3, 2);
+      pdfReportGenerator.SpanRow(data.length - 1, 0, 2);
+      pdfReportGenerator.borderColumnInRow(
+        data.length - 1,
+        [{ column: 6, key: "Check_Amnt" }],
+        {
+          top: true,
+          bottom: false,
+          left: false,
+          right: false,
+        }
+      );
+
+      monthTotalIndexes.forEach((itm: number) => {
+        pdfReportGenerator.boldRow(itm);
+        pdfReportGenerator.SpanRow(itm, 3, 2);
+        pdfReportGenerator.borderColumnInRow(
+          itm,
+          [{ column: 6, key: "Check_Amnt" }],
+          {
+            top: true,
+            bottom: false,
+            left: false,
+            right: false,
+          }
+        );
+      });
+      dailyDateIndexes.forEach((itm: number) => {
+        pdfReportGenerator.boldRow(itm);
+      });
+      dailyTotalIndexes.forEach((itm: number) => {
+        pdfReportGenerator.boldRow(itm);
+
+        pdfReportGenerator.borderColumnInRow(
+          itm,
+          [{ column: 6, key: "Check_Amnt" }],
+          {
+            top: true,
+            bottom: false,
+            left: false,
+            right: false,
+          }
+        );
+      });
+    },
+    beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+      // doc.font("Helvetica-Bold");
+      // doc.fontSize(10);
+      // doc.text(title, 20, 40, {
+      //   align: "left",
+      //   width: 400,
+      // });
+  
+    
+
+      // doc.fontSize(8);
+    },
+    drawPageNumber: (
+      doc: PDFKit.PDFDocument,
+      currentPage: number,
+      totalPages: number,
+      pdfReportGenerator: any
+    ) => {
+      doc.font("Helvetica");
+      const pageNumberText = `Page ${currentPage}`;
+      doc.text(
+        pageNumberText,
+        PAGE_WIDTH - 160,
+        pdfReportGenerator.PAGE_HEIGHT - 35,
+        {
+          align: "right",
+          width: 100,
+        }
+      );
+
+      doc.text(
+        `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+        -35,
+        pdfReportGenerator.PAGE_HEIGHT - 35,
+        {
+          align: "right",
+          width: 200,
+        }
+      );
+    },
+  };
+  const pdfReportGenerator = new PDFReportGenerator(props);
+  return pdfReportGenerator.generatePDF(res);
 }
+
+const getIndexes = (array: Array<any>, condition: any) => {
+  return array.reduce((indexes, item, index) => {
+    if (condition(item)) {
+      indexes.push(index); // Store the index if condition is met
+    }
+    return indexes;
+  }, []);
+};
 export default accountingReporting;
