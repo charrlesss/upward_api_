@@ -4,6 +4,7 @@
   "description": "company system",
   "main": "server.ts",
   "scripts": {
+    "start": "nodemon --exec  ts-node ./server.umis.ts",
     "start_ucsmi": "nodemon --exec  ts-node ./server.ucsmi.ts",
     "start_umis": "nodemon --exec  ts-node ./server.umis.ts",
     "sub_server": "nodemon --exec  ts-node ./sub-server.ts",

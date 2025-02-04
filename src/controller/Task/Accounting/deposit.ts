@@ -384,6 +384,7 @@ Deposit.post("/update-deposit", async (req, res) => {
 });
 
 async function addDeposit(req: any) {
+  console.log(req.body);
   const { IDEntryWithPolicy } = qry_id_policy_sub();
 
   const selectedCollection = JSON.parse(req.body.selectedCollection);
@@ -409,38 +410,37 @@ async function addDeposit(req: any) {
     0.0
   );
 
-  await addDepositSlip(
-    {
-      Date: defaultFormat(new Date(req.body.depositdate)),
-      SlipCode: req.body.depositSlip,
-      Slip: req.body.BankAcctCodeTag,
-      BankAccount: req.body.BankAcctCode,
-      AccountName: req.body.BankAcctName,
-      CheckDeposit: checkTotal.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }),
-      CashDeposit: cashTotal.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }),
-      IDNo: req.body.BankAcctCodeTag,
-    },
-    req
-  );
+  // await addDepositSlip(
+  //   {
+  //     Date: defaultFormat(new Date(req.body.depositdate)),
+  //     SlipCode: req.body.depositSlip,
+  //     Slip: req.body.BankAcctCodeTag,
+  //     BankAccount: req.body.BankAcctCode,
+  //     AccountName: req.body.BankAcctName,
+  //     CheckDeposit: checkTotal.toLocaleString("en-US", {
+  //       minimumFractionDigits: 2,
+  //       maximumFractionDigits: 2,
+  //     }),
+  //     CashDeposit: cashTotal.toLocaleString("en-US", {
+  //       minimumFractionDigits: 2,
+  //       maximumFractionDigits: 2,
+  //     }),
+  //     IDNo: req.body.BankAcctCodeTag,
+  //   },
+  //   req
+  // );
+
   let Cnt = 0;
   const Amount = [checkTotal, cashTotal];
 
   for (let i = 0; i <= 1; i++) {
     if (Amount[i] !== 0) {
       Cnt++;
-
       await addCashCheckInDeposit(
         {
           Date_Deposit:
             Cnt > 1 ? null : defaultFormat(new Date(req.body.depositdate)),
-          Slip_Code:
-            Cnt > 1 ? null : defaultFormat(new Date(req.body.depositdate)),
+          Slip_Code: Cnt > 1 ? null : req.body.depositSlip,
           Account_ID: req.body.AcctID,
           Account_Name: req.body.AcctName,
           Debit: Amount[i].toFixed(2),
@@ -524,11 +524,11 @@ async function addDeposit(req: any) {
           Source_No: req.body.depositSlip,
           Particulars: i === 0 ? req.body.ShortName : "",
           Payto: i === 1 ? req.body.ShortName : "",
-          GL_Acct: req.body.Account_ID,
-          cGL_Acct: req.body.Short,
+          GL_Acct: req.body.AcctID,
+          cGL_Acct: req.body.AcctName,
           Sub_Acct: getClientSubAccount[0].Sub_Acct,
           cSub_Acct: getClientSubAccount[0].ShortName,
-          ID_No: req.body.IDNo,
+          ID_No: req.body.BankAcctCodeTag,
           cID_No: req.body.ShortName,
           Debit: i == 0 ? checkTotal : cashTotal,
           Source_No_Ref_ID: "ff",
@@ -537,7 +537,9 @@ async function addDeposit(req: any) {
       );
     }
   }
-  //let i = 0; i < selectedCollection.length; i++
+  let i = 0;
+  i < selectedCollection.length;
+  i++;
   for (const selectedCollectionValue of selectedCollection) {
     // const selectedCollectionValue = selectedCollection[i];
     const IsCheck = selectedCollectionValue.Check_No !== "";
