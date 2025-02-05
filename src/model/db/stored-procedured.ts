@@ -23,7 +23,7 @@ import { clients_view, qryJournal } from "./views";
 
 export function parseDate(vbDate: any) {
   const datePart = vbDate.slice(0, 10); // Extracts first 10 characters
-  const [month , day, year] = datePart.split('/');
+  const [month, day, year] = datePart.split("/");
 
   // Create a new Date object (ensure to create it in local time)
   const localDate = new Date(`${year}-${month}-${day}`);
@@ -34,7 +34,7 @@ export function FinancialStatement(
   sub_acct: string,
   dateFormat: string
 ) {
-  const dateFrom = parseDate(date);
+  const dateFrom = new Date(date);
   let currText = "";
   let prevText = "";
   let DateFrom = "";
@@ -76,6 +76,7 @@ export function FinancialStatement(
         AND Date_Entry <= '${DateFrom}'
         GROUP BY GL_Acct`;
   }
+  
   if (SubAcctParam === "ALL") {
     currText = `
           SELECT
@@ -122,7 +123,7 @@ export function FinancialStatement(
     `;
 }
 export function FinancialStatementSumm(date: any, dateFormat: string) {
-  const dateFrom = parseDate(date);
+  const dateFrom = new Date(date);
   let DateFrom = "";
   let DateTo = "";
 
@@ -400,10 +401,11 @@ export function id_entry(WhereIDEntry: string) {
         aa.tin_no
     FROM
           entry_supplier aa) id_entry
-        ${WhereIDEntry === null || WhereIDEntry === ""
-      ? " LIMIT 100 "
-      : ` ${WhereIDEntry} `
-    }
+        ${
+          WhereIDEntry === null || WhereIDEntry === ""
+            ? " LIMIT 100 "
+            : ` ${WhereIDEntry} `
+        }
     `;
 }
 export function production_renewal_notice() {
@@ -492,7 +494,7 @@ export function ProductionReport(
         if (SortBy !== "Date From") {
           whr_query = ` WHERE CAST(Policy.DateIssued AS DATE) <= STR_TO_DATE('${DateTo}','%Y-%m-%d') AND CAST(Policy.DateIssued AS DATE) >= STR_TO_DATE('${DateFrom}','%Y-%m-%d')   AND Policy.PolicyType in (select SublineName from subline where line = 'Bonds')`;
         }
-        if ((SortBy === "Date From")) {
+        if (SortBy === "Date From") {
           whr_query = ` WHERE date(IFNULL(BPolicy.BidDate, IFNULL(VPolicy.DateFrom, IFNULL(MPolicy.DateFrom, IFNULL(PAPolicy.PeriodFrom, IFNULL(CGLPolicy.PeriodFrom, IFNULL(MSPRPolicy.PeriodFrom, FPolicy.DateFrom))))))) <= STR_TO_DATE('${DateTo}','%Y-%m-%d') AND date(IFNULL(BPolicy.BidDate, IFNULL(VPolicy.DateFrom, IFNULL(MPolicy.DateFrom, IFNULL(PAPolicy.PeriodFrom, IFNULL(CGLPolicy.PeriodFrom, IFNULL(MSPRPolicy.PeriodFrom, FPolicy.DateFrom))))))) >= STR_TO_DATE('${DateFrom}','%Y-%m-%d')   AND Policy.PolicyType in (select SublineName from subline where line = 'Bonds')`;
         }
       }
@@ -532,10 +534,11 @@ export function ProductionReport(
     									line = 'Bonds')`;
         }
       }
-      whr_query = `${whr_query} ${IsFinanced === 0
-        ? ""
-        : ` AND ((VPolicy.Mortgagee LIKE '%CASH MANAGEMENT%') OR (VPolicy.Mortgagee LIKE '%CREDIT MASTER%') OR (VPolicy.Mortgagee LIKE '%CAMFIN%'))`
-        }`;
+      whr_query = `${whr_query} ${
+        IsFinanced === 0
+          ? ""
+          : ` AND ((VPolicy.Mortgagee LIKE '%CASH MANAGEMENT%') OR (VPolicy.Mortgagee LIKE '%CREDIT MASTER%') OR (VPolicy.Mortgagee LIKE '%CAMFIN%'))`
+      }`;
     }
 
     if (PolicyType !== "Bonds") {
@@ -568,10 +571,11 @@ export function ProductionReport(
           whr_query = ` WHERE date(IFNULL(BPolicy.BidDate, IFNULL(VPolicy.DateFrom, IFNULL(MPolicy.DateFrom, IFNULL(PAPolicy.PeriodFrom, IFNULL(CGLPolicy.PeriodFrom, IFNULL(MSPRPolicy.PeriodFrom, FPolicy.DateFrom))))))) <= date('${DateTo}') AND date(IFNULL(BPolicy.BidDate, IFNULL(VPolicy.DateFrom, IFNULL(MPolicy.DateFrom, IFNULL(PAPolicy.PeriodFrom, IFNULL(CGLPolicy.PeriodFrom, IFNULL(MSPRPolicy.PeriodFrom, FPolicy.DateFrom))))))) >= date('${DateFrom}') AND Policy.Account = '${Account_}' AND Policy.PolicyType = '${PolicyType}'`;
         }
       }
-      whr_query = `${whr_query} ${IsFinanced === 0
-        ? ""
-        : ` AND ((VPolicy.Mortgagee LIKE '%CASH MANAGEMENT%') OR (VPolicy.Mortgagee LIKE '%CREDIT MASTER%') OR (VPolicy.Mortgagee LIKE '%CAMFIN%')`
-        }`;
+      whr_query = `${whr_query} ${
+        IsFinanced === 0
+          ? ""
+          : ` AND ((VPolicy.Mortgagee LIKE '%CASH MANAGEMENT%') OR (VPolicy.Mortgagee LIKE '%CREDIT MASTER%') OR (VPolicy.Mortgagee LIKE '%CAMFIN%')`
+      }`;
     }
   }
 
@@ -636,8 +640,7 @@ export function RenewalNoticeReport(
     year(VPolicy.DateTo) = year('${date}') 
     ${account === "ALL" ? "" : ` AND VPolicy.Account =${account} `}
     ORDER BY date(VPolicy.DateTo) asc`;
-  }
-  else if (policy === "COM" && _type === "Regular") {
+  } else if (policy === "COM" && _type === "Regular") {
     select_query = `
     SELECT 
         a.Shortname as AssuredName,
@@ -662,8 +665,7 @@ export function RenewalNoticeReport(
     year(VPolicy.DateTo) = year('${date}') 
     ${account === "ALL" ? "" : ` AND VPolicy.Account =${account} `}
     ORDER BY date(VPolicy.DateTo) asc`;
-  }
-  else if  (policy === "COM" && _type !== "Regular") {
+  } else if (policy === "COM" && _type !== "Regular") {
     select_query = `
     SELECT
       a.Shortname as AssuredName,
@@ -689,8 +691,7 @@ export function RenewalNoticeReport(
     ${account === "ALL" ? "" : ` AND VPolicy.Account =${account} `}
     ORDER BY date(VPolicy.DateTo) asc
   `;
-  }
-  else if (policy === "FIRE") {
+  } else if (policy === "FIRE") {
     select_query = `
     SELECT
       a.Shortname as AssuredName,
@@ -710,8 +711,7 @@ export function RenewalNoticeReport(
     ${account === "ALL" ? "" : ` AND FPolicy.Account = '${account}' `}
     ORDER BY date(FPolicy.DateTo) asc
    `;
-  }
-  else if (policy === "MAR") {
+  } else if (policy === "MAR") {
     select_query = `
       SELECT
           a.Shortname as AssuredName,
@@ -730,8 +730,7 @@ export function RenewalNoticeReport(
       ${account === "ALL" ? "" : ` AND MPolicy.Account = '${account}' `}
       ORDER BY date(MPolicy.DateTo) asc
   `;
-  }
-  else if (policy === "PA") {
+  } else if (policy === "PA") {
     select_query = `
       SELECT
           a.Shortname as AssuredName,
@@ -805,40 +804,46 @@ export function _GeneralLedgerReport(
 ) {
   const date = parseDate(_date);
   const DateFrom = format(new Date(date), "yyyy-MM-01");
-  const DateTo = format(lastDayOfMonth(new Date(date)), 'yyyy-MM-dd'); // Add 1 month then subtract 1 day
-  const PPClosing = prepost === 0 ? "" : " Explanation <> 'Closing of Nominal Accounts' AND "
+  const DateTo = format(lastDayOfMonth(new Date(date)), "yyyy-MM-dd"); // Add 1 month then subtract 1 day
+  const PPClosing =
+    prepost === 0 ? "" : " Explanation <> 'Closing of Nominal Accounts' AND ";
   const dateMinusOne = subDays(new Date(date), 1);
-  const formattedDateMinusOne = format(dateMinusOne, 'yyyy-MM-dd');
+  const formattedDateMinusOne = format(dateMinusOne, "yyyy-MM-dd");
 
-  console.log(_date)
-  console.log(DateFrom)
-  console.log(DateTo)
-  console.log(formattedDateMinusOne)
-  console.log(sub_acct === 'ALL')
+  console.log(_date);
+  console.log(DateFrom);
+  console.log(DateTo);
+  console.log(formattedDateMinusOne);
+  console.log(sub_acct === "ALL");
 
-
-
-  let PrevWhr = ''
-  let CurrWhr = ''
-
+  let PrevWhr = "";
+  let CurrWhr = "";
 
   if (report === "Monthly") {
-    if (sub_acct === 'ALL') {
-      PrevWhr = `Source_Type IN ('AB', 'BF') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`
-      CurrWhr = PPClosing + `Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`
+    if (sub_acct === "ALL") {
+      PrevWhr = `Source_Type IN ('AB', 'BF') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`;
+      CurrWhr =
+        PPClosing +
+        `Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`;
     } else {
-      PrevWhr = `Source_Type IN ('AB', 'BFS') AND Sub_Acct ='${sub_acct}' AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`
-      CurrWhr = PPClosing + `Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}' AND Sub_Acct ='${sub_acct}'`
-
+      PrevWhr = `Source_Type IN ('AB', 'BFS') AND Sub_Acct ='${sub_acct}' AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}'`;
+      CurrWhr =
+        PPClosing +
+        `Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') AND Date_Entry >= '${DateFrom}' AND Date_Entry <= '${DateTo}' AND Sub_Acct ='${sub_acct}'`;
     }
+  } else {
+    // Daily
 
-  } else { // Daily
-
-    if (sub_acct === 'ALL') {
-      if (format(new Date(date), "yyyy-MM-dd") === format(new Date(date), "yyy-MM-01")) {
-        PrevWhr = `Source_Type = 'BF' OR Source_Type = 'AB'  AND Date_Entry = ${formattedDateMinusOne}`
+    if (sub_acct === "ALL") {
+      if (
+        format(new Date(date), "yyyy-MM-dd") ===
+        format(new Date(date), "yyy-MM-01")
+      ) {
+        PrevWhr = `Source_Type = 'BF' OR Source_Type = 'AB'  AND Date_Entry = ${formattedDateMinusOne}`;
       } else {
-        PrevWhr = PPClosing + `
+        PrevWhr =
+          PPClosing +
+          `
         Source_Type <> 'BFD' AND 
         Source_Type <> 'BFS' AND 
         (CASE 
@@ -853,10 +858,11 @@ export function _GeneralLedgerReport(
             ELSE Date_Entry 
         END) < '${format(new Date(date), "yyyy-MM-dd")}'
 
-        `
-
+        `;
       }
-      CurrWhr = PPClosing + `
+      CurrWhr =
+        PPClosing +
+        `
       Source_Type <> 'BF' 
       And Source_Type <> 'AB' 
       And Source_Type <> 'BFD'
@@ -867,13 +873,17 @@ export function _GeneralLedgerReport(
               THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
               ELSE Date_Entry 
           END) = '${format(new Date(date), "yyyy-MM-dd")}}'
-      )`
-
+      )`;
     } else {
-      if (format(new Date(date), "yyyy-MM-dd") === format(new Date(date), "yyyy-MM-01")) {
-        CurrWhr = `Source_Type)='BFS'  AND Date_Entry = '${formattedDateMinusOne}' AND Sub_Acct = '${sub_acct}'`
+      if (
+        format(new Date(date), "yyyy-MM-dd") ===
+        format(new Date(date), "yyyy-MM-01")
+      ) {
+        CurrWhr = `Source_Type)='BFS'  AND Date_Entry = '${formattedDateMinusOne}' AND Sub_Acct = '${sub_acct}'`;
       } else {
-        PrevWhr = PPClosing + `
+        PrevWhr =
+          PPClosing +
+          `
         Source_Type <> 'BFD' 
         And Source_Type <> 'BF' 
         AND Sub_Acct = '${sub_acct}' 
@@ -889,19 +899,22 @@ export function _GeneralLedgerReport(
               THEN DATE_ADD(Date_Entry, INTERVAL 1 DAY) 
               ELSE Date_Entry 
           END) < '${format(new Date(date), "yyyy-MM-dd")}'
-      )`
+      )`;
       }
-      CurrWhr = PPClosing + ` 
+      CurrWhr =
+        PPClosing +
+        ` 
       Source_Type <> 'BF' 
       AND  Source_Type <> 'AB' 
       AND  Source_Type <> 'BFD' 
       AND Source_Type <> 'BFS' 
-      AND IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) = '${format(new Date(date), "yyyy-MM-dd")}')
+      AND IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) = '${format(
+        new Date(date),
+        "yyyy-MM-dd"
+      )}')
       AND Sub_Acct = '${sub_acct}'
-      `
-
+      `;
     }
-
   }
 
   const PrevQry = `
@@ -909,7 +922,10 @@ export function _GeneralLedgerReport(
         Source_Type, 
         Number, 
         Book_Code, 
-        CONCAT(Books_Desc, ' - ', DATE_FORMAT(DATE_SUB(IF('${report}' = 'Monthly',' ${DateFrom}', '${format(new Date(date), "yyyy-MM-dd")}'), INTERVAL 1 DAY), '%M %d, %Y')) AS Book, 
+        CONCAT(Books_Desc, ' - ', DATE_FORMAT(DATE_SUB(IF('${report}' = 'Monthly',' ${DateFrom}', '${format(
+    new Date(date),
+    "yyyy-MM-dd"
+  )}'), INTERVAL 1 DAY), '%M %d, %Y')) AS Book, 
         SUM(IFNULL(Debit, 0)) AS Debit, 
         SUM(IFNULL(Credit, 0)) AS Credit
   FROM Journal 
@@ -917,14 +933,17 @@ export function _GeneralLedgerReport(
   WHERE ${PrevWhr}
   GROUP BY GL_Acct, Source_Type, Number, Book_Code, Books_Desc
   ORDER BY GL_Acct, Number
-  `
+  `;
 
   const CurrQry = `
   SELECT GL_Acct, 
        Source_Type, 
        Number, 
        Book_Code, 
-       CONCAT(Books_Desc, ' - ', DATE_FORMAT('${format(new Date(date), "yyyy-MM-dd")}', IF('${report}' = 'Monthly', '%M %Y', '%M %d, %Y'))) AS Book, 
+       CONCAT(Books_Desc, ' - ', DATE_FORMAT('${format(
+         new Date(date),
+         "yyyy-MM-dd"
+       )}', IF('${report}' = 'Monthly', '%M %Y', '%M %d, %Y'))) AS Book, 
        SUM(IFNULL(Debit, 0)) AS Debit, 
        SUM(IFNULL(Credit, 0)) AS Credit
 FROM Journal 
@@ -932,8 +951,8 @@ LEFT JOIN Books ON Journal.Source_Type = Books.Code
 WHERE ${CurrWhr}
 GROUP BY GL_Acct, Source_Type, Number, Book_Code, Books_Desc
 ORDER BY GL_Acct, Number
-  `
-  let FinalQry = ''
+  `;
+  let FinalQry = "";
   if (transSumm === 0) {
     FinalQry = `
   SELECT GL_Acct, 
@@ -947,16 +966,16 @@ ORDER BY GL_Acct, Number
   GROUP BY GL_Acct
   UNION ALL
   SELECT * FROM (${CurrQry}) Curr
-  `
+  `;
   } else {
     FinalQry = `
     SELECT * FROM (${CurrQry}) Curr
-  `
+  `;
   }
 
   const SubTotal = `
   SELECT GL_Acct, SUM(Debit)-SUM(Credit) AS SubTotal  FROM (${FinalQry}) Final GROUP BY GL_Acct
-`
+`;
   const _Final = `
 SELECT
     Final.GL_Acct,
@@ -972,10 +991,9 @@ FROM
     LEFT JOIN (${SubTotal}) SubTotal ON Final.GL_Acct = SubTotal.GL_Acct
 ORDER BY
     GL_Acct, Number;
-`
+`;
 
-
-  return _Final
+  return _Final;
 }
 export function _GeneralLedgerReportSumm(
   _date: any,
@@ -985,39 +1003,43 @@ export function _GeneralLedgerReportSumm(
 ) {
   const date = parseDate(_date);
   const DateFrom = format(new Date(date), "yyyy-MM-01");
-  const DateTo = format(lastDayOfMonth(new Date(date)), 'yyyy-MM-dd'); // Add 1 month then subtract 1 day
-  const PPClosing = prepost === 0 ? "" : " Explanation <> 'Closing of Nominal Accounts' AND "
+  const DateTo = format(lastDayOfMonth(new Date(date)), "yyyy-MM-dd"); // Add 1 month then subtract 1 day
+  const PPClosing =
+    prepost === 0 ? "" : " Explanation <> 'Closing of Nominal Accounts' AND ";
   const dateMinusOne = subDays(new Date(date), 1);
-  const formattedDateMinusOne = format(dateMinusOne, 'yyyy-MM-dd');
+  const formattedDateMinusOne = format(dateMinusOne, "yyyy-MM-dd");
 
-  console.log(_date)
-  console.log(DateFrom)
-  console.log(DateTo)
-  console.log(formattedDateMinusOne)
+  console.log(_date);
+  console.log(DateFrom);
+  console.log(DateTo);
+  console.log(formattedDateMinusOne);
 
-
-
-  let PrevWhr = ''
-  let CurrWhr = ''
-
+  let PrevWhr = "";
+  let CurrWhr = "";
 
   if (report === "Monthly") {
     PrevWhr = `
      Source_Type IN ('AB', 'BFS') 
      AND Date_Entry >= '${DateFrom}' 
-     AND Date_Entry <= '${DateTo}'`
-    CurrWhr = PPClosing + `
+     AND Date_Entry <= '${DateTo}'`;
+    CurrWhr =
+      PPClosing +
+      `
      Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS') 
      AND Date_Entry >= '${DateFrom}' 
-     AND Date_Entry <= '${DateTo}'`
+     AND Date_Entry <= '${DateTo}'`;
+  } else {
+    // Daily
 
-  } else { // Daily
-
-    if (format(new Date(date), "yyyy-MM-dd") === format(new Date(date), "yyy-MM-01")) {
-      PrevWhr = `Source_Type='BFS' AND Date_Entry = '${formattedDateMinusOne}'`
+    if (
+      format(new Date(date), "yyyy-MM-dd") ===
+      format(new Date(date), "yyy-MM-01")
+    ) {
+      PrevWhr = `Source_Type='BFS' AND Date_Entry = '${formattedDateMinusOne}'`;
     } else {
-
-      PrevWhr = PPClosing + `
+      PrevWhr =
+        PPClosing +
+        `
       Source_Type <> 'BFD' AND 
       Source_Type <> 'BF' AND 
       (CASE 
@@ -1032,10 +1054,8 @@ export function _GeneralLedgerReportSumm(
           ELSE Date_Entry 
       END) < '${format(new Date(date), "yyyy-MM-dd")}'
 
-      `
-
+      `;
     }
-
   }
 
   const PrevQry = `
@@ -1045,7 +1065,10 @@ export function _GeneralLedgerReportSumm(
         Source_Type, 
         Number, 
         Book_Code, 
-        CONCAT(Books_Desc, ' - ', DATE_FORMAT(DATE_SUB(IF('${report}' = 'Monthly',' ${DateFrom}', '${format(new Date(date), "yyyy-MM-dd")}'), INTERVAL 1 DAY), '%M %d, %Y')) AS Book, 
+        CONCAT(Books_Desc, ' - ', DATE_FORMAT(DATE_SUB(IF('${report}' = 'Monthly',' ${DateFrom}', '${format(
+    new Date(date),
+    "yyyy-MM-dd"
+  )}'), INTERVAL 1 DAY), '%M %d, %Y')) AS Book, 
         SUM(IFNULL(Debit, 0)) AS Debit, 
         SUM(IFNULL(Credit, 0)) AS Credit
   FROM Journal 
@@ -1053,7 +1076,7 @@ export function _GeneralLedgerReportSumm(
   WHERE ${PrevWhr}
   GROUP BY GL_Acct, Sub_Acct,Source_Type, Number, Book_Code, Books_Desc
   ORDER BY GL_Acct, Number
-  `
+  `;
 
   const CurrQry = `
   SELECT 
@@ -1062,7 +1085,10 @@ export function _GeneralLedgerReportSumm(
        Source_Type, 
        Number, 
        Book_Code, 
-       CONCAT(Books_Desc, ' - ', DATE_FORMAT('${format(new Date(date), "yyyy-MM-dd")}', IF('${report}' = 'Monthly', '%M %Y', '%M %d, %Y'))) AS Book, 
+       CONCAT(Books_Desc, ' - ', DATE_FORMAT('${format(
+         new Date(date),
+         "yyyy-MM-dd"
+       )}', IF('${report}' = 'Monthly', '%M %Y', '%M %d, %Y'))) AS Book, 
        SUM(IFNULL(Debit, 0)) AS Debit, 
        SUM(IFNULL(Credit, 0)) AS Credit
 FROM Journal 
@@ -1070,8 +1096,8 @@ LEFT JOIN Books ON Journal.Source_Type = Books.Code
 WHERE ${CurrWhr}
 GROUP BY GL_Acct,Sub_Acct, Source_Type, Number, Book_Code, Books_Desc
 ORDER BY GL_Acct, Number
-  `
-  let FinalQry = ''
+  `;
+  let FinalQry = "";
   if (transSumm === 0) {
     FinalQry = `
   SELECT 
@@ -1087,16 +1113,16 @@ ORDER BY GL_Acct, Number
   GROUP BY GL_Acct,Sub_Acct
   UNION ALL
   SELECT * FROM (${CurrQry}) Curr
-  `
+  `;
   } else {
     FinalQry = `
     SELECT * FROM (${CurrQry}) Curr
-  `
+  `;
   }
 
   const SubTotal = `
   SELECT GL_Acct, Sub_Acct, SUM(Debit)-SUM(Credit) AS SubTotal  FROM (${FinalQry}) Final GROUP BY GL_Acct ,Sub_Acct
-`
+`;
   const _Final = `
 SELECT
     Final.GL_Acct,
@@ -1115,10 +1141,9 @@ FROM
     LEFT JOIN sub_account on Final.Sub_Acct = sub_account.Acronym
 ORDER BY
     GL_Acct, Number;
-`
+`;
 
-
-  return _Final
+  return _Final;
 }
 export function GeneralLedgerSumm(
   DateEntry: any,
@@ -1157,25 +1182,25 @@ export function GeneralLedgerSumm(
     if (format(DateEntry, "MM/dd/yyyy") === format(DateEntry, "MM/01/yyyy")) {
       PrevWhr = `Source_Type = 'BFS' 
                 AND Date_Entry = DATE_SUB('${format(
-        DateEntry,
-        "yyyy-MM-dd"
-      )}', INTERVAL 1 DAY)`;
+                  DateEntry,
+                  "yyyy-MM-dd"
+                )}', INTERVAL 1 DAY)`;
     } else {
       PrevWhr = `${PPClosing} (Source_Type NOT IN ('BFD', 'BF')) 
                 AND (IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), 
                 DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) >= '${formattedDateFrom}' 
                 AND IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), 
                 DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) < '${format(
-        DateEntry,
-        "yyyy-MM-dd"
-      )}')`;
+                  DateEntry,
+                  "yyyy-MM-dd"
+                )}')`;
     }
     CurrWhr = `${PPClosing} (Source_Type NOT IN ('BF', 'AB', 'BFD', 'BFS')) 
                 AND (IF(Source_Type IN ('BFD', 'AB', 'BF', 'BFS'), 
                 DATE_ADD(Date_Entry, INTERVAL 1 DAY), Date_Entry) = '${format(
-      DateEntry,
-      "yyyy-MM-dd"
-    )}')`;
+                  DateEntry,
+                  "yyyy-MM-dd"
+                )}')`;
   }
 
   const PrevQry = ` 
@@ -1239,8 +1264,8 @@ export function AbstractCollections(
   _date: Date, // example date
   order: string // or 'Des
 ) {
-  const date = parseDate(_date)
-  console.log(date)
+  const date = parseDate(_date);
+  console.log(date);
   let sWhere1 = "";
   let sWhere2 = "";
 
@@ -1312,10 +1337,10 @@ export function DepositedCollections(
 ) {
   let sWhere1 = "";
   let sWhere2 = "";
-  const date = parseDate(_date)
+  const date = parseDate(_date);
 
   const formattedDate = format(date, "yyyy-MM-dd");
-  console.log(formattedDate)
+  console.log(formattedDate);
   const firstDayOfMonth = format(
     new Date(date.getFullYear(), date.getMonth(), 1),
     "yyyy-MM-dd"
@@ -1368,7 +1393,8 @@ export function DepositedCollections(
     LEFT JOIN chart_account on Acct_Code = Deposit. Account_ID
     LEFT JOIN bankaccounts c ON Deposit.BankAccount = c.Account_No
     ${sWhere1}
-    ORDER BY Deposit.Temp_SlipCntr, Ref_No ${order === "Ascending" ? "ASC" : "DESC"
+    ORDER BY Deposit.Temp_SlipCntr, Ref_No ${
+      order === "Ascending" ? "ASC" : "DESC"
     }
   `;
 
@@ -1393,7 +1419,7 @@ export function ReturnedChecksCollection(
   _date: Date,
   order: string
 ) {
-  const date = parseDate(_date)
+  const date = parseDate(_date);
 
   let sWhere1 = "";
   let sWhere2 = "";
@@ -1445,7 +1471,6 @@ export function ReturnedChecksCollection(
     ORDER BY Journal.Source_No ${order === "Ascending" ? "ASC" : "DESC"}
   `;
 
-
   const queryJournal = `
     SELECT 
           Journal.GL_Acct, 
@@ -1473,10 +1498,9 @@ export function PostDatedCheckRegistered(
   dateFrom: any,
   dateTo: any
 ) {
-
   let sSort = "";
   let sWhere = "";
-  const formattedDateFrom =format(new Date(dateFrom), "yyyy-MM-dd")
+  const formattedDateFrom = format(new Date(dateFrom), "yyyy-MM-dd");
   const formattedDateTo = format(new Date(dateTo), "yyyy-MM-dd");
 
   if (sortField === "Name") {
@@ -1645,7 +1669,7 @@ export function CashDisbursementBook_CDB(
   let strSubSQL = "";
   const qryJournals = qryJournal();
 
-  const reportDate = parseDate(_reportDate)
+  const reportDate = parseDate(_reportDate);
   const formattedDate = format(reportDate, "yyyy-MM-dd");
   const formattedMonthStart = format(startOfMonth(reportDate), "yyyy-MM-dd");
   const formattedMonthEnd = format(endOfMonth(reportDate), "yyyy-MM-dd");
@@ -1727,13 +1751,13 @@ export function CashDisbursementBook_GJB(
   dateFilterType: string,
   sortOrder: string
 ) {
-  console.log(_reportDate)
+  console.log(_reportDate);
   let strSQL = "";
   let strSubSQL = "";
   const sourceType = "GL";
   const qryJournals = qryJournal();
-  const reportDate = parseDate(_reportDate.toString())
-  console.log(reportDate)
+  const reportDate = parseDate(_reportDate.toString());
+  console.log(reportDate);
 
   const formattedDate = format(reportDate, "yyyy-MM-dd");
   const formattedMonthStart = format(startOfMonth(reportDate), "yyyy-MM-dd");
@@ -1817,7 +1841,7 @@ export function ProductionBook(
   _reportDate: Date,
   subAccount: string
 ) {
-  const reportDate = parseDate(_reportDate)
+  const reportDate = parseDate(_reportDate);
 
   let sSort = "";
   let sWhere = "";
@@ -2046,8 +2070,6 @@ export function ProductionBook(
       WHERE Source_Type IN ('PL') AND b.cID_No <> 'S P O I L T' 
       ${sWhere} ${sSort}`;
 
-
-
   const strSubSQL = `
       SELECT 
       b.cGL_Acct, 
@@ -2121,9 +2143,8 @@ export function VATBook(
   return { strSQL, strSubSQL };
 }
 export function AgingAccountsReport(date: Date, type: string) {
-
   const formattedDate = format(new Date(parseDate(date)), "yyyy-MM-dd");
-  console.log(formattedDate)
+  console.log(formattedDate);
   let query = "";
 
   const ID_Entry = `
@@ -2313,6 +2334,6 @@ export function AgingAccountsReport(date: Date, type: string) {
    
   `;
 
-  console.log(final_query)
+  console.log(final_query);
   return final_query;
 }

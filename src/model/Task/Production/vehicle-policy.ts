@@ -1,12 +1,11 @@
 import { Request } from "express";
 import { PrismaList } from "../../connection";
-import { Prisma } from "@prisma/client";
-const { CustomPrismaClient } = PrismaList();
+import { Prisma, PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
 
 
 export async function searchClientByNameOrByID(input: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
   select * from (
     SELECT 
@@ -34,7 +33,6 @@ export async function searchClientByNameOrByID(input: string, req: Request) {
   return await prisma.$queryRawUnsafe(qry) as any
 }
 export async function searchAgentByNameOrByID(input: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
   select * from (
     SELECT 
@@ -58,21 +56,18 @@ export async function searchAgentByNameOrByID(input: string, req: Request) {
   return await prisma.$queryRawUnsafe(qry) as any
 }
 export async function getPolicyAccount(whr: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
  SELECT '' as Account union all  SELECT Account FROM policy_account ${whr} ORDER BY Account;
   `
   return await prisma.$queryRawUnsafe(qry) as any
 }
 export async function getPolicyMortgagee(whr: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
   SELECT '' as Mortgagee union all SELECT Mortgagee FROM Mortgagee ${whr} ORDER BY Mortgagee;
   `
   return await prisma.$queryRawUnsafe(qry) as any
 }
 export async function getPolicyDenomination(whr: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
 SELECT '' as Type union all  select distinct Type from Rates ${whr};
   `
@@ -80,12 +75,10 @@ SELECT '' as Type union all  select distinct Type from Rates ${whr};
 }
 
 export async function getPolicySubAccount(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `SELECT Acronym FROM Sub_Account ORDER BY Acronym`
   return await prisma.$queryRawUnsafe(qry) as any
 }
 export async function generateTempID(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
   SELECT 
       CONCAT('TP-', 
@@ -106,8 +99,6 @@ export async function generateTempID(req: Request) {
 
 
 export async function getTPL_IDS(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
 
   const ctplQry = `
         SELECT 
@@ -159,7 +150,6 @@ export async function getTPL_IDS(search: string, req: Request) {
 }
 
 export async function getRateFromTPLUpdate(Source_No: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
@@ -179,12 +169,10 @@ export async function getRateFromTPLUpdate(Source_No: string, req: Request) {
 }
 
 export async function createJournal(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.journal.create({ data });
 }
 
 export async function deleteJournal(Source_No_Ref_ID: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.journal.deleteMany({
     where: {
       Source_No_Ref_ID,
@@ -193,7 +181,6 @@ export async function deleteJournal(Source_No_Ref_ID: string, req: Request) {
 }
 
 export async function findManyJournal(Source_No_Ref_ID: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.journal.findMany({
     where: {
       Source_No_Ref_ID,
@@ -207,7 +194,6 @@ export async function updateJournal(
   AutoNo: bigint,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.journal.update({
     data: {
       Credit: Cost,
@@ -220,7 +206,6 @@ export async function updateJournal(
 }
 
 export async function findPolicy(PolicyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.policy.findUnique({ where: { PolicyNo } });
 }
 export async function getPolicy(
@@ -229,7 +214,6 @@ export async function getPolicy(
   policy_no: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   SELECT * FROM policy 
   WHERE 
@@ -245,7 +229,6 @@ export async function getRate(
   type: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   select Rate from Rates 
   where 
@@ -263,7 +246,6 @@ export async function getRateVPolicy(
   type: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   select Rate from Rates 
   where 
@@ -277,7 +259,6 @@ export async function getRateVPolicy(
 
 
 export async function getClientById(entry_client_id: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   SELECT 
     b.*
@@ -297,7 +278,6 @@ export async function deletePolicyByVehicle(
   policyNo: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   delete from policy 
   where 
@@ -314,7 +294,6 @@ export async function deletePolicy(
   policyNo: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   delete from policy 
   where 
@@ -331,7 +310,6 @@ export async function deleteVehiclePolicy(
   policyNo: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   delete from vpolicy 
   where 
@@ -345,7 +323,6 @@ export async function deleteJournalBySource(
   source_type: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
     delete from journal 
     where 
@@ -359,7 +336,6 @@ export async function deleteTPLFromJournalBySource(
   source_no: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   delete from journal 
   where 
@@ -393,7 +369,6 @@ export async function createPolicy(
   },
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.policy.create({
     data,
   });
@@ -451,7 +426,6 @@ export async function createVehiclePolicy(
   },
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.vpolicy.create({
     data,
   });
@@ -478,7 +452,6 @@ export async function createJournalInVP(
   },
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.journal.create({
     data,
   });
@@ -489,7 +462,6 @@ export async function updateJournalByPolicy(
   Explanation: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.journal.updateMany({
     where: {
       Source_No,
@@ -504,7 +476,6 @@ export async function updateJournalByPolicy(
 }
 
 export async function getTempPolicyID(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.$queryRawUnsafe(`
   select
   concat(
@@ -528,7 +499,6 @@ export async function searchDataVPolicy(
   isTemp: boolean,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
 
    SELECT 
@@ -579,7 +549,6 @@ export async function searchDataVPolicy(
 }
 
 export async function getCostByTPL(Source_No: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
        SELECT 

@@ -36,6 +36,8 @@ import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
 const VehiclePolicy = express.Router();
 
@@ -246,7 +248,7 @@ VehiclePolicy.post("/search-policy", async (req, res) => {
 });
 VehiclePolicy.post("/search-policy-selected", async (req, res) => {
   try {
-    const data1 = await __executeQuery(
+    const data1 = await prisma.$queryRawUnsafe(
       `
        SELECT 
             Policy.*, 
@@ -345,15 +347,13 @@ VehiclePolicy.post("/search-policy-selected", async (req, res) => {
                           entry_agent a
           ) AS AGNT ON Policy.AgentID = AGNT.IDNo 
           WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'
-        `,
-      req
+        `
     );
-    const data2 = await __executeQuery(
-      `SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`,
-      req
+    const data2 = await prisma.$queryRawUnsafe(
+      `SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`
     );
 
-    const data3 = await __executeQuery(
+    const data3 = await prisma.$queryRawUnsafe(
       `
      SELECT 
                 MIN(Source_No) as Source_No,
@@ -366,8 +366,7 @@ VehiclePolicy.post("/search-policy-selected", async (req, res) => {
                     AND (Remarks <> '' OR Remarks IS not NULL)
                     AND Source_No = '${req.body.policyNo}'
                     group by Source_No_Ref_ID
-                    order by Source_No;`,
-      req
+                    order by Source_No;`
     );
 
     res.send({
@@ -396,9 +395,8 @@ VehiclePolicy.post("/save", async (req, res) => {
   }
 
   try {
-    let dt: any = await __executeQuery(
-      `SELECT * FROM Policy  WHERE PolicyNo = '${req.body.policyNoRef}' `,
-      req
+    let dt: any = await prisma.$queryRawUnsafe(
+      `SELECT * FROM Policy  WHERE PolicyNo = '${req.body.policyNoRef}' `
     );
     if (req.body.mode !== "update" && dt.length > 0) {
       return res.send({
@@ -409,9 +407,8 @@ VehiclePolicy.post("/save", async (req, res) => {
     }
 
     //get Commision rate
-    dt = await __executeQuery(
-      `select Rate from Rates where Account = '${req.body.accountRef}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`,
-      req
+    dt = await prisma.$queryRawUnsafe(
+      `select Rate from Rates where Account = '${req.body.accountRef}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`
     );
 
     // const rate = (
@@ -448,6 +445,68 @@ VehiclePolicy.post("/save", async (req, res) => {
   }
 });
 VehiclePolicy.post("/com-update-regular", async (req, res) => {
+  const { userAccess }: any = await VerifyToken(
+    req.cookies["up-ac-login"] as string,
+    process.env.USER_ACCESS as string
+  );
+  if (userAccess.includes("ADMIN")) {
+    return res.send({
+      message: "CAN'T UPDATE, ADMIN IS FOR VIEWING ONLY!",
+      success: false,
+    });
+  }
+
+  try {
+    if (
+      !(await saveUserLogsCode(
+        req,
+        "update",
+        req.body.policyNoRef,
+        "Vehicle Policy"
+      ))
+    ) {
+      return res.send({ message: "Invalid User Code", success: false });
+    }
+    // get Commision rate
+    const rate = (
+      (await getRate(
+        req.body.accountRef,
+        "Vehicle",
+        req.body.dinomination,
+        req
+      )) as Array<any>
+    )[0];
+
+    if (rate == null) {
+      return res.send({
+        message: "Please setup commission rate for this account and Line",
+        success: false,
+      });
+    }
+
+    const subAccount = (
+      (await getClientById(req.body.clientIDRef, req)) as Array<any>
+    )[0];
+    const strArea =
+      subAccount.Acronym === "" ? req.body.subAccountRef : subAccount.Acronym;
+    const cStrArea = subAccount.ShortName;
+
+    //delete policy
+    await deletePolicyByVehicle(req.body.policy, req.body.policyNoRef, req);
+    //delete v policy
+    await deleteVehiclePolicy(req.body.policy, req.body.policyNoRef, req);
+    //delete journal
+    await deleteJournalBySource(req.body.policyNoRef, "PL", req);
+    // insert policy
+    await insertNewVPolicy({ ...req.body, cStrArea, strArea }, req);
+    res.send({ message: "Update Vehicle Policy Successfully", success: true });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({ message: err.message, success: false });
+  }
+});
+
+VehiclePolicy.post("/com-update-regular-tpl", async (req, res) => {
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
     process.env.USER_ACCESS as string
@@ -526,7 +585,7 @@ VehiclePolicy.post("/search-policy-temp", async (req, res) => {
     res.send({
       message: "Search Successfully",
       success: true,
-      data: await __executeQuery(
+      data: await prisma.$queryRawUnsafe(
         `
         SELECT 
           date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
@@ -584,8 +643,7 @@ VehiclePolicy.post("/search-policy-temp", async (req, res) => {
         AND Policy.PolicyType = 'COM' AND SUBSTRING(Policy.PolicyNo,1,2) = 'TP'
         ORDER BY Policy.DateIssued desc
         limit 500
-        `,
-        req
+        `
       ),
     });
   } catch (err: any) {
@@ -613,7 +671,7 @@ VehiclePolicy.post("/search-policy-tpl", async (req, res) => {
     res.send({
       message: "Search Successfully",
       success: true,
-      data: await __executeQuery(
+      data: await prisma.$queryRawUnsafe(
         `
         SELECT 
           date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
@@ -671,8 +729,7 @@ VehiclePolicy.post("/search-policy-tpl", async (req, res) => {
         AND Policy.PolicyType = 'TPL' AND SUBSTRING(Policy.PolicyNo,1,2) <> 'TP'
         ORDER BY Policy.DateIssued desc
         limit 500
-        `,
-        req
+        `
       ),
     });
   } catch (err: any) {
@@ -798,42 +855,54 @@ async function insertNewVPolicy(
       UnladenWeight: unladenWeightRef,
       TPL: "",
       TPLLimit: "0.00",
-      PremiumPaid: parseFloat(premiumPaidRef.replace(/,/g, "")).toFixed(2),
+      PremiumPaid: parseFloat(
+        premiumPaidRef.toString().replace(/,/g, "")
+      ).toFixed(2),
       EstimatedValue: parseFloat(
-        estimatedValueSchedVehicleRef.replace(/,/g, "")
+        estimatedValueSchedVehicleRef.toString().replace(/,/g, "")
       ).toFixed(2),
-      Aircon: parseFloat(airconRef.replace(/,/g, "")).toFixed(2),
-      Stereo: parseFloat(stereoRef.replace(/,/g, "")).toFixed(2),
-      Magwheels: parseFloat(magwheelsRef.replace(/,/g, "")).toFixed(2),
-      Others: othersSpecifyRef,
-      OthersAmount: parseFloat(othersSpecifyRef_.replace(/,/g, "")).toFixed(2),
-      Deductible: parseFloat(DeductibleRef.replace(/,/g, "")).toFixed(2),
-      Towing: parseFloat(towingRef.replace(/,/g, "")).toFixed(2),
-      RepairLimit: parseFloat(
-        authorizedRepairLimitRef.replace(/,/g, "")
-      ).toFixed(2),
-      BodilyInjury: parseFloat(bodyInjuryRef.replace(/,/g, "")).toFixed(2),
-      PropertyDamage: parseFloat(propertyDamageRef.replace(/,/g, "")).toFixed(
+      Aircon: parseFloat(airconRef.toString().replace(/,/g, "")).toFixed(2),
+      Stereo: parseFloat(stereoRef.toString().replace(/,/g, "")).toFixed(2),
+      Magwheels: parseFloat(magwheelsRef.toString().replace(/,/g, "")).toFixed(
         2
       ),
-      PersonalAccident: parseFloat(
-        personalAccidentRef.replace(/,/g, "")
+      Others: othersSpecifyRef,
+      OthersAmount: parseFloat(
+        othersSpecifyRef_.toString().replace(/,/g, "")
       ).toFixed(2),
-      SecI: parseFloat(sectionI_IIRef.replace(/,/g, "")).toFixed(2),
-      SecIIPercent: parseFloat(sectionIIIRef.replace(/,/g, "")).toFixed(2),
-      ODamage: parseFloat(ownDamageRef.replace(/,/g, "")).toFixed(2),
-      Theft: parseFloat(theftRef.replace(/,/g, "")).toFixed(2),
-      Sec4A: parseFloat(sectionIVARef.replace(/,/g, "")).toFixed(2),
-      Sec4B: parseFloat(sectionIVBRef.replace(/,/g, "")).toFixed(2),
+      Deductible: parseFloat(
+        DeductibleRef.toString().replace(/,/g, "")
+      ).toFixed(2),
+      Towing: parseFloat(towingRef.toString().replace(/,/g, "")).toFixed(2),
+      RepairLimit: parseFloat(
+        authorizedRepairLimitRef.toString().replace(/,/g, "")
+      ).toFixed(2),
+      BodilyInjury: parseFloat(
+        bodyInjuryRef.toString().replace(/,/g, "")
+      ).toFixed(2),
+      PropertyDamage: parseFloat(
+        propertyDamageRef.toString().replace(/,/g, "")
+      ).toFixed(2),
+      PersonalAccident: parseFloat(
+        personalAccidentRef.toString().replace(/,/g, "")
+      ).toFixed(2),
+      SecI: parseFloat(sectionI_IIRef.toString().replace(/,/g, "")).toFixed(2),
+      SecIIPercent: parseFloat(
+        sectionIIIRef.toString().replace(/,/g, "")
+      ).toFixed(2),
+      ODamage: parseFloat(ownDamageRef.toString().replace(/,/g, "")).toFixed(2),
+      Theft: parseFloat(theftRef.toString().replace(/,/g, "")).toFixed(2),
+      Sec4A: parseFloat(sectionIVARef.toString().replace(/,/g, "")).toFixed(2),
+      Sec4B: parseFloat(sectionIVBRef.toString().replace(/,/g, "")).toFixed(2),
       Sec4C: parseFloat(othersRef.replace(/,/g, "")).toFixed(2),
       AOG: parseFloat(_aogRef.replace(/,/g, "")).toFixed(2),
       MortgageeForm: mortgageecheckRef,
       Mortgagee: mortgageeSelect,
       Denomination: dinomination,
-      AOGPercent: parseFloat(aogRef.replace(/,/g, "")).toFixed(2),
-      LocalGovTaxPercent: parseFloat(localGovTaxRef.replace(/,/g, "")).toFixed(
-        2
-      ),
+      AOGPercent: parseFloat(aogRef.toString().replace(/,/g, "")).toFixed(2),
+      LocalGovTaxPercent: parseFloat(
+        localGovTaxRef.toString().replace(/,/g, "")
+      ).toFixed(2),
       TPLTypeSection_I_II: typeRef,
       Remarks: remarksRef,
     },
@@ -854,7 +923,7 @@ async function insertNewVPolicy(
         cGL_Acct: "Premium Receivable",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
-        Debit: parseFloat(totalDueRef.replace(/,/g, "")),
+        Debit: parseFloat(totalDueRef.toString().replace(/,/g, "")),
         Credit: 0,
         TC: "P/R",
         Remarks: "",
@@ -876,7 +945,7 @@ async function insertNewVPolicy(
         cGL_Acct: "Premium Receivable",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
-        Debit: parseFloat(totalDueRef.replace(/,/g, "")),
+        Debit: parseFloat(totalDueRef.toString().replace(/,/g, "")),
         Credit: 0,
         TC: "P/R",
         Remarks: "",
@@ -901,7 +970,7 @@ async function insertNewVPolicy(
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
         Debit: 0,
-        Credit: parseFloat(totalDueRef.replace(/,/g, "")),
+        Credit: parseFloat(totalDueRef.toString().replace(/,/g, "")),
         TC: "A/P",
         Remarks: "",
         Source_No_Ref_ID,
@@ -923,7 +992,7 @@ async function insertNewVPolicy(
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
         Debit: 0,
-        Credit: parseFloat(totalDueRef.replace(/,/g, "")),
+        Credit: parseFloat(totalDueRef.toString().replace(/,/g, "")),
         TC: "A/P",
         Remarks: "",
         Source_No_Ref_ID,
@@ -947,7 +1016,7 @@ async function insertNewVPolicy(
         cGL_Acct: "A/P",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
-        Debit: parseFloat(totalDueRef.replace(/,/g, "")),
+        Debit: parseFloat(totalDueRef.toString().replace(/,/g, "")),
         Credit: 0,
         TC: "P/R",
         Remarks: "",
@@ -991,7 +1060,7 @@ async function insertNewVPolicy(
         cID_No: clientNameRef,
         Debit: 0,
         Credit:
-          parseFloat(totalDueRef.replace(/,/g, "")) -
+          parseFloat(totalDueRef.toString().replace(/,/g, "")) -
           parseFloat(rateCostRef.toString().replace(/,/g, "")),
         TC: "CIN",
         Remarks: "",

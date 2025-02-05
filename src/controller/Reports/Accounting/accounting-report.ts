@@ -1,6 +1,8 @@
 import express, { Request, Response } from "express";
 import {
   AgingAccountsReport,
+  FinancialStatement,
+  FinancialStatementSumm,
   PostDatedCheckRegistered,
 } from "../../../model/db/stored-procedured";
 import { PrismaList } from "../../../model/connection";
@@ -10,9 +12,10 @@ import { format, subDays } from "date-fns";
 import PDFReportGenerator from "../../../lib/pdf-generator";
 import { formatNumber, getSum } from "../Production/production-report";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
-const { CustomPrismaClient } = PrismaList();
+import { PrismaClient } from "@prisma/client";
 
 const accountingReporting = express.Router();
+const prisma = new PrismaClient();
 
 accountingReporting.post("/report/get-chart-account", async (req, res) => {
   try {
@@ -30,7 +33,7 @@ accountingReporting.post("/report/get-chart-account", async (req, res) => {
     res.send({
       message: "Successfully Get Report",
       success: true,
-      data: await __executeQuery(qry, req),
+      data: await prisma.$queryRawUnsafe(qry),
     });
   } catch (err: any) {
     console.log(err.message);
@@ -46,7 +49,9 @@ accountingReporting.post("/report/get-list-of-insurance", async (req, res) => {
     res.send({
       message: "Successfully Get Report",
       success: true,
-      data: await __executeQuery(`select AccountCode from policy_account`, req),
+      data: await prisma.$queryRawUnsafe(
+        `select AccountCode from policy_account`
+      ),
     });
   } catch (err: any) {
     console.log(err.message);
@@ -62,9 +67,8 @@ accountingReporting.post("/report/sub-account", async (req, res) => {
     res.send({
       message: "Successfully get Sub Account",
       success: true,
-      data: await __executeQuery(
-        `SELECT Acronym FROM Sub_Account order by Acronym asc`,
-        req
+      data: await prisma.$queryRawUnsafe(
+        `SELECT Acronym FROM Sub_Account order by Acronym asc`
       ),
     });
   } catch (err: any) {
@@ -80,9 +84,8 @@ accountingReporting.post("/report/sub-account-search", async (req, res) => {
     res.send({
       message: "Successfully get Sub Account",
       success: true,
-      data: await __executeQuery(
-        `SELECT Acronym, ShortName FROM Sub_Account where Acronym like '%${req.body.search}%'  order by Acronym asc`,
-        req
+      data: await prisma.$queryRawUnsafe(
+        `SELECT Acronym, ShortName FROM Sub_Account where Acronym like '%${req.body.search}%'  order by Acronym asc`
       ),
     });
   } catch (err: any) {
@@ -123,6 +126,36 @@ accountingReporting.post(
     }
   }
 );
+// Trial Balance
+accountingReporting.post(
+  "/report/generate-report-trial-balance",
+  async (req, res) => {
+    try {
+      TrialBalance(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+// Income Statement
+accountingReporting.post(
+  "/report/generate-report-income-statement",
+  async (req, res) => {
+    try {
+      IncomeStatement(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
 // Post Dated Check Registry
 accountingReporting.post(
   "/report/generate-report-post-dated-checks-registry",
@@ -145,7 +178,6 @@ async function ScheduleAccounts(req: Request, res: Response) {
       select a.IDNo, a.Sub_Acct, a.ShortName as _Shortname , a.client_name as ShortName from (${IDEntryWithPolicy}) a
     `;
   const _qryJournal = qryJournal();
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const {
     account,
     report,
@@ -581,7 +613,6 @@ async function ScheduleAccounts(req: Request, res: Response) {
 }
 async function SubsidiaryLedger(req: Request, res: Response) {
   console.log(req.body);
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const _qryJournal = qryJournal();
   let sFilter = " ";
   let Qry = "";
@@ -1056,60 +1087,358 @@ async function SubsidiaryLedger(req: Request, res: Response) {
   const result = (await prisma.$queryRawUnsafe(
     "select * FROM xSubsidiary order by Date_Entry "
   )) as Array<any>;
-
+  let runningBalance = 0;
   const data = result.map((itm: any) => {
     itm.Date_Entry = format(new Date(itm.Date_Entry), "MM/dd/yyyy");
-    itm.Debit = formatNumber(
-      parseFloat(itm.Debit.toString().replace(/,/g, ""))
-    );
-    itm.Credit = formatNumber(
-      parseFloat(itm.Credit.toString().replace(/,/g, ""))
-    );
+    const Debit = parseFloat(itm.Debit.toString().replace(/,/g, ""));
+    const Credit = parseFloat(itm.Credit.toString().replace(/,/g, ""));
+    itm.Debit = formatNumber(Debit);
+    itm.Credit = formatNumber(Credit);
+    runningBalance = runningBalance + (Debit - Credit);
+    itm.Balance = formatNumber(runningBalance);
     return {
       ...itm,
       refs: `${itm.Source_Type}  ${itm.Source_No}`,
     };
   });
+  const totalDebit = getSum(data, "Debit");
+  const totalCredit = getSum(data, "Credit");
 
-  let PAGE_WIDTH = 612 + 50;
-  let PAGE_HEIGHT = 792 + 50;
+  let PAGE_WIDTH = 612;
+  let PAGE_HEIGHT = 792;
+  if (req.body.format === "No Running Balance") {
+    data.push({
+      Date_Entry: "",
+      Sort_Number: 0,
+      Source_Type: "",
+      Source_No: "",
+      Explanation: "",
+      Particulars: `(${formatNumber(totalDebit - totalCredit)})`,
+      Payto: "",
+      Address: "",
+      Check_Date: "",
+      Check_No: "TOTAL",
+      Check_Bank: "",
+      GL_Acct: "",
+      Sub_Acct: "",
+      ID_No: " ",
+      cGL_Acct: "",
+      cSub_Acct: "",
+      cID_No: "",
+      Debit: formatNumber(totalDebit),
+      Credit: formatNumber(totalCredit),
+      Bal: -15500,
+      Balance: "0",
+      xsubsidiary_id: "",
+      refs: "",
+    });
+
+    PAGE_WIDTH = PAGE_WIDTH + 50;
+    PAGE_HEIGHT = PAGE_HEIGHT + 50;
+    const props: any = {
+      data,
+      columnWidths: [60, 80, 40, 100, 50, 85, 85, 140],
+      headers: [
+        { headerName: "DATE", textAlign: "left" },
+        { headerName: "REF No.", textAlign: "left" },
+        { headerName: "SUB ACCT", textAlign: "left" },
+        { headerName: "ID NO", textAlign: "left" },
+        { headerName: "CHECK NO", textAlign: "center" },
+        { headerName: "DEBIT", textAlign: "right" },
+        { headerName: "CREDIT", textAlign: "right" },
+        { headerName: "EXPLANTION", textAlign: "left" },
+      ],
+      keys: [
+        "Date_Entry",
+        "refs",
+        "Sub_Acct",
+        "ID_No",
+        "Check_No",
+        "Debit",
+        "Credit",
+        "Particulars",
+      ],
+      title: "",
+      setRowFontSize: 10,
+      BASE_FONT_SIZE: 8,
+      PAGE_WIDTH,
+      PAGE_HEIGHT,
+      MARGIN: { top: 120, right: 10, bottom: 20, left: 10 },
+      beforeDraw: (
+        pdfReportGenerator: PDFReportGenerator,
+        doc: PDFKit.PDFDocument
+      ) => {
+        pdfReportGenerator.setAlignment(data.length - 1, 7, "center");
+      },
+      beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+        doc.font("Helvetica-Bold");
+        doc.fontSize(10);
+        doc.text(req.body.title, 10, 20, {
+          align: "left",
+          width: 400,
+        });
+
+        doc.fontSize(8);
+      },
+      drawPageNumber: (
+        doc: PDFKit.PDFDocument,
+        currentPage: number,
+        totalPages: number,
+        pdfReportGenerator: any
+      ) => {
+        doc.font("Helvetica");
+        const pageNumberText = `Page ${currentPage}`;
+        doc.text(
+          pageNumberText,
+          PAGE_WIDTH - 130,
+          pdfReportGenerator.PAGE_HEIGHT - 25,
+          {
+            align: "right",
+            width: 100,
+          }
+        );
+        doc.text(
+          `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+          -75,
+          pdfReportGenerator.PAGE_HEIGHT - 25,
+          {
+            align: "right",
+            width: 200,
+          }
+        );
+      },
+    };
+    const pdfReportGenerator = new PDFReportGenerator(props);
+    return pdfReportGenerator.generatePDF(res);
+  } else {
+    data.push({
+      Date_Entry: "",
+      Sort_Number: 0,
+      Source_Type: "",
+      Source_No: "",
+      Explanation: "",
+      Particulars: ``,
+      Payto: "",
+      Address: "",
+      Check_Date: "",
+      Check_No: "TOTAL",
+      Check_Bank: "",
+      GL_Acct: "",
+      Sub_Acct: "",
+      ID_No: " ",
+      cGL_Acct: "",
+      cSub_Acct: "",
+      cID_No: "",
+      Debit: formatNumber(totalDebit),
+      Credit: formatNumber(totalCredit),
+      Bal: -15500,
+      Balance: `(${formatNumber(totalDebit - totalCredit)})`,
+      xsubsidiary_id: "",
+      refs: "",
+    });
+
+    PAGE_WIDTH = PAGE_WIDTH + 135;
+    PAGE_HEIGHT = PAGE_HEIGHT + 135;
+    const props: any = {
+      data,
+      columnWidths: [60, 80, 40, 100, 50, 85, 85, 85, 140],
+      headers: [
+        { headerName: "DATE", textAlign: "left" },
+        { headerName: "REF No.", textAlign: "left" },
+        { headerName: "SUB ACCT", textAlign: "left" },
+        { headerName: "ID NO", textAlign: "left" },
+        { headerName: "CHECK NO", textAlign: "center" },
+        { headerName: "DEBIT", textAlign: "right" },
+        { headerName: "CREDIT", textAlign: "right" },
+        { headerName: "BALANCE", textAlign: "right" },
+        { headerName: "EXPLANTION", textAlign: "left" },
+      ],
+      keys: [
+        "Date_Entry",
+        "refs",
+        "Sub_Acct",
+        "ID_No",
+        "Check_No",
+        "Debit",
+        "Credit",
+        "Balance",
+        "Particulars",
+      ],
+      title: "",
+      setRowFontSize: 10,
+      BASE_FONT_SIZE: 8,
+      PAGE_WIDTH,
+      PAGE_HEIGHT,
+      MARGIN: { top: 120, right: 10, bottom: 20, left: 10 },
+      beforeDraw: (
+        pdfReportGenerator: PDFReportGenerator,
+        doc: PDFKit.PDFDocument
+      ) => {},
+      beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+        doc.font("Helvetica-Bold");
+        doc.fontSize(10);
+        doc.text(req.body.title, 10, 20, {
+          align: "left",
+          width: 400,
+        });
+
+        doc.fontSize(8);
+      },
+      drawPageNumber: (
+        doc: PDFKit.PDFDocument,
+        currentPage: number,
+        totalPages: number,
+        pdfReportGenerator: any
+      ) => {
+        doc.font("Helvetica");
+        const pageNumberText = `Page ${currentPage}`;
+        doc.text(
+          pageNumberText,
+          PAGE_WIDTH - 130,
+          pdfReportGenerator.PAGE_HEIGHT - 25,
+          {
+            align: "right",
+            width: 100,
+          }
+        );
+        doc.text(
+          `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+          -75,
+          pdfReportGenerator.PAGE_HEIGHT - 25,
+          {
+            align: "right",
+            width: 200,
+          }
+        );
+      },
+    };
+
+    const pdfReportGenerator = new PDFReportGenerator(props);
+    return pdfReportGenerator.generatePDF(res);
+  }
+}
+async function TrialBalance(req: Request, res: Response) {
+  let qry = "";
+  if (req.body.cmbformat === "Default") {
+    qry = FinancialStatement(
+      req.body.date,
+      req.body.subAccount,
+      req.body.report
+    );
+  } else {
+    qry = FinancialStatementSumm(req.body.date, req.body.report);
+  }
+  console.log(qry);
+  const _data = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
+  const data = _data.map((itm: any) => {
+    itm.PrevDebit = formatNumber(
+      parseFloat(itm.PrevDebit.toString().replace(/,/g, ""))
+    );
+    itm.PrevCredit = formatNumber(
+      parseFloat(itm.PrevCredit.toString().replace(/,/g, ""))
+    );
+    itm.PrevBalance = formatNumber(
+      parseFloat(itm.PrevBalance.toString().replace(/,/g, ""))
+    );
+    itm.CurrDebit = formatNumber(
+      parseFloat(itm.CurrDebit.toString().replace(/,/g, ""))
+    );
+    itm.CurrCredit = formatNumber(
+      parseFloat(itm.CurrCredit.toString().replace(/,/g, ""))
+    );
+    itm.TotalBalance = formatNumber(
+      parseFloat(itm.TotalBalance.toString().replace(/,/g, ""))
+    );
+    return itm;
+  });
+
+  data.push({
+    Code: "",
+    Title: "TOTAL :",
+    PrevDebit: formatNumber(getSum(data, "PrevDebit")),
+    PrevCredit: formatNumber(getSum(data, "PrevCredit")),
+    PrevBalance: formatNumber(getSum(data, "PrevBalance")),
+    CurrDebit: formatNumber(getSum(data, "CurrDebit")),
+    CurrCredit: formatNumber(getSum(data, "CurrCredit")),
+    CurrBalance: 0,
+    BalDebit: 2865805.43,
+    BalCredit: 2839674.17,
+    TotalBalance: formatNumber(getSum(data, "TotalBalance")),
+  });
+  let PAGE_WIDTH = 712;
+  let PAGE_HEIGHT = 892;
+
   const props: any = {
     data,
-    columnWidths: [80, 80, 120, 50, 95, 95, 100],
+    columnWidths: [60, 130, 85, 85, 85, 85, 85, 85],
     headers: [
-      { headerName: "DATE", textAlign: "left" },
-      { headerName: "REF No.", textAlign: "left" },
-      { headerName: "ID NO", textAlign: "left" },
-      { headerName: "CHECK NO", textAlign: "center" },
-      { headerName: "DEBIT", textAlign: "right" },
-      { headerName: "CREDIT", textAlign: "right" },
-      { headerName: "EXPLANTION", textAlign: "left" },
+      { headerName: "Acct. No", textAlign: "left" },
+      { headerName: "Account Name", textAlign: "left" },
+      { headerName: "Debit", textAlign: "left" },
+      { headerName: "Credit", textAlign: "left" },
+      { headerName: "Balance", textAlign: "right" },
+      { headerName: "Debit", textAlign: "right" },
+      { headerName: "Credit", textAlign: "right" },
+      { headerName: "BALANCE", textAlign: "right" },
     ],
     keys: [
-      "Date_Entry",
-      "refs",
-      "ID_No",
-      "Check_No",
-      "Debit",
-      "Credit",
-      "Particulars",
+      "Code",
+      "Title",
+      "PrevDebit",
+      "PrevCredit",
+      "PrevBalance",
+      "CurrDebit",
+      "CurrCredit",
+      "TotalBalance",
     ],
     title: "",
     setRowFontSize: 10,
     BASE_FONT_SIZE: 8,
     PAGE_WIDTH,
     PAGE_HEIGHT,
-    MARGIN: { top: 120, right: 10, bottom: 20, left: 10 },
+    MARGIN: { top: 100, right: 10, bottom: 20, left: 10 },
     beforeDraw: (
       pdfReportGenerator: PDFReportGenerator,
       doc: PDFKit.PDFDocument
-    ) => {},
+    ) => {
+      pdfReportGenerator.setAlignment(data.length - 1, 1, "center");
+      pdfReportGenerator.boldRow(data.length - 1);
+      pdfReportGenerator.borderColumnInRow(
+        data.length - 1,
+        [
+          { column: 0, key: "Code" },
+          { column: 1, key: "Title" },
+          { column: 2, key: "PrevDebit" },
+          { column: 3, key: "PrevCredit" },
+          { column: 4, key: "PrevBalance" },
+          { column: 5, key: "CurrDebit" },
+          { column: 6, key: "CurrCredit" },
+          { column: 7, key: "TotalBalance" },
+        ],
+        {
+          top: true,
+          bottom: false,
+          left: false,
+          right: false,
+        }
+      );
+    },
     beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
       doc.font("Helvetica-Bold");
       doc.fontSize(10);
       doc.text(req.body.title, 10, 20, {
         align: "left",
         width: 400,
+      });
+      doc.fontSize(9);
+      doc.text("PREVIOUS BALANCE", 210, 85, {
+        align: "left",
+        width: 150,
+      });
+
+      doc.text("TRANSACTIONS", PAGE_WIDTH - 195, 85, {
+        align: "left",
+        width: 150,
       });
 
       doc.fontSize(8);
@@ -1120,34 +1449,341 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       totalPages: number,
       pdfReportGenerator: any
     ) => {
-      // doc.font("Helvetica");
-      // const pageNumberText = `Page ${currentPage}`;
-      // doc.text(
-      //   pageNumberText,
-      //   PAGE_WIDTH - 160,
-      //   pdfReportGenerator.PAGE_HEIGHT - 35,
-      //   {
-      //     align: "right",
-      //     width: 100,
-      //   }
-      // );
-      // doc.text(
-      //   `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
-      //   -35,
-      //   pdfReportGenerator.PAGE_HEIGHT - 35,
-      //   {
-      //     align: "right",
-      //     width: 200,
-      //   }
-      // );
+      doc.font("Helvetica");
+      const pageNumberText = `Page ${currentPage}`;
+      doc.text(
+        pageNumberText,
+        PAGE_WIDTH - 130,
+        pdfReportGenerator.PAGE_HEIGHT - 25,
+        {
+          align: "right",
+          width: 100,
+        }
+      );
+      doc.text(
+        `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+        -75,
+        pdfReportGenerator.PAGE_HEIGHT - 25,
+        {
+          align: "right",
+          width: 200,
+        }
+      );
     },
   };
+
+  const pdfReportGenerator = new PDFReportGenerator(props);
+  return pdfReportGenerator.generatePDF(res);
+}
+
+async function IncomeStatement(req: Request, res: Response) {
+  let sql = "";
+  console.log(req.body)
+  if (req.body.cmbformat === "Default") {
+    const fs = FinancialStatement(
+      req.body.date,
+      req.body.subAccount.trim(),
+      req.body.report
+    );
+    const tmp1 = `
+    SELECT
+      *,
+      LEFT(Code, 1) AS H1,
+      LEFT(Code, 4) AS H2
+    FROM
+        (${fs}) tmp
+    WHERE
+        LEFT(Code, 1) >= '6'
+    `;
+    sql = `
+    SELECT
+        Chart_Account.Acct_Title AS Footer,
+        tmp1.H1,
+        tmp1.H2,
+        tmp1.Code,
+        tmp1.Title,
+        CASE
+            WHEN LEFT(tmp1.Code, 1) = '6' THEN (PrevCredit - PrevDebit)
+            ELSE tmp1.PrevBalance
+        END AS PrevBalance,
+        CASE
+            WHEN LEFT(tmp1.Code, 1) = '6' THEN (CurrCredit - CurrDebit)
+            ELSE tmp1.CurrBalance
+        END AS CurrBalance,
+        CASE
+            WHEN LEFT(tmp1.Code, 1) = '6' THEN (PrevCredit - PrevDebit) + (CurrCredit - CurrDebit)
+            ELSE tmp1.TotalBalance
+        END AS TotalBalance
+    FROM
+        (${tmp1}) tmp1
+    LEFT JOIN
+        Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
+    ORDER BY
+        tmp1.Code;
+    `;
+  } else {
+    const tmp = FinancialStatementSumm(req.body.date, req.body.report);
+    const tmp1 = `
+    SELECT
+        *,
+        LEFT(Code, 1) AS H1,
+        LEFT(Code, 4) AS H2
+    FROM
+        (${tmp}) tmp
+    WHERE
+        LEFT(Code, 1) >= '6'`;
+    const tmp2 = `
+  SELECT
+      SubAccount,
+      H1,
+      0 - SUM(Balance) AS Balance
+  FROM
+    (${tmp1}) tmp1 
+  GROUP BY
+      SubAccount,
+      H1`;
+    const tmp3 = `
+    SELECT
+        SubAccount,
+        SUM(Balance) AS Balance
+    FROM
+      (${tmp2}) tmp2
+    GROUP BY
+        SubAccount`;
+    sql = `
+    SELECT
+        tmp1.H1,
+        CASE tmp1.H1
+            WHEN '6' THEN 'INCOME'
+            ELSE 'EXPENSES'
+        END AS MyHeader,
+        tmp1.H2,
+        Chart_Account.Acct_Title AS MyFooter,
+        tmp1.Code,
+        SUBSTRING(tmp1.Title, LENGTH(tmp1.Code) + 1 , (LENGTH(tmp1.Title) + 1) - LENGTH(tmp1.Code)) AS Title,
+        tmp1.SubAccount,
+        CASE
+            WHEN LEFT(tmp1.Code, 1) = '6' THEN 0 - tmp1.Balance
+            ELSE tmp1.Balance
+        END AS Balance,
+        CASE
+            WHEN LEFT(tmp1.Code, 1) = '6' THEN 0 - tmp1.TotalBalance
+            ELSE tmp1.TotalBalance
+        END AS TotalBalance,
+        tmp3.Balance AS SBalance
+    FROM
+       (${tmp1}) tmp1
+    LEFT JOIN
+        Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
+    LEFT JOIN
+       (${tmp3}) tmp3 ON tmp1.SubAccount = tmp3.SubAccount
+    ORDER BY
+        tmp1.Code
+    `;
+  }
+  const data: any = await prisma.$queryRawUnsafe(sql);
+
+  console.log(data[0])
+  function groupByHierarchy(data: Array<any>) {
+    const grouped: any = {};
+  
+    data.forEach((item) => {
+      if (!grouped[item.H1]) {
+        grouped[item.H1] = { MyHeader: item.MyHeader, categories: {} };
+      }
+  
+      if (!grouped[item.H1].categories[item.H2]) {
+        grouped[item.H1].categories[item.H2] = {
+          MyFooter: item.Footer, // Updated from MyFooter to Footer
+          items: [],
+        };
+      }
+  
+      grouped[item.H1].categories[item.H2].items.push({
+        Code: item.Code,
+        Title: item.Title,
+        PrevBalance: item.PrevBalance,  // Updated to match new data format
+        CurrBalance: item.CurrBalance,  // Added CurrBalance
+        TotalBalance: item.TotalBalance,
+      });
+    });
+  
+    return grouped;
+  }
+
+  const newD = groupByHierarchy(data);
+  console.log(newD);
+
+  // Function to display the formatted financial report
+  const result: Array<any> = [];
+  for (const h1Key in newD) {
+    const header = newD[h1Key];
+
+    console.log(`\n${header.MyHeader.toUpperCase()}`);
+    console.log("=====================================");
+
+    result.push({
+      H1: "",
+      MyHeader: "",
+      H2: "",
+      MyFooter: "",
+      Code: "",
+      Title: header.MyHeader.toUpperCase(),
+      SubAccount: "",
+      Balance: 0,
+      TotalBalance: 0,
+      SBalance: 0,
+    });
+
+    if (!header.categories || Object.keys(header.categories).length === 0) {
+      console.log("  No data available.");
+      continue;
+    }
+
+    for (const h2Key in header.categories) {
+      const category = header.categories[h2Key];
+
+      console.log(`\n  ${category.MyFooter}`);
+      console.log("  -----------------------------");
+
+
+
+
+      if (!category.items || category.items.length === 0) {
+        console.log("    No items found.");
+        continue;
+      }
+
+      category.items.forEach((item: any) => {
+        result.push(item);
+      });
+      result.push({
+        H1: "",
+        MyHeader: "",
+        H2: "",
+        MyFooter: "",
+        Code: "",
+        Title: category.MyFooter,
+        SubAccount: "",
+        Balance: 0,
+        TotalBalance: 0,
+        SBalance: 0,
+      });
+    }
+  }
+
+
+  let PAGE_WIDTH = 712;
+  let PAGE_HEIGHT = 892;
+
+  const props: any = {
+    data:result,
+    columnWidths: [60, 130, 85, 85, 85, 85, 85, 85],
+    headers: [
+      { headerName: "Acct. No", textAlign: "left" },
+      { headerName: "Account Name", textAlign: "left" },
+      { headerName: "Debit", textAlign: "left" },
+      { headerName: "Credit", textAlign: "left" },
+      { headerName: "Balance", textAlign: "right" },
+      { headerName: "Debit", textAlign: "right" },
+      { headerName: "Credit", textAlign: "right" },
+      { headerName: "BALANCE", textAlign: "right" },
+    ],
+    keys: [
+      "Title",
+      "Title",
+      "PrevDebit",
+      "PrevCredit",
+      "PrevBalance",
+      "CurrDebit",
+      "CurrCredit",
+      "TotalBalance",
+    ],
+    title: "",
+    setRowFontSize: 10,
+    BASE_FONT_SIZE: 8,
+    PAGE_WIDTH,
+    PAGE_HEIGHT,
+    MARGIN: { top: 100, right: 10, bottom: 20, left: 10 },
+    beforeDraw: (
+      pdfReportGenerator: PDFReportGenerator,
+      doc: PDFKit.PDFDocument
+    ) => {
+      pdfReportGenerator.setAlignment(data.length - 1, 1, "center");
+      pdfReportGenerator.boldRow(data.length - 1);
+      pdfReportGenerator.borderColumnInRow(
+        data.length - 1,
+        [
+          { column: 0, key: "Code" },
+          { column: 1, key: "Title" },
+          { column: 2, key: "PrevDebit" },
+          { column: 3, key: "PrevCredit" },
+          { column: 4, key: "PrevBalance" },
+          { column: 5, key: "CurrDebit" },
+          { column: 6, key: "CurrCredit" },
+          { column: 7, key: "TotalBalance" },
+        ],
+        {
+          top: true,
+          bottom: false,
+          left: false,
+          right: false,
+        }
+      );
+    },
+    beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+      doc.font("Helvetica-Bold");
+      doc.fontSize(10);
+      doc.text(req.body.title, 10, 20, {
+        align: "left",
+        width: 400,
+      });
+      doc.fontSize(9);
+      doc.text("PREVIOUS BALANCE", 210, 85, {
+        align: "left",
+        width: 150,
+      });
+
+      doc.text("TRANSACTIONS", PAGE_WIDTH - 195, 85, {
+        align: "left",
+        width: 150,
+      });
+
+      doc.fontSize(8);
+    },
+    drawPageNumber: (
+      doc: PDFKit.PDFDocument,
+      currentPage: number,
+      totalPages: number,
+      pdfReportGenerator: any
+    ) => {
+      doc.font("Helvetica");
+      const pageNumberText = `Page ${currentPage}`;
+      doc.text(
+        pageNumberText,
+        PAGE_WIDTH - 130,
+        pdfReportGenerator.PAGE_HEIGHT - 25,
+        {
+          align: "right",
+          width: 100,
+        }
+      );
+      doc.text(
+        `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+        -75,
+        pdfReportGenerator.PAGE_HEIGHT - 25,
+        {
+          align: "right",
+          width: 200,
+        }
+      );
+    },
+  };
+
   const pdfReportGenerator = new PDFReportGenerator(props);
   return pdfReportGenerator.generatePDF(res);
 }
 async function PostDatedChecksRegistry(req: Request, res: Response) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const title = req.body.title;
   const dateFrom = format(new Date(req.body.dateFrom), "yyyy-MM-dd");
   const dateTo = format(new Date(req.body.dateTo), "yyyy-MM-dd");
@@ -1479,7 +2115,6 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
   const pdfReportGenerator = new PDFReportGenerator(props);
   return pdfReportGenerator.generatePDF(res);
 }
-
 const getIndexes = (array: Array<any>, condition: any) => {
   return array.reduce((indexes, item, index) => {
     if (condition(item)) {

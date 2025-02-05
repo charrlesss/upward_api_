@@ -250,7 +250,7 @@ PDC.post("/update-pdc", async (req, res) => {
       req
     );
 
-    await UpdateId("pdc", newId, month, year, req);
+    // await UpdateId("pdc", newId, month, year, req);
     res.send({ message: "Update PDC Successfully.", success: true });
   } catch (error: any) {
     console.log(error.message);
@@ -367,7 +367,6 @@ PDC.get("/search-pdc", async (req, res) => {
     });
   }
 });
-
 PDC.post("/search-pdc", async (req, res) => {
   try {
     const data = await searchPDC(req.body.search as string, req);
@@ -386,7 +385,6 @@ PDC.post("/search-pdc", async (req, res) => {
     });
   }
 });
-
 PDC.post("/get-search-pdc-check", async (req, res) => {
   try {
     const searchPDCData = await getSearchPDCheck(req.body.ref_no, req);
@@ -437,7 +435,6 @@ PDC.post("/print", async (req, res) => {
         baseline: "middle",
       });
 
-
       doc.end();
       writeStream.on("finish", (e: any) => {
         console.log(`PDF created successfully at: ${outputFilePath}`);
@@ -464,15 +461,23 @@ PDC.post("/print", async (req, res) => {
       const props: any = {
         data: newData,
         BASE_FONT_SIZE: 8,
-        columnWidths: [100, 100, 220, 90, 50],
+        columnWidths: [100, 100, 110, 110, 90, 50],
         headers: [
           { headerName: "CHECK NO", textAlign: "left" },
           { headerName: "DATE", textAlign: "left" },
           { headerName: "BANK", textAlign: "left" },
+          { headerName: "BRANCH", textAlign: "left" },
           { headerName: "AMOUNT", textAlign: "right" },
           { headerName: "SEQ", textAlign: "right" },
         ],
-        keys: ["Check_No", "Check_Date", "BankName", "Check_Amnt", "seq"],
+        keys: [
+          "Check_No",
+          "Check_Date",
+          "BankName",
+          "Branch",
+          "Check_Amnt",
+          "seq",
+        ],
         title: "",
         PAGE_WIDTH,
         PAGE_HEIGHT,
@@ -584,7 +589,6 @@ PDC.post("/print", async (req, res) => {
       const pdfReportGenerator = new PDFReportGenerator(props);
       return pdfReportGenerator.generatePDF(res);
     }
-   
   } catch (error: any) {
     console.log(error.message);
     res.send({
