@@ -351,6 +351,7 @@ Collection.post("/print-or", async (req, res) => {
       outputFilePath,
       footerText: "Original Copy",
       dataToPrint,
+      reportTitle:req.body.reportTitle
     });
     const PAGE_HEIGHT__ = PAGE_HEIGHT / 2 - 20;
     if (totalHeight > PAGE_HEIGHT__) {
@@ -364,6 +365,7 @@ Collection.post("/print-or", async (req, res) => {
         outputFilePath,
         footerText: "Duplicate Copy",
         dataToPrint,
+        reportTitle:req.body.reportTitle
       });
       doc.addPage();
       drawOfficialReceiptPDF({
@@ -375,6 +377,7 @@ Collection.post("/print-or", async (req, res) => {
         outputFilePath,
         footerText: "Triplicate Copy",
         dataToPrint,
+        reportTitle:req.body.reportTitle
       });
       doc.end();
       writeStream.on("finish", (e: any) => {
@@ -406,6 +409,7 @@ Collection.post("/print-or", async (req, res) => {
         dataToPrint,
         adjustHeigth: PAGE_HEIGHT / 2,
         dashOn: true,
+        reportTitle:req.body.reportTitle
       });
       doc.addPage();
       drawOfficialReceiptPDF({
@@ -417,6 +421,7 @@ Collection.post("/print-or", async (req, res) => {
         outputFilePath,
         footerText: "Triplicate Copy",
         dataToPrint,
+        reportTitle:req.body.reportTitle
       });
     }
 
@@ -455,6 +460,7 @@ function drawOfficialReceiptPDF({
   dataToPrint,
   adjustHeigth = 0,
   dashOn = false,
+  reportTitle
 }: any) {
   if (dashOn) {
     doc
@@ -468,7 +474,7 @@ function drawOfficialReceiptPDF({
 
   doc.fontSize(10);
   doc.font("Helvetica-Bold");
-  doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 0, 45 + adjustHeigth, {
+  doc.text(reportTitle, 0, 45 + adjustHeigth, {
     align: "center",
     baseline: "middle",
   });
@@ -674,10 +680,10 @@ function drawOfficialReceiptPDF({
   for (let index = 0; index < dataToPrint.debit.length; index++) {
     autoAdjustTextHeigth(
       doc,
-      dataToPrint.debit[index].Payment,
+      `${dataToPrint.debit[index].Payment}   ${format(new Date(dataToPrint.debit[index].Check_Date),'MM/dd/yyyy')} - ${dataToPrint.debit[index].Check_No} - ${dataToPrint.debit[index].Bank_Branch}`,
       112,
       215 + rowH + adjustHeigth,
-      150,
+      400,
       22
     );
 
@@ -686,7 +692,7 @@ function drawOfficialReceiptPDF({
       dataToPrint.debit[index].Amount,
       410,
       215 + rowH + adjustHeigth,
-      150,
+      400,
       22,
       "right"
     );

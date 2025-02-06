@@ -483,7 +483,7 @@ PDC.post("/print", async (req, res) => {
         PAGE_HEIGHT,
         MARGIN: { top: 250, right: 10, bottom: 80, left: 10 },
         beforeDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
-          doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 0, 40, {
+          doc.text(req.body.reportTitle, 0, 40, {
             align: "center",
             baseline: "middle",
           });

@@ -712,7 +712,6 @@ BalanceSheetLong.post("/balance-sheet-long-report-desk", async (req, res) => {
       Final.*
     FROM (${Finals}) Final`;
   }
-  console.log(qry)
   const data: any = await prisma.$queryRawUnsafe(qry);
 
   try {

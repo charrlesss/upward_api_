@@ -299,7 +299,7 @@ CashDisbursement.post(
 );
 CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
   try {
-    console.log(req.body.check);
+    console.log(req.body);
     if (req.body.check) {
       const outputFilePath = "manok.pdf";
       const doc = new PDFDocument({
@@ -481,8 +481,8 @@ CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
         ) => {
 
           let adjustHeigth = 20
-          doc.fontSize(16);
-          doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 0, 40, {
+          doc.fontSize(15);
+          doc.text(req.body.reportTitle, 0, 40, {
             align: "center",
             baseline: "middle",
           });

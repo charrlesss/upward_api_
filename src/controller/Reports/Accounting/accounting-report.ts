@@ -13,6 +13,7 @@ import PDFReportGenerator from "../../../lib/pdf-generator";
 import { formatNumber, getSum } from "../Production/production-report";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 import { PrismaClient } from "@prisma/client";
+import { Console } from "console";
 
 const accountingReporting = express.Router();
 const prisma = new PrismaClient();
@@ -147,6 +148,21 @@ accountingReporting.post(
   async (req, res) => {
     try {
       IncomeStatement(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+// Balance Sheet
+accountingReporting.post(
+  "/report/generate-report-balance-sheet",
+  async (req, res) => {
+    try {
+      BalanceSheet(req, res);
     } catch (err: any) {
       res.send({
         message: err.message,
@@ -1475,10 +1491,8 @@ async function TrialBalance(req: Request, res: Response) {
   const pdfReportGenerator = new PDFReportGenerator(props);
   return pdfReportGenerator.generatePDF(res);
 }
-
 async function IncomeStatement(req: Request, res: Response) {
   let sql = "";
-  console.log(req.body)
   if (req.body.cmbformat === "Default") {
     const fs = FinancialStatement(
       req.body.date,
@@ -1497,6 +1511,10 @@ async function IncomeStatement(req: Request, res: Response) {
     `;
     sql = `
     SELECT
+       CASE tmp1.H1
+            WHEN '6' THEN 'INCOME'
+            ELSE 'EXPENSES'
+        END AS MyHeader,
         Chart_Account.Acct_Title AS Footer,
         tmp1.H1,
         tmp1.H2,
@@ -1583,56 +1601,57 @@ async function IncomeStatement(req: Request, res: Response) {
   }
   const data: any = await prisma.$queryRawUnsafe(sql);
 
-  console.log(data[0])
+  console.log(data[0]);
   function groupByHierarchy(data: Array<any>) {
     const grouped: any = {};
-  
+
     data.forEach((item) => {
       if (!grouped[item.H1]) {
         grouped[item.H1] = { MyHeader: item.MyHeader, categories: {} };
       }
-  
+
       if (!grouped[item.H1].categories[item.H2]) {
         grouped[item.H1].categories[item.H2] = {
           MyFooter: item.Footer, // Updated from MyFooter to Footer
           items: [],
         };
       }
-  
+
       grouped[item.H1].categories[item.H2].items.push({
         Code: item.Code,
         Title: item.Title,
-        PrevBalance: item.PrevBalance,  // Updated to match new data format
-        CurrBalance: item.CurrBalance,  // Added CurrBalance
+        PrevBalance: item.PrevBalance, // Updated to match new data format
+        CurrBalance: item.CurrBalance, // Added CurrBalance
         TotalBalance: item.TotalBalance,
       });
     });
-  
+
     return grouped;
   }
 
   const newD = groupByHierarchy(data);
-  console.log(newD);
 
-  // Function to display the formatted financial report
+  //Function to display the formatted financial report
+  let _PrevBalance = 0;
+  let _CurrBalance = 0;
+  let _totalBalance = 0;
   const result: Array<any> = [];
   for (const h1Key in newD) {
+    let totalPrevBalance = 0;
+    let totalCurrBalance = 0;
+    let totalBalance = 0;
     const header = newD[h1Key];
 
-    console.log(`\n${header.MyHeader.toUpperCase()}`);
-    console.log("=====================================");
-
     result.push({
-      H1: "",
       MyHeader: "",
+      Footer: "",
+      H1: "",
       H2: "",
-      MyFooter: "",
       Code: "",
       Title: header.MyHeader.toUpperCase(),
-      SubAccount: "",
-      Balance: 0,
-      TotalBalance: 0,
-      SBalance: 0,
+      PrevBalance: "",
+      CurrBalance: "",
+      TotalBalance: "",
     });
 
     if (!header.categories || Object.keys(header.categories).length === 0) {
@@ -1643,93 +1662,188 @@ async function IncomeStatement(req: Request, res: Response) {
     for (const h2Key in header.categories) {
       const category = header.categories[h2Key];
 
-      console.log(`\n  ${category.MyFooter}`);
-      console.log("  -----------------------------");
-
-
-
-
       if (!category.items || category.items.length === 0) {
         console.log("    No items found.");
         continue;
       }
 
       category.items.forEach((item: any) => {
-        result.push(item);
+        if (item.Code.charAt(0) === "6") {
+          _PrevBalance =
+            _PrevBalance +
+            parseFloat(item.PrevBalance.toString().replace(/,/g, ""));
+          _CurrBalance =
+            _CurrBalance +
+            parseFloat(item.CurrBalance.toString().replace(/,/g, ""));
+          _totalBalance =
+            _totalBalance +
+            parseFloat(item.TotalBalance.toString().replace(/,/g, ""));
+        } else {
+          _PrevBalance =
+            _PrevBalance -
+            parseFloat(item.PrevBalance.toString().replace(/,/g, ""));
+          _CurrBalance =
+            _CurrBalance -
+            parseFloat(item.CurrBalance.toString().replace(/,/g, ""));
+          _totalBalance =
+            _totalBalance -
+            parseFloat(item.TotalBalance.toString().replace(/,/g, ""));
+        }
+        item.PrevBalance = formatNumber(
+          parseFloat(item.PrevBalance.toString().replace(/,/g, ""))
+        );
+        item.CurrBalance = formatNumber(
+          parseFloat(item.CurrBalance.toString().replace(/,/g, ""))
+        );
+        item.TotalBalance = formatNumber(
+          parseFloat(item.TotalBalance.toString().replace(/,/g, ""))
+        );
+
+        result.push({
+          ...item,
+          addPaddingFirst: true,
+        });
       });
+      const PrevBal = getSum(category.items, "PrevBalance");
+      const CurrBal = getSum(category.items, "CurrBalance");
+      const tBalance = getSum(category.items, "TotalBalance");
+      totalPrevBalance += PrevBal;
+      totalCurrBalance += CurrBal;
+      totalBalance += tBalance;
       result.push({
-        H1: "",
         MyHeader: "",
+        Footer: "",
+        H1: "",
         H2: "",
-        MyFooter: "",
         Code: "",
         Title: category.MyFooter,
-        SubAccount: "",
-        Balance: 0,
-        TotalBalance: 0,
-        SBalance: 0,
+        PrevBalance: formatNumber(PrevBal),
+        CurrBalance: formatNumber(CurrBal),
+        TotalBalance: formatNumber(tBalance),
+        addPaddingSecond: true,
       });
     }
+
+    result.push({
+      MyHeader: "",
+      Footer: "",
+      H1: "",
+      H2: "",
+      Code: "",
+      Title: `TOTAL ${header.MyHeader.toUpperCase()}`,
+      PrevBalance: formatNumber(totalPrevBalance),
+      CurrBalance: formatNumber(totalCurrBalance),
+      TotalBalance: formatNumber(totalBalance),
+      TotalBalances: "dd",
+    });
   }
 
+  result.push({
+    MyHeader: "",
+    Footer: "",
+    H1: "",
+    H2: "",
+    Code: "",
+    Title: `NET INCOME / LOSS`,
+    PrevBalance: formatNumber(_PrevBalance),
+    CurrBalance: formatNumber(_CurrBalance),
+    TotalBalance: formatNumber(_totalBalance),
+    TotalBalances: "dd",
+  });
 
-  let PAGE_WIDTH = 712;
-  let PAGE_HEIGHT = 892;
+  const paddingFirstIndexes = getIndexes(
+    result,
+    (item: any) => item?.addPaddingFirst
+  );
+
+  const paddingFooterIndexes = getIndexes(
+    result,
+    (item: any) => item?.addPaddingSecond
+  );
+
+  const totalBalanceIndexes = getIndexes(
+    result,
+    (item: any) => item?.TotalBalances === "dd"
+  );
+
+  let PAGE_WIDTH = 612;
+  let PAGE_HEIGHT = 792;
 
   const props: any = {
-    data:result,
-    columnWidths: [60, 130, 85, 85, 85, 85, 85, 85],
+    data: result,
+    columnWidths: [260, 115, 110, 110],
     headers: [
-      { headerName: "Acct. No", textAlign: "left" },
-      { headerName: "Account Name", textAlign: "left" },
-      { headerName: "Debit", textAlign: "left" },
-      { headerName: "Credit", textAlign: "left" },
-      { headerName: "Balance", textAlign: "right" },
-      { headerName: "Debit", textAlign: "right" },
-      { headerName: "Credit", textAlign: "right" },
-      { headerName: "BALANCE", textAlign: "right" },
+      { headerName: "PARTICULARS", textAlign: "left" },
+      { headerName: "PREVIOUS BALANCE", textAlign: "right" },
+      { headerName: "TRANSACTIONS", textAlign: "right" },
+      { headerName: "ENDING BALANCE", textAlign: "right" },
     ],
-    keys: [
-      "Title",
-      "Title",
-      "PrevDebit",
-      "PrevCredit",
-      "PrevBalance",
-      "CurrDebit",
-      "CurrCredit",
-      "TotalBalance",
-    ],
+    keys: ["Title", "PrevBalance", "CurrBalance", "TotalBalance"],
     title: "",
     setRowFontSize: 10,
     BASE_FONT_SIZE: 8,
     PAGE_WIDTH,
     PAGE_HEIGHT,
     MARGIN: { top: 100, right: 10, bottom: 20, left: 10 },
+    addPadingfFromLeft: (rowIndex: number, colIndex: number) => {
+      if (paddingFirstIndexes.includes(rowIndex) && colIndex === 0) {
+        return 20;
+      } else if (paddingFooterIndexes.includes(rowIndex) && colIndex === 0) {
+        return 45;
+      } else {
+        return 0;
+      }
+    },
+    addRowHeight: (rowIndex: number) => {
+      // if (paddingFirstIndexes.includes(rowIndex)) {
+      //   return -10;
+      // } else if (totalBalanceIndexes.includes(rowIndex - 1)) {
+      //   return -10;
+      // }
+      return 0;
+    },
     beforeDraw: (
       pdfReportGenerator: PDFReportGenerator,
       doc: PDFKit.PDFDocument
     ) => {
-      pdfReportGenerator.setAlignment(data.length - 1, 1, "center");
-      pdfReportGenerator.boldRow(data.length - 1);
-      pdfReportGenerator.borderColumnInRow(
-        data.length - 1,
-        [
-          { column: 0, key: "Code" },
-          { column: 1, key: "Title" },
-          { column: 2, key: "PrevDebit" },
-          { column: 3, key: "PrevCredit" },
-          { column: 4, key: "PrevBalance" },
-          { column: 5, key: "CurrDebit" },
-          { column: 6, key: "CurrCredit" },
-          { column: 7, key: "TotalBalance" },
-        ],
-        {
-          top: true,
-          bottom: false,
-          left: false,
-          right: false,
-        }
-      );
+      // pdfReportGenerator.setAlignment(data.length - 1, 1, "center");
+      // pdfReportGenerator.boldRow(data.length - 1);
+      paddingFooterIndexes.forEach((idx: number) => {
+        pdfReportGenerator.borderColumnInRow(
+          idx,
+          [
+            { column: 1, key: "PrevBalance" },
+            { column: 2, key: "CurrBalance" },
+            { column: 3, key: "TotalBalance" },
+          ],
+          {
+            top: false,
+            bottom: true,
+            left: false,
+            right: false,
+          },
+          8,
+          true
+        );
+      });
+
+      totalBalanceIndexes.forEach((idx: number) => {
+        pdfReportGenerator.borderColumnInRow(
+          idx,
+          [
+            { column: 1, key: "PrevBalance" },
+            { column: 2, key: "CurrBalance" },
+            { column: 3, key: "TotalBalance" },
+          ],
+          {
+            top: false,
+            bottom: true,
+            left: false,
+            right: false,
+          },
+          8
+        );
+      });
     },
     beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
       doc.font("Helvetica-Bold");
@@ -1738,17 +1852,548 @@ async function IncomeStatement(req: Request, res: Response) {
         align: "left",
         width: 400,
       });
-      doc.fontSize(9);
-      doc.text("PREVIOUS BALANCE", 210, 85, {
+
+      doc.fontSize(8);
+    },
+    drawPageNumber: (
+      doc: PDFKit.PDFDocument,
+      currentPage: number,
+      totalPages: number,
+      pdfReportGenerator: any
+    ) => {
+      doc.font("Helvetica");
+      const pageNumberText = `Page ${currentPage}`;
+      doc.text(
+        pageNumberText,
+        PAGE_WIDTH - 130,
+        pdfReportGenerator.PAGE_HEIGHT - 25,
+        {
+          align: "right",
+          width: 100,
+        }
+      );
+      doc.text(
+        `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+        -75,
+        pdfReportGenerator.PAGE_HEIGHT - 25,
+        {
+          align: "right",
+          width: 200,
+        }
+      );
+    },
+  };
+
+  const pdfReportGenerator = new PDFReportGenerator(props);
+  return pdfReportGenerator.generatePDF(res);
+}
+async function BalanceSheet(req: Request, res: Response) {
+  let qry = "";
+  if (req.body.cmbformat === "Default") {
+    const tmp = `
+    select 
+        tmp.Code ,
+        tmp.Title ,
+        tmp.PrevDebit  ,
+        tmp.PrevCredit  ,
+        tmp.PrevBalance  ,
+        tmp.CurrDebit  ,
+        tmp.CurrCredit  ,
+        tmp.CurrBalance  ,
+        tmp.BalDebit  ,
+        tmp.BalCredit  ,
+        tmp.TotalBalance  
+    from (${FinancialStatement(
+      req.body.date,
+      req.body.subAccount.toUpperCase(),
+      req.body.report
+    )}) tmp
+  `;
+    const tmp1 = `
+    SELECT
+        Code,
+        Title,
+        LEFT(Code, 1) AS H1,
+        LEFT(Code, 4) AS H2,
+        CASE WHEN CAST(LEFT(Code, 1) AS UNSIGNED) >= 4 THEN PrevCredit - PrevDebit ELSE PrevBalance END AS PrevBalance,
+        CurrDebit,
+        CurrCredit,
+        CASE WHEN CAST(LEFT(Code, 1) AS UNSIGNED) >= 4 THEN CurrCredit - CurrDebit ELSE CurrBalance END AS CurrBalance,
+        CASE WHEN CAST(LEFT(Code, 1) AS UNSIGNED) >= 4 THEN (PrevCredit - PrevDebit) + (CurrCredit - CurrDebit) ELSE TotalBalance END AS TotalBalance
+    FROM (${tmp}) tmp
+    WHERE LEFT(Code, 1) <= 5
+  `;
+    const finalTemp = `
+    SELECT
+        LEFT(tmp1.Code, 1) AS H1,
+        tmp1.H2,
+        Chart_Account.Acct_Title AS HT2,
+        tmp1.Code AS H3,
+        tmp1.Title AS HT3,
+        PrevBalance,
+        CurrDebit,
+        CurrCredit,
+        CurrBalance,
+        TotalBalance
+    FROM (${tmp1}) tmp1
+    LEFT JOIN Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
+  `;
+    let final = `
+    SELECT
+        H1,
+        Chart_Account.Acct_Title AS HT1,
+        H2,
+        HT2,
+        H3,
+        HT3,
+        PrevBalance,
+        CurrDebit,
+        CurrCredit,
+        CurrBalance,
+        TotalBalance
+    FROM (${finalTemp}) FinalTemp
+    LEFT JOIN Chart_Account ON FinalTemp.H1 = Chart_Account.Acct_Code
+  `;
+    const tmp2 = `
+    SELECT
+        PrevDebit,
+        PrevCredit,
+        CASE WHEN LEFT(Code, 1) = '6' THEN PrevCredit - PrevDebit ELSE PrevBalance END AS PrevBalance,
+        CurrDebit,
+        CurrCredit,
+        CASE WHEN LEFT(Code, 1) = '6' THEN CurrCredit - CurrDebit ELSE CurrBalance END AS CurrBalance,
+        CASE WHEN LEFT(Code, 1) = '6' THEN (PrevCredit - PrevDebit) + (CurrCredit - CurrDebit) ELSE TotalBalance END AS TotalBalance
+        FROM (${tmp}) tmp
+    WHERE LEFT(Code, 1) >= 6
+  `;
+    const finals = `
+ ${final}
+ union all
+    SELECT
+        '5' AS H1,
+        'STOCKHOLDERS EQUITY' AS HT1,
+        '5.50' AS H2,
+        'RESULT OF OPERATION' AS HT2,
+        '5.50.01' AS H3,
+        'Net Income / (Loss)' AS HT3,
+        SUM(PrevCredit) - SUM(PrevDebit),
+        SUM(CurrDebit),
+        SUM(CurrCredit),
+        SUM(CurrCredit) - SUM(CurrDebit),
+        (SUM(PrevCredit) - SUM(PrevDebit)) + (SUM(CurrCredit) - SUM(CurrDebit))
+    FROM (${tmp2}) tmp2
+   `;
+    qry = `
+    SELECT
+      H1,
+      HT1,
+      H2,
+      HT2,
+      H3,
+      HT3,
+      format(ifnull(PrevBalance,0),0) as PrevBalance,
+      format(ifnull(CurrDebit,0),0) as CurrDebit,
+      format(ifnull(CurrCredit,0),0) as CurrCredit,
+      format(ifnull(CurrBalance,0),0) as CurrBalance,
+      format(ifnull(TotalBalance,0),0) as TotalBalance,
+      CASE WHEN CAST(H1 AS UNSIGNED) < 4 THEN 'ASSETS' ELSE 'LIABILITIES' END AS H 
+    FROM (${finals}) Final`;
+  } else {
+    const tmp = `
+    select
+    SACode , 
+    SubAccount  , 
+    Code  , 
+    Title , 
+    Balance , 
+    TotalBalance 
+    from (${FinancialStatementSumm(req.body.date, req.body.report)}) tmp
+  `;
+    const tmp1 = `
+    SELECT 
+      SUBSTRING(tmp.Code, 1, 1) AS H1, 
+      SUBSTRING(tmp.Code, 1, 4) AS H2, 
+      SACode, 
+      SubAccount, 
+      Code, 
+      Title, 
+      IF(CAST(SUBSTRING(tmp.Code, 1, 1) AS SIGNED) >= 4, -Balance, Balance) AS Balance, 
+      IF(CAST(SUBSTRING(tmp.Code, 1, 1) AS SIGNED) >= 4, -TotalBalance, TotalBalance) AS TotalBalance
+      FROM (${tmp}) tmp
+    WHERE CAST(SUBSTRING(tmp.Code, 1, 1) AS SIGNED) <= 5`;
+
+    const FinalTemp = `
+    SELECT 
+        tmp1.H1, 
+        tmp1.H2, 
+        ca.Acct_Title AS HT2, 
+        tmp1.Code AS H3, 
+        tmp1.Title AS HT3, 
+        tmp1.SACode, 
+        tmp1.SubAccount, 
+        tmp1.Balance, 
+        tmp1.TotalBalance
+    FROM (${tmp1}) tmp1
+    LEFT JOIN chart_account ca ON tmp1.H2 = ca.Acct_Code
+    `;
+
+    const Final = `
+    SELECT
+       FinalTemp.H1, 
+        ca.Acct_Title AS HT1, 
+        FinalTemp.H2, 
+        FinalTemp.HT2, 
+        FinalTemp.H3, 
+        FinalTemp.HT3, 
+        FinalTemp.SACode, 
+        FinalTemp.SubAccount, 
+        FinalTemp.Balance, 
+        FinalTemp.TotalBalance
+      FROM (${FinalTemp}) FinalTemp 
+      LEFT JOIN chart_account ca ON FinalTemp.H1 = ca.Acct_Code
+      `;
+
+    const tmp2 = `
+      SELECT 
+        '5' AS H1, 
+        'STOCKHOLDERS EQUITY' AS HT1, 
+        '5.50' AS H2, 
+        'RESULT OF OPERATION' AS HT2, 
+        '5.50.01' AS H3, 
+        'Net Income / (Loss)' AS HT3, 
+        SACode, 
+        SubAccount, 
+        -Balance AS Balance, 
+        -TotalBalance AS TotalBalance
+      FROM (${tmp}) tmp
+      WHERE CAST(SUBSTRING(tmp.Code, 1, 1) AS SIGNED) >= 6`;
+
+    const Finals = `
+      (${Final})
+      union all
+      SELECT 
+         H1, 
+        'STOCKHOLDERS EQUITY' AS HT1, 
+        '5.50' AS H2, 
+        'RESULT OF OPERATION' AS HT2, 
+        '5.50.01' AS H3, 
+        'Net Income / (Loss)' AS HT3, 
+        SACode, 
+        SubAccount, 
+        SUM(Balance) AS Balance, 
+        SUM(TotalBalance) AS TotalBalance
+      FROM (${tmp2}) tmp2
+      GROUP BY H1, HT1, H2, HT2, H3, HT3, SACode, SubAccount
+`;
+    qry = `
+    SELECT  
+      IF(CAST(H1 AS SIGNED) < 4, 'TOTAL ASSETS', 'TOTAL LIABILITIES AND CAPITAL') AS H, 
+      Final.*
+    FROM (${Finals}) Final`;
+  }
+  const data: any = await prisma.$queryRawUnsafe(qry);
+  function groupData(_data: any) {
+    const grouped: any = {};
+
+    _data.forEach((item: any) => {
+      // Group by H (Top Level)
+      if (!grouped[item.H]) {
+        grouped[item.H] = {
+          header: item.H,
+          groups: {},
+        };
+      }
+
+      // Group by H1 (Second Level)
+      if (!grouped[item.H].groups[item.H1]) {
+        grouped[item.H].groups[item.H1] = {
+          header: item.HT1,
+          subGroups: {},
+        };
+      }
+
+      // Group by H2 (Third Level)
+      if (!grouped[item.H].groups[item.H1].subGroups[item.H2]) {
+        grouped[item.H].groups[item.H1].subGroups[item.H2] = {
+          subHeader: item.HT2,
+          items: [],
+        };
+      }
+      grouped[item.H].groups[item.H1].subGroups[item.H2].items.push(item);
+      // Add Item Details
+      // grouped[item.H].groups[item.H1].subGroups[item.H2].items.push({
+      //   detailHeader: item.HT3,
+      //   prevBalance: item.PrevBalance,
+      //   currDebit: item.CurrDebit,
+      //   currCredit: item.CurrCredit,
+      //   currBalance: item.CurrBalance,
+      //   totalBalance: item.TotalBalance,
+      // });
+    });
+
+    return grouped;
+  }
+  const result = groupData(data);
+  const newData: Array<any> = [];
+  for (const H in result) {
+    let hTotalPrevBalance = 0;
+    let hTotalCurrDebite = 0;
+    let hTotalCurrCredit = 0;
+    let hTotalTotalBalance = 0;
+
+    newData.push({
+      H1: "",
+      HT1: "",
+      H2: "",
+      HT2: "",
+      H3: "",
+      HT3: H,
+      PrevBalance: "",
+      CurrDebit: "",
+      CurrCredit: "",
+      CurrBalance: "",
+      TotalBalance: "",
+      H: "1",
+    });
+
+    const H1Groups = result[H].groups;
+    for (const H1 in H1Groups) {
+      newData.push({
+        H1: "1",
+        HT1: "",
+        H2: "",
+        HT2: "",
+        H3: "",
+        HT3: H1Groups[H1].header,
+        PrevBalance: "",
+        CurrDebit: "",
+        CurrCredit: "",
+        CurrBalance: "",
+        TotalBalance: "",
+        H: "",
+      });
+      let h1TotalPrevBalance = 0;
+      let h1TotalCurrDebite = 0;
+      let h1TotalCurrCredit = 0;
+      let h1TotalTotalBalance = 0;
+      const H2Groups = H1Groups[H1].subGroups;
+      for (const H2 in H2Groups) {
+        newData.push({
+          H1: "",
+          HT1: "",
+          H2: "1",
+          HT2: "",
+          H3: "",
+          HT3: `${H2Groups[H2].subHeader}`,
+          PrevBalance: "",
+          CurrDebit: "",
+          CurrCredit: "",
+          CurrBalance: "",
+          TotalBalance: "",
+          H: "",
+        });
+        H2Groups[H2].items.forEach((item: any) => {
+          newData.push({
+            ...item,
+            dd: true,
+          });
+        });
+        let PrevBalance = getSum(H2Groups[H2].items, "PrevBalance");
+        let CurrDebit = getSum(H2Groups[H2].items, "CurrDebit");
+        let CurrCredit = getSum(H2Groups[H2].items, "CurrCredit");
+        let TotalBalance = getSum(H2Groups[H2].items, "TotalBalance");
+        h1TotalPrevBalance = h1TotalPrevBalance + PrevBalance;
+        h1TotalCurrDebite = h1TotalCurrDebite + CurrDebit;
+        h1TotalCurrCredit = h1TotalCurrCredit + CurrCredit;
+        h1TotalTotalBalance = h1TotalTotalBalance + TotalBalance;
+        newData.push({
+          H1: "",
+          HT1: "",
+          H2: "1",
+          HT2: "",
+          H3: "",
+          HT3: ``,
+          PrevBalance: formatNumber(PrevBalance),
+          CurrDebit: formatNumber(CurrDebit),
+          CurrCredit: formatNumber(CurrCredit),
+          CurrBalance: "",
+          TotalBalance: formatNumber(TotalBalance),
+          H: "",
+          footer: true,
+        });
+      }
+      hTotalPrevBalance = hTotalPrevBalance + h1TotalPrevBalance;
+      hTotalCurrDebite = hTotalCurrDebite + h1TotalCurrDebite;
+      hTotalCurrCredit = hTotalCurrCredit + h1TotalCurrCredit;
+      hTotalTotalBalance = hTotalTotalBalance + h1TotalTotalBalance;
+      newData.push({
+        H1: "1",
+        HT1: "",
+        H2: "",
+        HT2: "",
+        H3: "",
+        HT3: `TOTAL ${H1Groups[H1].header}`,
+        PrevBalance: formatNumber(h1TotalPrevBalance),
+        CurrDebit: formatNumber(h1TotalCurrDebite),
+        CurrCredit: formatNumber(h1TotalCurrCredit),
+        CurrBalance: "",
+        TotalBalance: formatNumber(h1TotalTotalBalance),
+        H: "",
+        footer: true,
+      });
+    }
+
+    newData.push({
+      H1: "",
+      HT1: "",
+      H2: "",
+      HT2: "",
+      H3: "",
+      HT3: `TOTAL ${H === "ASSETS" ? H : "LIABILITIES AND CAPITAL"}`,
+      PrevBalance: formatNumber(hTotalPrevBalance),
+      CurrDebit: formatNumber(hTotalCurrDebite),
+      CurrCredit: formatNumber(hTotalCurrCredit),
+      CurrBalance: "",
+      TotalBalance: formatNumber(hTotalTotalBalance),
+      H: "1",
+      footer: true,
+    });
+  }
+
+  const HIndexes = getIndexes(newData, (item: any) => item?.H === "1");
+  const H1Indexes = getIndexes(newData, (item: any) => item?.H1 === "1");
+  const H2Indexes = getIndexes(newData, (item: any) => item?.H2 === "1");
+  const H3Indexes = getIndexes(newData, (item: any) => item?.dd);
+
+  const HFooterIndexes = getIndexes(
+    newData,
+    (item: any) => item?.H === "1" && item?.footer
+  );
+  const H1FooterIndexes = getIndexes(
+    newData,
+    (item: any) => item?.H1 === "1" && item?.footer
+  );
+  const H2FooterIndexes = getIndexes(
+    newData,
+    (item: any) => item?.H2 === "1" && item?.footer
+  );
+  
+
+  let PAGE_WIDTH = 612 + 90;
+  let PAGE_HEIGHT = 792 + 90;
+
+  const props: any = {
+    data: newData,
+    columnWidths: [260, 120, 90, 90, 120],
+    headers: [
+      { headerName: "PARTICULARS", textAlign: "left" },
+      { headerName: "PREVIOUS BALANCE", textAlign: "right" },
+      { headerName: "DEBIT", textAlign: "right" },
+      { headerName: "CREDIT", textAlign: "right" },
+      { headerName: "ENDING BALANCE", textAlign: "right" },
+    ],
+    keys: ["HT3", "PrevBalance", "CurrDebit", "CurrCredit", "TotalBalance"],
+    title: "",
+    setRowFontSize: 8,
+    BASE_FONT_SIZE: 8,
+    PAGE_WIDTH,
+    PAGE_HEIGHT,
+    addHeaderBorderTop:false,
+    MARGIN: { top: 100, right: 10, bottom: 20, left: 10 },
+    addPadingfFromLeft: (rowIndex: number, colIndex: number) => {
+      if (H3Indexes.includes(rowIndex) && colIndex === 0) {
+        return 65;
+      }
+      if (H2Indexes.includes(rowIndex) && colIndex === 0) {
+        return 40;
+      }
+
+      if (H1Indexes.includes(rowIndex) && colIndex === 0) {
+        return 20;
+      }
+
+      return 0;
+    },
+    addRowHeight: (rowIndex: number) => {
+      // if (paddingFirstIndexes.includes(rowIndex)) {
+      //   return -10;
+      // } else if (totalBalanceIndexes.includes(rowIndex - 1)) {
+      //   return -10;
+      // }
+      return 0;
+    },
+    beforeDraw: (
+      pdfReportGenerator: PDFReportGenerator,
+      doc: PDFKit.PDFDocument
+    ) => {
+     
+      H2FooterIndexes.forEach((idx: number) => {
+        pdfReportGenerator.borderColumnInRow(
+          idx,
+          [
+            { column: 1, key: "PrevBalance" },
+            { column: 2, key: "CurrDebit" },
+            { column: 3, key: "CurrCredit" },
+            { column: 4, key: "TotalBalance" },
+          ],
+          {
+            top: true,
+            bottom: false,
+            left: false,
+            right: false,
+          },
+          8
+        );
+      });
+      H1FooterIndexes.forEach((idx: number) => {
+        pdfReportGenerator.borderColumnInRow(
+          idx,
+          [
+            { column: 1, key: "PrevBalance" },
+            { column: 2, key: "CurrDebit" },
+            { column: 3, key: "CurrCredit" },
+            { column: 4, key: "TotalBalance" },
+          ],
+          {
+            top: false,
+            bottom: true,
+            left: false,
+            right: false,
+          },
+          8
+        );
+      });
+      HFooterIndexes.forEach((idx: number) => {
+        pdfReportGenerator.borderColumnInRow(
+          idx,
+          [
+            { column: 1, key: "PrevBalance" },
+            { column: 2, key: "CurrDebit" },
+            { column: 3, key: "CurrCredit" },
+            { column: 4, key: "TotalBalance" },
+          ],
+          {
+            top: false,
+            bottom: true,
+            left: false,
+            right: false,
+          },
+          8
+        );
+      });
+    },
+    beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+      doc.font("Helvetica-Bold");
+      doc.fontSize(10);
+      doc.text(req.body.title, 10, 20, {
         align: "left",
-        width: 150,
+        width: 400,
       });
 
-      doc.text("TRANSACTIONS", PAGE_WIDTH - 195, 85, {
+      doc.text("TRANSACTIONS", 460, 75, {
         align: "left",
-        width: 150,
+        width: 200,
       });
-
       doc.fontSize(8);
     },
     drawPageNumber: (

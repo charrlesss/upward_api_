@@ -220,17 +220,17 @@ GeneralJournal.post("/general-journal/print", async (req, res) => {
        
 
         doc.font("Helvetica-Bold");
-        doc.fontSize(16);
-        doc.text("UPWARD MANAGEMENT INSURANCE SERVICES", 40, 20, {
-          align: "left",
-          width: 400,
-        });
         doc.fontSize(14);
+        doc.text(req.body.reportTitle, 40, 20, {
+          align: "left",
+          width: 500,
+        });
+        doc.fontSize(12);
         doc.text("Journal Voucher", 40, 37, {
           align: "left",
           width: 400,
         });
-        doc.fontSize(11);
+        doc.fontSize(10);
         doc.text(`JV No. : ${req.body.JVNo}`, PAGE_WIDTH - 155, 50, {
           align: "left",
           width: 130,

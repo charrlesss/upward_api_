@@ -34,6 +34,8 @@ interface PDFReportGeneratorProps {
   addHeaderBorderBottom: boolean;
   setRowFontSize: number;
   adjustRowXPostion: any;
+  addPadingfFromLeft: any;
+  addRowHeight: any;
   adjustTitleFontSize: number;
 }
 class PDFReportGenerator {
@@ -72,6 +74,8 @@ class PDFReportGenerator {
   public alignmentMap = new Map();
   public setRowFontSize = 0;
   public adjustRowXPostion: any = null;
+  public addPadingfFromLeft: any = null;
+  public addRowHeight: any = null;
   public adjustTitleFontSize: number = 3;
 
   constructor(props: PDFReportGeneratorProps) {
@@ -95,12 +99,19 @@ class PDFReportGenerator {
     this.beforePerPageDraw = props.beforePerPageDraw;
     this.drawPageNumber = props.drawPageNumber;
     this.addMarginInFirstPage = props.addMarginInFirstPage || 0;
-    this.addHeaderBorderTop = props.addHeaderBorderTop || true;
-    this.addHeaderBorderBottom = props.addHeaderBorderBottom || false;
+    this.addHeaderBorderTop =
+      props.addHeaderBorderTop !== undefined ? props.addHeaderBorderTop : true;
+
+    this.addHeaderBorderBottom =
+      props.addHeaderBorderBottom !== undefined
+        ? props.addHeaderBorderBottom
+        : false;
     this.alignmentMap = new Map();
 
     this.setRowFontSize = props.setRowFontSize || 0;
     this.adjustRowXPostion = props.adjustRowXPostion || null;
+    this.addPadingfFromLeft = props.addPadingfFromLeft || null;
+    this.addRowHeight = props.addRowHeight || null;
     this.adjustTitleFontSize = props.adjustTitleFontSize || 3;
   }
   setAlignment(rowIndex: number, columnIndex: number, align: string) {
@@ -119,8 +130,20 @@ class PDFReportGenerator {
     this.spanMap.set(rowIndex, { columnIndex, spanLength, key, textAlign });
   }
   // Function to define custom borders for a specific row and columns
-  borderColumnInRow(rowIndex: number, columnDetails: any, borderSides: any) {
-    this.borderedColumns.push({ rowIndex, columnDetails, borderSides });
+  borderColumnInRow(
+    rowIndex: number,
+    columnDetails: any,
+    borderSides: any,
+    columnGap = 0,
+    dash = false
+  ) {
+    this.borderedColumns.push({
+      rowIndex,
+      columnDetails,
+      borderSides,
+      columnGap,
+      dash,
+    });
   }
   calculateScaling() {
     const contentWidth = this.columnWidths.reduce(
@@ -272,7 +295,9 @@ class PDFReportGenerator {
 
   drawRow(doc: PDFKit.PDFDocument, row: any, rowIndex: number, startY: number) {
     const isBold = this.boldedRows.includes(rowIndex);
-
+    if (this.addRowHeight) {
+      startY = startY + this.addRowHeight(rowIndex);
+    }
     // Apply bold font if necessary
     if (isBold) {
       doc.font("Helvetica-Bold");
@@ -295,6 +320,8 @@ class PDFReportGenerator {
       key: SpanKey,
       textAlign: SpanTextAlign,
     } = spanInfo || {};
+
+    let getRowHeight = 0;
 
     this.keys.forEach((key, colIndex) => {
       // Skip columns that fall within a span range (except the starting column)
@@ -331,7 +358,6 @@ class PDFReportGenerator {
           | undefined;
         cellValue = row[key];
       }
-
       if (alignRow && colIndex === alignRow.columnIndex) {
         doc.text(cellValue?.toString() || "", startX + 5, startY + 5, {
           width: colWidth - 10,
@@ -342,6 +368,16 @@ class PDFReportGenerator {
           doc.text(
             cellValue?.toString() || "",
             startX + 5 - this.adjustRowXPostion(rowIndex),
+            startY + 5,
+            {
+              width: colWidth - 10,
+              align: textHeader,
+            }
+          );
+        } else if (this.addPadingfFromLeft) {
+          doc.text(
+            cellValue?.toString() || "",
+            startX + 5 + this.addPadingfFromLeft(rowIndex, colIndex),
             startY + 5,
             {
               width: colWidth - 10,
@@ -365,32 +401,79 @@ class PDFReportGenerator {
           b.columnDetails.some((c: any) => c.column === colIndex)
       );
       if (borderDetails) {
-        const { borderSides } = borderDetails;
-
+        const { borderSides, dash } = borderDetails;
+        let columnGap = borderDetails?.columnGap || 0;
         // Draw borders for the cell
-        if (borderSides.top) {
-          doc
-            .moveTo(startX, startY)
-            .lineTo(startX + colWidth, startY)
-            .stroke();
-        }
-        if (borderSides.bottom) {
-          doc
-            .moveTo(startX, startY + this.scaledRowHeight)
-            .lineTo(startX + colWidth, startY + this.scaledRowHeight)
-            .stroke();
-        }
-        if (borderSides.left) {
-          doc
-            .moveTo(startX, startY)
-            .lineTo(startX, startY + this.scaledRowHeight)
-            .stroke();
-        }
-        if (borderSides.right) {
-          doc
-            .moveTo(startX + colWidth, startY)
-            .lineTo(startX + colWidth, startY + this.scaledRowHeight)
-            .stroke();
+        if (dash) {
+          if (borderSides.top) {
+            doc
+              .dash(2, { space: 1 })
+              .moveTo(startX + columnGap, startY)
+              .lineTo(startX + columnGap + (colWidth - columnGap), startY)
+              .stroke()
+              .undash();
+          }
+          if (borderSides.bottom) {
+            doc
+              .dash(2, { space: 1 })
+              .moveTo(startX + columnGap, startY + 7 + this.scaledRowHeight)
+              .lineTo(
+                startX + columnGap + (colWidth - columnGap),
+                startY + 7 + this.scaledRowHeight
+              )
+              .stroke()
+              .undash();
+          }
+          if (borderSides.left) {
+            doc
+              .dash(2, { space: 1 })
+              .moveTo(startX + columnGap, startY + 7)
+              .lineTo(startX + columnGap, startY + 7 + this.scaledRowHeight)
+              .stroke()
+              .undash();
+          }
+          if (borderSides.right) {
+            doc
+              .dash(2, { space: 1 })
+              .moveTo(startX + columnGap + (colWidth - columnGap), startY + 7)
+              .lineTo(
+                startX + columnGap + (colWidth - columnGap),
+                startY + 7 + this.scaledRowHeight
+              )
+              .stroke()
+              .undash();
+          }
+        } else {
+          if (borderSides.top) {
+            doc
+              .moveTo(startX + columnGap, startY)
+              .lineTo(startX + columnGap + (colWidth - columnGap), startY)
+              .stroke();
+          }
+          if (borderSides.bottom) {
+            doc
+              .moveTo(startX + columnGap, startY + 7 + this.scaledRowHeight)
+              .lineTo(
+                startX + columnGap + (colWidth - columnGap),
+                startY + 7 + this.scaledRowHeight
+              )
+              .stroke();
+          }
+          if (borderSides.left) {
+            doc
+              .moveTo(startX + columnGap, startY + 7)
+              .lineTo(startX + columnGap, startY + 7 + this.scaledRowHeight)
+              .stroke();
+          }
+          if (borderSides.right) {
+            doc
+              .moveTo(startX + columnGap + (colWidth - columnGap), startY + 7)
+              .lineTo(
+                startX + columnGap + (colWidth - columnGap),
+                startY + 7 + this.scaledRowHeight
+              )
+              .stroke();
+          }
         }
       }
       // Move to the next column (or skip spanned columns)
@@ -413,7 +496,6 @@ class PDFReportGenerator {
     // let _startY = this.MARGIN.top + 60;
     // _startY = this.getTitleAndHeaderHeight(doc, this.MARGIN.top / 2);
     // const totalPages = this.getTotalPage(this.data, doc, _startY) ;
-
 
     let startY = this.MARGIN.top + 60;
     let currentPage = 1;
