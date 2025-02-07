@@ -1,6 +1,6 @@
 import { Request } from "express";
 import { PrismaList } from "../../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
 
 export const selectClient = `
 SELECT 
@@ -63,8 +63,6 @@ SELECT
 FROM
   entry_others aa
 `;
-
-
 export const withPolicy = `
 SELECT 
         a.IDType AS Type,
@@ -206,12 +204,10 @@ SELECT
     LEFT JOIN vpolicy d ON c.PolicyNo = d.PolicyNo
 `
 export async function checkClientID(id: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.$queryRawUnsafe(` SELECT * FROM (${withPolicy}) a where a.IDNo = '${id}'`);
 }
 
 export async function getPdcPolicyIdAndCLientId(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const qry = `
  SELECT 
@@ -236,7 +232,6 @@ limit 50
   return await prisma.$queryRawUnsafe(qry);
 }
 export async function getPdcBanks(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
     SELECT a.Bank_Code, a.Bank FROM   bank a where  a.Bank_Code like '%${search}%' OR a.Bank like '%${search}%' limit 50; 
@@ -244,17 +239,14 @@ export async function getPdcBanks(search: string, req: Request) {
   return await prisma.$queryRawUnsafe(query);
 }
 export async function findPdc(Ref_No: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.pdc.findMany({ where: { Ref_No } });
 }
 export async function pdcUploads(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.pdc_uploads.create({ data });
 }
 export async function pdcUploadsUpdate(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.pdc_uploads.updateMany({
     data: {
@@ -266,7 +258,6 @@ export async function pdcUploadsUpdate(data: any, req: Request) {
   });
 }
 export async function getPdcUpload(ref_no: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
@@ -278,17 +269,14 @@ export async function getPdcUpload(ref_no: string, req: Request) {
   `);
 }
 export async function deletePdcByRefNo(Ref_No: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.pdc.deleteMany({ where: { Ref_No } });
 }
 export async function createPDC(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.pdc.create({ data });
 }
 export async function searchPDC(search: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     SELECT 
@@ -306,7 +294,6 @@ export async function searchPDC(search: any, req: Request) {
   `);
 }
 export async function getSearchPDCheck(ref_no: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
     SELECT 
       a.Ref_No,
@@ -351,7 +338,6 @@ export async function getSearchPDCheck(ref_no: any, req: Request) {
   return await prisma.$queryRawUnsafe(qry);
 }
 export async function pdcIDGenerator(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
@@ -372,7 +358,6 @@ export async function pdcIDGenerator(req: Request) {
 `);
 }
 export async function updatePDCIDSequence(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
       update  id_sequence a

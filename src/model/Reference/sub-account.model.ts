@@ -1,6 +1,6 @@
 import { Request } from "express";
-import { PrismaList } from "../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
+
 
 interface SubAccountType {
   Acronym: string;
@@ -8,7 +8,6 @@ interface SubAccountType {
   Description: string;
 }
 export async function createSubAccount(data: SubAccountType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.sub_account.create({ data });
 }
@@ -17,12 +16,10 @@ export async function updateSubAccount(
   Sub_Acct: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.sub_account.update({ data, where: { Sub_Acct } });
 }
 export async function deleteSubAccount(Sub_Acct: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.sub_account.delete({ where: { Sub_Acct } });
 }
@@ -32,7 +29,6 @@ export async function searchSubAccount(
   hasLimit: boolean = false,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = ` 
   SELECT 

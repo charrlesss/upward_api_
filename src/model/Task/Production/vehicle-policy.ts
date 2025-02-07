@@ -1,8 +1,5 @@
 import { Request } from "express";
-import { PrismaList } from "../../connection";
-import { Prisma, PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
-
+import { prisma } from "../../../controller/index";
 
 
 export async function searchClientByNameOrByID(input: string, req: Request) {
@@ -29,8 +26,8 @@ export async function searchClientByNameOrByID(input: string, req: Request) {
   a.name like '%${input}%' 
   order by a.name asc
   limit 500
-  `
-  return await prisma.$queryRawUnsafe(qry) as any
+  `;
+  return (await prisma.$queryRawUnsafe(qry)) as any;
 }
 export async function searchAgentByNameOrByID(input: string, req: Request) {
   const qry = `
@@ -52,31 +49,31 @@ export async function searchAgentByNameOrByID(input: string, req: Request) {
     a.name like '%${input}%' 
     order by a.name asc
     limit 500
-  `
-  return await prisma.$queryRawUnsafe(qry) as any
+  `;
+  return (await prisma.$queryRawUnsafe(qry)) as any;
 }
 export async function getPolicyAccount(whr: string, req: Request) {
   const qry = `
  SELECT '' as Account union all  SELECT Account FROM policy_account ${whr} ORDER BY Account;
-  `
-  return await prisma.$queryRawUnsafe(qry) as any
+  `;
+  return (await prisma.$queryRawUnsafe(qry)) as any;
 }
 export async function getPolicyMortgagee(whr: string, req: Request) {
   const qry = `
   SELECT '' as Mortgagee union all SELECT Mortgagee FROM Mortgagee ${whr} ORDER BY Mortgagee;
-  `
-  return await prisma.$queryRawUnsafe(qry) as any
+  `;
+  return (await prisma.$queryRawUnsafe(qry)) as any;
 }
 export async function getPolicyDenomination(whr: string, req: Request) {
   const qry = `
 SELECT '' as Type union all  select distinct Type from Rates ${whr};
-  `
-  return await prisma.$queryRawUnsafe(qry) as any
+  `;
+  return (await prisma.$queryRawUnsafe(qry)) as any;
 }
 
 export async function getPolicySubAccount(req: Request) {
-  const qry = `SELECT Acronym FROM Sub_Account ORDER BY Acronym`
-  return await prisma.$queryRawUnsafe(qry) as any
+  const qry = `SELECT Acronym FROM Sub_Account ORDER BY Acronym`;
+  return (await prisma.$queryRawUnsafe(qry)) as any;
 }
 export async function generateTempID(req: Request) {
   const qry = `
@@ -89,17 +86,13 @@ export async function generateTempID(req: Request) {
       ) AS PolicyNo
   FROM Policy
   WHERE PolicyNo LIKE CONCAT('TP-', RIGHT(YEAR(NOW()), 2), LPAD(MONTH(NOW()), 2, '0'), '-%');
-`
-  return await prisma.$queryRawUnsafe(qry) as any
+`;
+  return (await prisma.$queryRawUnsafe(qry)) as any;
 }
-
 
 // ===========================
 
-
-
 export async function getTPL_IDS(search: string, req: Request) {
-
   const ctplQry = `
         SELECT 
             Prefix
@@ -107,9 +100,9 @@ export async function getTPL_IDS(search: string, req: Request) {
             ctplregistration
             where Prefix <> '' AND Prefix is not null
         GROUP BY Prefix;
-        `
-  const ctplPreffix = await prisma.$queryRawUnsafe(ctplQry) as any
-  let qry = ''
+        `;
+  const ctplPreffix = (await prisma.$queryRawUnsafe(ctplQry)) as any;
+  let qry = "";
   ctplPreffix.forEach((pref: any) => {
     qry += `
             select * from (
@@ -127,7 +120,7 @@ export async function getTPL_IDS(search: string, req: Request) {
             limit 1 
             ) a
              union all
-    `
+    `;
   });
   qry += `
            SELECT 
@@ -144,13 +137,12 @@ export async function getTPL_IDS(search: string, req: Request) {
                     group by Source_No_Ref_ID
                     order by Source_No;
         
-        `
-        console.log(qry)
+        `;
+  console.log(qry);
   return await prisma.$queryRawUnsafe(qry);
 }
 
 export async function getRateFromTPLUpdate(Source_No: string, req: Request) {
-
   return await prisma.$queryRawUnsafe(`
   SELECT 
       MIN(Source_No) AS Source_No,
@@ -236,7 +228,7 @@ export async function getRate(
   and trim(Line) = '${line}' 
   and trim(Type) = '${type}'
   `;
-  console.log(query)
+  console.log(query);
   return await prisma.$queryRawUnsafe(query);
 }
 
@@ -253,10 +245,9 @@ export async function getRateVPolicy(
   and trim(Line) = '${line}' 
   and trim(Type) = '${type}'
   `;
-  console.log(query)
+  console.log(query);
   return await prisma.$queryRawUnsafe(query);
 }
-
 
 export async function getClientById(entry_client_id: string, req: Request) {
   const query = `
@@ -531,10 +522,11 @@ export async function searchDataVPolicy(
             b.PolicyNo is not null and
             a.PolicyNo is not null and
             a.PolicyType = '${policyType}' and
-            ${isTemp
-      ? "left(a.PolicyNo,3) = 'TP-'and"
-      : "left(a.PolicyNo,3) != 'TP-' and"
-    }
+            ${
+              isTemp
+                ? "left(a.PolicyNo,3) = 'TP-'and"
+                : "left(a.PolicyNo,3) != 'TP-' and"
+            }
         (
             a.PolicyNo like '%${search}%' or
             c.ShortName like '%${search}%' or
@@ -549,7 +541,6 @@ export async function searchDataVPolicy(
 }
 
 export async function getCostByTPL(Source_No: string, req: Request) {
-
   return await prisma.$queryRawUnsafe(`
        SELECT 
 				  (Source_No) AS Source_No,

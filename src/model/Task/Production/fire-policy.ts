@@ -1,9 +1,7 @@
 import { Request } from "express";
-import { PrismaList } from "../../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
 
 export async function getRateType(Line: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     select Type from rates a where  a.Line ='${Line}' group by TYPE
@@ -29,7 +27,6 @@ export async function createFirePolicy(
   }: any,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.fpolicy.create({
     data: {
@@ -52,7 +49,6 @@ export async function createFirePolicy(
 }
 
 export async function searchFirePolicy(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
   select 
@@ -90,7 +86,6 @@ export async function searchFirePolicy(search: string, req: Request) {
 }
 
 export async function deleteFirePolicy(policyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
   delete from fpolicy 
@@ -101,7 +96,6 @@ export async function deleteFirePolicy(policyNo: string, req: Request) {
 }
 
 export async function deletePolicyFromFire(policyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
   delete from policy 

@@ -1,7 +1,7 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaList } from "../connection";
+
 import { Request } from "express";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
+
 
 interface MortgageeType {
   Mortgagee: string;
@@ -9,17 +9,14 @@ interface MortgageeType {
 }
 
 export async function findMortgagee(Mortgagee: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.mortgagee.findUnique({ where: { Mortgagee } });
 }
 export async function deleteMortgagee(Mortgagee: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.mortgagee.delete({ where: { Mortgagee } });
 }
 export async function addMortgagee(data: MortgageeType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.mortgagee.create({ data });
 }
@@ -27,7 +24,6 @@ export async function updateMortgagee(
   { Policy, Mortgagee }: MortgageeType,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.mortgagee.update({
     data: {
@@ -39,7 +35,6 @@ export async function updateMortgagee(
   });
 }
 export async function getMortgageePolicy(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query1 = `
     SELECT 
@@ -55,7 +50,6 @@ export async function searchMortgagee(
   hasLimit: boolean = false,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query2 = `
     SELECT 

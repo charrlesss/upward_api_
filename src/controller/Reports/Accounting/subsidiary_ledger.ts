@@ -252,11 +252,29 @@ SubsidiaryLedger.post("/subsidiary-ledger-report-desk", async (req, res) => {
             // Insert query into xSubsidiary
             await prisma.$queryRawUnsafe(`
             INSERT INTO xSubsidiary 
-            (Date_Entry, Sort_Number, Source_Type, Source_No, Explanation, Debit, Credit, Bal, Balance, Address, GL_Acct) 
+            (Date_Entry, 
+            Sort_Number, 
+            Source_Type, 
+            Source_No, 
+            Explanation, 
+            Debit, 
+            Credit, 
+            Bal, 
+            Balance, 
+            Address, 
+            GL_Acct) 
             VALUES 
-            ('${format(subDays(DateFrom, 1), "yyyy-MM-dd")}', 1, 'BF', 
-             '${format(subDays(DateFrom, 1), "MMddyy")}', 'Balance Forwarded', 
-             ${debit}, ${credit}, ${balance}, ${balance}, '${mField}', '${row.GL_Acct
+            ('${format(subDays(DateFrom, 1), "yyyy-MM-dd")}',
+             1, 
+             'BF', 
+             '${format(subDays(DateFrom, 1), "MMddyy")}', 
+             'Balance Forwarded', 
+             ${debit},
+              ${credit},
+               ${balance}, 
+               ${balance}, 
+               '${mField}', 
+               '${row.GL_Acct
               }');
           `);
           }

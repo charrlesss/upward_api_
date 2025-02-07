@@ -1,6 +1,6 @@
 import { Request } from "express";
-import { PrismaList } from "../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
+
 
 interface SublineType {
   Line: string;
@@ -12,7 +12,6 @@ export async function searchSubline(
   hasLimit: boolean = false,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query2 = `
     SELECT 
@@ -36,12 +35,10 @@ export async function findSubline(
   SublineName: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.subline.findMany({ where: { Line, SublineName } });
 }
 export async function getline(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query1 = `
       SELECT
@@ -54,7 +51,6 @@ export async function getline(req: Request) {
 }
 
 export async function addSubline(data: SublineType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.subline.create({
     data,
@@ -71,7 +67,6 @@ export async function updateSubline(
   },
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.subline.update({
     data: {
@@ -84,13 +79,11 @@ export async function updateSubline(
 }
 
 export async function deletesubline(ID: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.subline.delete({ where: { ID } });
 }
 
 export async function getNextId(tablename: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const result: any = await prisma.$queryRawUnsafe(`
     SELECT AUTO_INCREMENT

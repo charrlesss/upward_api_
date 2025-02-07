@@ -7,17 +7,17 @@ import Template from "./Template";
 import Dashboard from "./dashboard";
 import MasterAdminUser from "./MasterAdmin/user";
 import { getPdcPolicyIdAndCLientId } from "../model/Task/Accounting/pdc.model";
-import { PrismaList } from "../model/connection";
 import { getUserByUsername } from "../model";
-const router = express.Router();
+import { PrismaClient } from "@prisma/client";
 
-const { CustomPrismaClient } = PrismaList();
+const router = express.Router();
+export const prisma = new PrismaClient();
 
 router.use(Authentication);
 let userDetails: any = {};
 
 router.get("/get-user-details", async (req, res) => {
-  console.log(userDetails)
+  console.log(userDetails);
   res.send(`
         DEPARTMENT:${userDetails.department}
         ACCESS:${userDetails.userAccess}
@@ -32,7 +32,6 @@ router.get("/get-user-details", async (req, res) => {
     `);
 });
 
-
 router.use(ValidateToken);
 router.use(Dashboard);
 router.use(Reference);
@@ -41,9 +40,9 @@ router.use(Reports);
 router.use(Template);
 router.use(MasterAdminUser);
 router.get("/logout", logout);
-router.post('/open-report-by-username', async (req, res) => {
+router.post("/open-report-by-username", async (req, res) => {
   try {
-    const user: any = await getUserByUsername(req.body.username, req)
+    const user: any = await getUserByUsername(req.body.username, req);
     userDetails = {
       department: user[0].Department,
       userAccess: user[0].AccountType,
@@ -52,22 +51,22 @@ router.post('/open-report-by-username', async (req, res) => {
       REFRESH_TOKEN: user[0].REFRESH_TOKEN,
       up_ac_login: user[0].AccountType,
       up_dpm_login: user[0].Department,
-      up_ima_login: 'No',
+      up_ima_login: "No",
       up_at_login: req.body.ACCESS_TOKEN,
       up_rt_login: user[0].REFRESH_TOKEN,
       up_ac_username: req.body.username,
-    }
+    };
     res.send({
       message: "Open Report Successfully",
-      success: true
-    })
+      success: true,
+    });
   } catch (err: any) {
     res.send({
       message: err.message,
-      success: false
-    })
+      success: false,
+    });
   }
-})
+});
 router.get("/search-client", async (req, res) => {
   try {
     console.log(req.body);
@@ -87,27 +86,22 @@ router.get("/search-client", async (req, res) => {
     });
   }
 });
-router.post('/execute-query', async (req, res) => {
+router.post("/execute-query", async (req, res) => {
   try {
-    const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-    const newQuery = req.body.query
-    console.log(newQuery)
+    const newQuery = req.body.query;
 
     res.send({
-      message: 'Execute Query Successfully',
+      message: "Execute Query Successfully",
       success: true,
-      data: await prisma.$queryRawUnsafe(newQuery)
-    })
+      data: await prisma.$queryRawUnsafe(newQuery),
+    });
   } catch (err: any) {
     res.send({
       message: err.message,
       success: false,
-      data: []
-    })
+      data: [],
+    });
   }
-})
-
-
-
+});
 
 export default router;

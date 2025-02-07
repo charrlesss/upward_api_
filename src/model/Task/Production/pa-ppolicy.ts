@@ -1,16 +1,12 @@
 import { Request } from "express";
-import { PrismaList } from "../../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
+
 
 export async function createPAPolicy(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   return await prisma.papolicy.create({ data });
 }
 
 export async function searchPAPolicy(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
   select a.*,b.*, 
   c.ShortName as client_fullname,
@@ -45,8 +41,6 @@ export async function searchPAPolicy(search: string, req: Request) {
 }
 
 export async function deletePAPolicy(PolicyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
   delete from papolicy 
   where 
@@ -55,8 +49,6 @@ export async function deletePAPolicy(PolicyNo: string, req: Request) {
   return await prisma.$queryRawUnsafe(query);
 }
 export async function findPAPolicy(PolicyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
   select *  from papolicy 
   where 
@@ -66,8 +58,6 @@ export async function findPAPolicy(PolicyNo: string, req: Request) {
 }
 
 export async function deletePolicyByPAPolicy(PolicyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
   delete from policy 
   where 

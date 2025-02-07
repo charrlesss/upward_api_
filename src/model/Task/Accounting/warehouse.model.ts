@@ -1,10 +1,11 @@
 import { format } from "date-fns";
 import { PrismaList } from "../../connection";
 import { Request } from "express";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
+
 
 export async function getWarehouseSearch(query: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
   return await prisma.$queryRawUnsafe(query);
 }
 
@@ -13,7 +14,7 @@ export async function warehouseSelectedSearch(
   pdcStatus: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
 
   let strWhere = "";
   const pdcStatusList = ["Received", "Stored", "Stored"];
@@ -53,7 +54,7 @@ export async function pullout(
   CheckNo: string,
   req: Request
 ): Promise<Array<any>> {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
 
   const query = `
   SELECT 
@@ -71,7 +72,7 @@ export async function pullout(
 }
 
 export async function getApprovedPulloutWarehouse(RCPNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
 
   const query = `
   SELECT DISTINCT
@@ -97,7 +98,7 @@ export async function getApprovedPulloutWarehouseCheckList(
   RCPNo: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
 
   const query = `
   SELECT 
@@ -128,7 +129,7 @@ export async function getApprovedPulloutWarehouseCheckListSelected(
   RCPNo: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
 
   const query = `
     select 
@@ -158,7 +159,7 @@ export async function updatePDCChecks(
   PDC_ID: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
 
   function convertDate(date: any) {
     return format(date, "yyyy-MM-dd");
@@ -181,7 +182,7 @@ export async function updatePDCChecks(
 
 
 export async function getApprovedRCPNo(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
   const query = `
   select '' as RCPNo
   union all
@@ -209,7 +210,7 @@ export async function getApprovedRCPNo(req: Request) {
 }
 
 export async function loadList(req: Request, RCPNo: string) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
+ 
   const query = `SELECT 
    
     B.RCPNo,

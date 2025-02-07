@@ -1,25 +1,21 @@
 import { Request } from "express";
-import { PrismaList } from "../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
+
 
 export async function addBankAccount(data: any, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.bankaccounts.create({ data });
 }
 
 export async function updateBankAccount(data: any, Auto: string, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.bankaccounts.update({ data, where: { Auto } });
 }
 export async function removeBankAccount(Auto: string, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.bankaccounts.delete({ where: { Auto } });
 }
 
 export async function getBankAccount(bankAccountSearch: string, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
       SELECT 
@@ -42,7 +38,6 @@ export async function getBankAccount(bankAccountSearch: string, req:Request) {
 }
 
 export async function searchClient(search: string, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   select 

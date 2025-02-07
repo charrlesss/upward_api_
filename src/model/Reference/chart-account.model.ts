@@ -1,34 +1,29 @@
 import { Request } from "express";
-import { PrismaList } from "../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
+
 
 export async function findChartAccount(Acct_Code: string, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.chart_account.findUnique({ where: { Acct_Code } });
 }
 
 export async function addChartAccount(data: any, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.chart_account.create({ data });
 }
 
 export async function updateChartAccount(data: any, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.chart_account.update({
     data,
     where: { Acct_Code: data.Acct_Code },
   });
 }
 export async function deleteChartAccount(data: any, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   return await prisma.chart_account.delete({
     where: { Acct_Code: data.Acct_Code },
   });
 }
 
 export async function getChartAccount(chartAccountSearch: string, req:Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
     SELECT 
     IF(a.IDNo = 0, 'NO', 'YES') AS IDNo,

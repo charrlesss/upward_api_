@@ -9,17 +9,6 @@ import {
 
 import { clients_view, qryJournal } from "./views";
 
-// {
-//   title: 'UPWARD MANAGEMENT INSURANCE SERVICES\n' +
-//     ' Schedule of Accounts\n' +
-//     'January 30, 2025',
-//   account: '7.10.06',
-//   accountName: 'Communications Expense',
-//   subsiText: 'ALL',
-//   date: '2025-01-30',
-//   sort: 'Name',
-//   order: 'Ascending'
-// }
 
 export function parseDate(vbDate: any) {
   const datePart = vbDate.slice(0, 10); // Extracts first 10 characters
@@ -796,13 +785,12 @@ export function TemplateRenewalNotice(PolicyType: string, PolicyNo: string) {
   return select_query;
 }
 export function _GeneralLedgerReport(
-  _date: any,
+  date: any,
   sub_acct: string,
   report: string,
   transSumm: number = 0,
   prepost: number
 ) {
-  const date = parseDate(_date);
   const DateFrom = format(new Date(date), "yyyy-MM-01");
   const DateTo = format(lastDayOfMonth(new Date(date)), "yyyy-MM-dd"); // Add 1 month then subtract 1 day
   const PPClosing =
@@ -810,7 +798,6 @@ export function _GeneralLedgerReport(
   const dateMinusOne = subDays(new Date(date), 1);
   const formattedDateMinusOne = format(dateMinusOne, "yyyy-MM-dd");
 
-  console.log(_date);
   console.log(DateFrom);
   console.log(DateTo);
   console.log(formattedDateMinusOne);
@@ -1264,8 +1251,7 @@ export function AbstractCollections(
   _date: Date, // example date
   order: string // or 'Des
 ) {
-  const date = parseDate(_date);
-  console.log(date);
+  const date = new Date(_date)
   let sWhere1 = "";
   let sWhere2 = "";
 

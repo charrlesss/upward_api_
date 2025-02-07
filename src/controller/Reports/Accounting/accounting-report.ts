@@ -1,5 +1,7 @@
 import express, { Request, Response } from "express";
 import {
+  _GeneralLedgerReport,
+  AbstractCollections,
   AgingAccountsReport,
   FinancialStatement,
   FinancialStatementSumm,
@@ -12,11 +14,9 @@ import { format, subDays } from "date-fns";
 import PDFReportGenerator from "../../../lib/pdf-generator";
 import { formatNumber, getSum } from "../Production/production-report";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
-import { PrismaClient } from "@prisma/client";
-import { Console } from "console";
+import { prisma } from "../../index";
 
 const accountingReporting = express.Router();
-const prisma = new PrismaClient();
 
 accountingReporting.post("/report/get-chart-account", async (req, res) => {
   try {
@@ -163,6 +163,36 @@ accountingReporting.post(
   async (req, res) => {
     try {
       BalanceSheet(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+// General Ledger
+accountingReporting.post(
+  "/report/generate-report-general-ledger",
+  async (req, res) => {
+    try {
+      GeneralLedger(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+// Abstract of Collections
+accountingReporting.post(
+  "/report/generate-report-abstract-collection",
+  async (req, res) => {
+    try {
+      AbstractCollection(req, res);
     } catch (err: any) {
       res.send({
         message: err.message,
@@ -769,7 +799,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
         }
       }
       break;
-
     case "ID #":
       // Handle cases for "ID #"
       sFilter = `AND qryJournal.ID_No = '${mInput}'`;
@@ -852,7 +881,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       // Execute and handle results similar to above
       // Add logic for inserting into xSubsidiary if needed.
       break;
-
     case "Sub-Acct #":
       sFilter = `AND qryJournal.Sub_Acct = '${mInput}'`;
 
@@ -968,7 +996,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       }
 
       break;
-
     // Add similar cases for 'Sub-Acct #' and others as needed
   }
   // Transaction Query
@@ -1129,7 +1156,7 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       Source_Type: "",
       Source_No: "",
       Explanation: "",
-      Particulars: `(${formatNumber(totalDebit - totalCredit)})`,
+      Particulars: `${formatNumber(totalDebit - totalCredit)}`,
       Payto: "",
       Address: "",
       Check_Date: "",
@@ -1248,7 +1275,7 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       Debit: formatNumber(totalDebit),
       Credit: formatNumber(totalCredit),
       Bal: -15500,
-      Balance: `(${formatNumber(totalDebit - totalCredit)})`,
+      Balance: `${formatNumber(totalDebit - totalCredit)}`,
       xsubsidiary_id: "",
       refs: "",
     });
@@ -2277,7 +2304,6 @@ async function BalanceSheet(req: Request, res: Response) {
     newData,
     (item: any) => item?.H2 === "1" && item?.footer
   );
-  
 
   let PAGE_WIDTH = 612 + 90;
   let PAGE_HEIGHT = 792 + 90;
@@ -2298,7 +2324,7 @@ async function BalanceSheet(req: Request, res: Response) {
     BASE_FONT_SIZE: 8,
     PAGE_WIDTH,
     PAGE_HEIGHT,
-    addHeaderBorderTop:false,
+    addHeaderBorderTop: false,
     MARGIN: { top: 100, right: 10, bottom: 20, left: 10 },
     addPadingfFromLeft: (rowIndex: number, colIndex: number) => {
       if (H3Indexes.includes(rowIndex) && colIndex === 0) {
@@ -2326,7 +2352,6 @@ async function BalanceSheet(req: Request, res: Response) {
       pdfReportGenerator: PDFReportGenerator,
       doc: PDFKit.PDFDocument
     ) => {
-     
       H2FooterIndexes.forEach((idx: number) => {
         pdfReportGenerator.borderColumnInRow(
           idx,
@@ -2425,6 +2450,311 @@ async function BalanceSheet(req: Request, res: Response) {
     },
   };
 
+  const pdfReportGenerator = new PDFReportGenerator(props);
+  return pdfReportGenerator.generatePDF(res);
+}
+async function GeneralLedger(req: Request, res: Response) {
+  const qry = _GeneralLedgerReport(
+    req.body.date,
+    req.body.subAccount,
+    req.body.report,
+    0,
+    req.body.nominalAccountRef === "Pre Closing" ? 0 : 1
+  );
+
+  const data = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
+
+  const result: Array<any> = [];
+
+  const grouped = data.reduce((acc, item) => {
+    if (!acc[item.GL_Acct]) acc[item.GL_Acct] = [];
+    acc[item.GL_Acct].push(item);
+    return acc;
+  }, {});
+
+  let grandTotalDebit = 0;
+  let grandTotalCredit = 0;
+
+  for (const acct in grouped) {
+    const group = grouped[acct];
+    const title = group[0].Title;
+
+    result.push({
+      GL_Acct: acct,
+      Title: "",
+      BookCode: "",
+      Book: title,
+      Debit: "",
+      Credit: "",
+      SubTotal: "",
+    });
+
+    let accountTotalDebit = 0;
+    let accountTotalCredit = 0;
+
+    group.forEach((entry: any) => {
+      let Debit = parseFloat(entry.Debit.toString().replace(/,/g, ""));
+      let Credit = parseFloat(entry.Credit.toString().replace(/,/g, ""));
+      accountTotalDebit += Debit;
+      accountTotalCredit += Credit;
+      entry.Debit = formatNumber(Debit);
+      entry.Credit = formatNumber(Credit);
+      entry.SubTotal = "";
+      result.push(entry);
+    });
+
+    result.push({
+      GL_Acct: "",
+      Title: "P2",
+      BookCode: "",
+      Book: `Account Total :`,
+      Debit: formatNumber(accountTotalDebit),
+      Credit: formatNumber(accountTotalCredit),
+      SubTotal: formatNumber(accountTotalDebit - accountTotalCredit),
+    });
+
+    grandTotalDebit += accountTotalDebit;
+    grandTotalCredit += accountTotalCredit;
+  }
+  result.push({
+    GL_Acct: "GRAND TOTAL",
+    Title: "",
+    BookCode: "",
+    Book: ``,
+    Debit: formatNumber(grandTotalDebit),
+    Credit: formatNumber(grandTotalCredit),
+    SubTotal: formatNumber(grandTotalDebit - grandTotalCredit),
+  });
+
+  let PAGE_WIDTH = 612;
+  let PAGE_HEIGHT = 792;
+
+  const P2Indexes = getIndexes(result, (item: any) => item?.Title === "P2");
+
+  const props: any = {
+    data: result,
+    columnWidths: [50, 200, 70, 90, 90, 90],
+    headers: [
+      { headerName: "ACCT#", textAlign: "left" },
+      { headerName: "ACCOUNT TITLE / TRANSACTIONS", textAlign: "left" },
+      { headerName: "SOURCE BOOK", textAlign: "left" },
+      { headerName: "DEBIT", textAlign: "right" },
+      { headerName: "CREDIT", textAlign: "right" },
+      { headerName: "BALANCE", textAlign: "right" },
+    ],
+    keys: ["GL_Acct", "Book", "BookCode", "Debit", "Credit", "SubTotal"],
+    title: "",
+    setRowFontSize: 8,
+    BASE_FONT_SIZE: 8,
+    PAGE_WIDTH,
+    PAGE_HEIGHT,
+    addHeaderBorderTop: false,
+    MARGIN: { top: 100, right: 10, bottom: 20, left: 10 },
+    beforeDraw: (
+      pdfReportGenerator: PDFReportGenerator,
+      doc: PDFKit.PDFDocument
+    ) => {
+      pdfReportGenerator.SpanRow(result.length - 1, 0, 2);
+      pdfReportGenerator.setAlignment(result.length - 1, 1, "left");
+
+      pdfReportGenerator.borderColumnInRow(
+        result.length - 1,
+        [
+          { column: 3, key: "Debit" },
+          { column: 4, key: "Credit" },
+          { column: 5, key: "SubTotal" },
+        ],
+        {
+          top: false,
+          bottom: true,
+          left: false,
+          right: false,
+        },
+        8
+      );
+
+      P2Indexes.forEach((idx: number) => {
+        pdfReportGenerator.setAlignment(idx, 1, "right");
+        pdfReportGenerator.borderColumnInRow(
+          idx,
+          [
+            { column: 3, key: "Debit" },
+            { column: 4, key: "Credit" },
+            { column: 5, key: "SubTotal" },
+          ],
+          {
+            top: true,
+            bottom: false,
+            left: false,
+            right: false,
+          },
+          8
+        );
+      });
+    },
+    beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+      doc.font("Helvetica-Bold");
+      doc.fontSize(10);
+      doc.text(req.body.title, 10, 20, {
+        align: "left",
+        width: 400,
+      });
+
+      doc.text("TRANSACTIONS", 460, 75, {
+        align: "left",
+        width: 200,
+      });
+      doc.fontSize(8);
+    },
+    drawPageNumber: (
+      doc: PDFKit.PDFDocument,
+      currentPage: number,
+      totalPages: number,
+      pdfReportGenerator: any
+    ) => {
+      doc.font("Helvetica");
+      const pageNumberText = `Page ${currentPage}`;
+      doc.text(
+        pageNumberText,
+        PAGE_WIDTH - 130,
+        pdfReportGenerator.PAGE_HEIGHT - 25,
+        {
+          align: "right",
+          width: 100,
+        }
+      );
+      doc.text(
+        `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+        -75,
+        pdfReportGenerator.PAGE_HEIGHT - 25,
+        {
+          align: "right",
+          width: 200,
+        }
+      );
+    },
+  };
+
+  const pdfReportGenerator = new PDFReportGenerator(props);
+  return pdfReportGenerator.generatePDF(res);
+}
+async function AbstractCollection(req: Request, res: Response) {
+  const { queryCollection, queryJournal } = AbstractCollections(
+    req.body.report,
+    req.body.subAccount.toUpperCase(),
+    req.body.date,
+    req.body.order
+  );
+  const queryCollectionData: Array<any> = await prisma.$queryRawUnsafe(
+    queryCollection
+  );
+  const data: any = queryCollectionData.map((itm: any) => {
+    itm.Debit = formatNumber(
+      parseFloat(itm.Debit.toString().replace(/,/g, ""))
+    );
+    itm.Credit = formatNumber(
+      parseFloat(itm.Credit.toString().replace(/,/g, ""))
+    );
+    return itm;
+  });
+  const summary: any = await prisma.$queryRawUnsafe(queryJournal);
+
+  console.log(data);
+
+  let PAGE_WIDTH = 792 + 270;
+  let PAGE_HEIGHT = 612;
+  const props: any = {
+    data: data,
+    columnWidths: [60, 80, 120, 60, 100, 70, 70, 90, 70, 90, 100, 100],
+    headers: [
+      { headerName: "Date", textAlign: "left" },
+      { headerName: "ID#", textAlign: "left" },
+      { headerName: "CLIENT NAME", textAlign: "left" },
+      { headerName: "OR#", textAlign: "left" },
+      { headerName: "BANK/BRANCH", textAlign: "left" },
+      { headerName: "CHECK #", textAlign: "left" },
+      { headerName: "AMOUNT", textAlign: "right" },
+      { headerName: "ACCOUNTS", textAlign: "left" },
+      { headerName: "AMOUNT", textAlign: "right" },
+      { headerName: "ACCOUNTS", textAlign: "left" },
+      { headerName: "PURPOSE", textAlign: "left" },
+      { headerName: "REMARKS", textAlign: "left" },
+    ],
+    keys: [
+      "Date",
+      "IDNo",
+      "cName",
+      "ORNo",
+      "Bank",
+      "cCheck_No",
+      "Debit",
+      "DRTitle",
+      "Credit",
+      "CRTitle",
+      "Purpose",
+      "CRRemarks",
+    ],
+    title: req.body.title,
+    adjustTitleFontSize: 6,
+    setRowFontSize: 10,
+    BASE_FONT_SIZE: 8,
+    PAGE_WIDTH,
+    PAGE_HEIGHT,
+    addHeaderBorderTop: false,
+    MARGIN: { top: 20, right: 20, bottom: 30, left: 20 },
+    beforeDraw: (
+      pdfReportGenerator: PDFReportGenerator,
+      doc: PDFKit.PDFDocument
+    ) => {
+      // pdfReportGenerator.boldRow(data.length - 1);
+      // pdfReportGenerator.SpanRow(data.length - 1, 3, 2);
+      // pdfReportGenerator.SpanRow(data.length - 1, 0, 2);
+      // pdfReportGenerator.borderColumnInRow(
+      //   data.length - 1,
+      //   [{ column: 6, key: "Check_Amnt" }],
+      //   {
+      //     top: true,
+      //     bottom: false,
+      //     left: false,
+      //     right: false,
+      //   }
+      // );
+    },
+    beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
+      doc.font("Helvetica-Bold");
+      doc.fontSize(11);
+      doc.text("DEBIT", PAGE_WIDTH - 410, 85);
+      doc.text("CREDIT", PAGE_WIDTH - 270, 85);
+    },
+    drawPageNumber: (
+      doc: PDFKit.PDFDocument,
+      currentPage: number,
+      totalPages: number,
+      pdfReportGenerator: any
+    ) => {
+      doc.font("Helvetica");
+      const pageNumberText = `Page ${currentPage}`;
+      doc.text(
+        pageNumberText,
+        PAGE_WIDTH - 160,
+        pdfReportGenerator.PAGE_HEIGHT - 35,
+        {
+          align: "right",
+          width: 100,
+        }
+      );
+
+      doc.text(
+        `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
+        -35,
+        pdfReportGenerator.PAGE_HEIGHT - 35,
+        {
+          align: "right",
+          width: 200,
+        }
+      );
+    },
+  };
   const pdfReportGenerator = new PDFReportGenerator(props);
   return pdfReportGenerator.generatePDF(res);
 }

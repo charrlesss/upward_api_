@@ -1,15 +1,13 @@
 import { Request } from "express";
-import { PrismaList } from "../../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
+
 
 export async function createCGLPolicy(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.cglpolicy.create({ data });
 }
 
 export async function searchCGLPolicy(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
      select a.*,b.*, 
@@ -46,7 +44,6 @@ export async function searchCGLPolicy(search: string, req: Request) {
 }
 
 export async function deleteCGLPolicy(PolicyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
     delete from cglpolicy 
@@ -57,7 +54,6 @@ export async function deleteCGLPolicy(PolicyNo: string, req: Request) {
 }
 
 export async function deletePolicyByCGL(PolicyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
     delete from policy 

@@ -1,6 +1,7 @@
 import { Request } from "express";
 import { PrismaList } from "../../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
+
 
 const clientDetails = `
 select * from (
@@ -88,7 +89,6 @@ FROM
 `;
 
 export async function getCheckList(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
         SELECT 
@@ -120,7 +120,6 @@ LIMIT 100
 }
 //// ================ old
 export async function GenerateReturnCheckID(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     SELECT 
@@ -136,7 +135,6 @@ export async function getCreditOnSelectedCheck(
   BankAccount: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
@@ -153,7 +151,6 @@ export async function getDebitOnSelectedCheck(
   Official_Receipt: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const qry = `
   SELECT 
       
@@ -182,26 +179,22 @@ export async function getDebitOnSelectedCheck(
   return await prisma.$queryRawUnsafe(qry);
 }
 export async function getBranchName(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(
     `SELECT a.ShortName FROM  sub_account a where a.Acronym = 'HO'`
   );
 }
 export async function deleteReturnCheck(RC_No: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     delete from   return_checks where RC_NO='${RC_No}'
   `);
 }
 export async function addNewReturnCheck(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.return_checks.create({ data });
 }
 export async function updatePDCFromReturnCheck(Check_No: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     UPDATE  pdc a SET a.SlipCode ='', a.ORNum='' WHERE  a.Check_No ='${Check_No}' 
@@ -212,7 +205,6 @@ export async function updateJournalFromReturnCheck(
   SlipCode: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     UPDATE  journal a 
@@ -224,18 +216,15 @@ export async function deleteJournalFromReturnCheck(
   SlipCode: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   DELETE FROM   journal a WHERE a.Source_No = '${SlipCode}' AND a.Source_Type = 'RC'`);
 }
 export async function addJournalFromReturnCheck(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.journal.create({ data });
 }
 export async function updateRCID(last_count: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   UPDATE  id_sequence a 
@@ -248,7 +237,6 @@ export async function updateRCID(last_count: string, req: Request) {
   `);
 }
 export async function searchReturnChecks(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     SELECT 
@@ -270,7 +258,6 @@ export async function getReturnCheckSearchFromJournal(
   RC_No: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
@@ -305,7 +292,6 @@ export async function getReturnCheckSearchFromJournal(
       `);
 }
 export async function getReturnCheckSearch(RC_No: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   SELECT 
@@ -334,7 +320,6 @@ export async function getReturnCheckSearch(RC_No: string, req: Request) {
       `);
 }
 export async function findReturnCheck(RC_No: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     select * from   return_checks where RC_NO='${RC_No}'

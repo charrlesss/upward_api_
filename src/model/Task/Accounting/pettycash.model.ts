@@ -1,9 +1,10 @@
 import { Request } from "express";
 import { PrismaList } from "../../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
+
+
 
 export async function generatePettyCashID(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
       SELECT 
@@ -16,7 +17,6 @@ export async function generatePettyCashID(req: Request) {
 }
 
 export async function getPettyLog(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `SELECT 
   a.Purpose, b.Acct_Code, b.Acct_Title, b.Short
@@ -28,7 +28,6 @@ FROM
 }
 
 export async function deletePettyCash(PC_No: string,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
         DELETE FROM
@@ -37,26 +36,22 @@ export async function deletePettyCash(PC_No: string,req: Request) {
 }
 
 export async function deleteJournalFromPettyCash(PC_No: string,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `DELETE FROM  journal a where a.Source_no = '${PC_No}' AND a.Source_Type = 'PC'`;
   return await prisma.$queryRawUnsafe(query);
 }
 
 export async function addJournalFromPettyCash(data: any,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.journal.create({ data });
 }
 
 export async function addPettyCash(data: any,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.petty_cash.create({ data });
 }
 
 export async function findPettyCash(PC_No: string,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(
     `Select * from  petty_cash where PC_No = '${PC_No}'`
@@ -64,7 +59,6 @@ export async function findPettyCash(PC_No: string,req: Request) {
 }
 
 export async function updatePettyCashID(last_count: string,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     UPDATE  id_sequence a 
@@ -77,7 +71,6 @@ export async function updatePettyCashID(last_count: string,req: Request) {
     `);
 }
 export async function searchPettyCash(search: string,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     SELECT 
@@ -99,7 +92,6 @@ export async function searchPettyCash(search: string,req: Request) {
 }
 
 export async function loadSelectedPettyCash(PC_No: string,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     SELECT 
@@ -128,7 +120,6 @@ export async function loadSelectedPettyCash(PC_No: string,req: Request) {
 }
 
 export async function loadTranscation(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
   SELECT * FROM Petty_Log WHERE InActive = 'False' ORDER BY Purpose

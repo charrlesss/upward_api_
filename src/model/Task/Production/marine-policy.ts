@@ -1,9 +1,8 @@
 import { Request } from "express";
-import { PrismaList } from "../../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
+
 
 export async function getMarineRate(account: string, line: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
     select Rate from Rates 
@@ -14,14 +13,12 @@ export async function getMarineRate(account: string, line: string, req: Request)
   return await prisma.$queryRawUnsafe(query);
 }
 export async function createMarinePolicy(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.mpolicy.create({
     data,
   });
 }
 export async function searchMarinePolicy(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
      select a.*,b.*, 
@@ -56,28 +53,24 @@ export async function searchMarinePolicy(search: string, req: Request) {
   return await prisma.$queryRawUnsafe(query);
 }
 export async function createWords(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.words.create({
     data,
   });
 }
 export async function deleteWords(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     delete from words where Wordings = 'Mpolicy' and (SType = 1 OR SType = 0)
 `);
 }
 export async function getWords(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
     select * from words where Wordings = 'Mpolicy' and (SType = 1 OR SType = 0)
 `);
 }
 export async function deleteMarinePolicy(PolicyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const query = `
   delete from mpolicy 
   where 
@@ -87,7 +80,6 @@ export async function deleteMarinePolicy(PolicyNo: string, req: Request) {
 }
 
 export async function deletePolicyFromMarine(policyNo: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
   delete from policy 

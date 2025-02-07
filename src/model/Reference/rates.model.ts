@@ -1,6 +1,5 @@
 import { Request } from "express";
-import { PrismaList } from "../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
 
 interface RateType {
   Account: string;
@@ -10,7 +9,6 @@ interface RateType {
 }
 
 export async function addRate(data: RateType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.rates.create({ data });
 }
@@ -19,7 +17,6 @@ export async function searchRate(
   hasLimit: boolean = false,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
   SELECT 
@@ -43,7 +40,6 @@ export async function searchRate(
   return await prisma.$queryRawUnsafe(query);
 }
 export async function getPolicyAccounts(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = ` 
     SELECT 
@@ -54,7 +50,6 @@ export async function getPolicyAccounts(req: Request) {
   return await prisma.$queryRawUnsafe(query);
 }
 export async function getBonds(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = ` 
     SELECT 
@@ -67,7 +62,6 @@ export async function getBonds(req: Request) {
   return await prisma.$queryRawUnsafe(query);
 }
 export async function getFire(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = ` 
       SELECT 
@@ -85,16 +79,13 @@ export async function updateRate(
   Rate: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.rates.update({ where: { ID }, data: { Type, Rate } });
 }
 export async function addRates(data: RateType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   await prisma.rates.create({ data });
 }
 export async function deleteRate(ID: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   await prisma.rates.delete({ where: { ID } });
 }

@@ -1,6 +1,6 @@
 import { Request } from "express";
-import { PrismaList } from "../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
+
 
 interface DataEntryClientTypes {
   entry_client_id: string;
@@ -243,7 +243,6 @@ export async function CreateClientEntry(
   data: DataEntryClientTypes,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const { email, telephone, mobile, ...rest } = data;
   await prisma.entry_client.create({
@@ -263,14 +262,12 @@ export async function CreateEmployeeEntry(
   data: EntryEmployeeType,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   await prisma.entry_employee.create({
     data,
   });
 }
 export async function CreateAgentEntry(data: EntryAgentType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const { email, telephone, mobile, ...rest } = data;
 
@@ -291,7 +288,6 @@ export async function CreateFixedAssetstEntry(
   data: EntryFixedAssetsType,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   await prisma.entry_fixed_assets.create({
     data,
@@ -301,7 +297,6 @@ export async function CreateSupplierEntry(
   data: EntrySupplierType,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const { email, telephone, mobile, ...rest } = data;
 
@@ -319,14 +314,12 @@ export async function CreateSupplierEntry(
   });
 }
 export async function CreateOtherEntry(data: EntryOthersType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   await prisma.entry_others.create({
     data,
   });
 }
 export async function getAllSubAccount(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
     SELECT 
@@ -339,7 +332,6 @@ export async function getAllSubAccount(req: Request) {
   return await prisma.$queryRawUnsafe(query);
 }
 async function updateClient(data: DataEntryClientTypes, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const getEntryClient = await prisma.entry_client.findUnique({
     where: { entry_client_id: data.entry_client_id },
@@ -395,7 +387,6 @@ async function updateClient(data: DataEntryClientTypes, req: Request) {
   ]);
 }
 async function updateEmployee(data: EntryEmployeeType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
   update 
@@ -415,7 +406,6 @@ async function updateEmployee(data: EntryEmployeeType, req: Request) {
 }
 
 async function updateAgent(data: EntryAgentType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const getEntryClient = await prisma.entry_agent.findUnique({
     where: { entry_agent_id: data.entry_agent_id },
@@ -450,7 +440,6 @@ async function updateAgent(data: EntryAgentType, req: Request) {
   ]);
 }
 async function updateFixedAssets(data: EntryFixedAssetsType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
   update 
@@ -468,7 +457,6 @@ async function updateFixedAssets(data: EntryFixedAssetsType, req: Request) {
   await prisma.$queryRawUnsafe(query);
 }
 async function updateOthers(data: EntryOthersType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = `
   update 
@@ -484,7 +472,6 @@ async function updateOthers(data: EntryOthersType, req: Request) {
   await prisma.$queryRawUnsafe(query);
 }
 async function updateSupplier(data: EntrySupplierType, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const getEntryClient = await prisma.entry_supplier.findUnique({
     where: { entry_supplier_id: data.entry_supplier_id },
@@ -541,7 +528,6 @@ export async function searchEntry(
   hasLimit: boolean = false,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(
     queryList[`${entry}`].query(search, hasLimit)
@@ -570,7 +556,6 @@ export async function updateEntry(entry: string, data: any, req: Request) {
   }
 }
 export async function deleteEntry(entry: string, id: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   switch (entry) {
     case "Client":
@@ -629,12 +614,10 @@ export async function deleteEntry(entry: string, id: string, req: Request) {
   }
 }
 export async function getClientInIdEntry(where: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`call id_entry('${where}')`);
 }
 export async function getSubAccounts(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(` 
   SELECT 
@@ -646,7 +629,6 @@ export async function getSubAccounts(req: Request) {
 }
 
 export async function IDGenerator(sign: string, type: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const lastSeq = await prisma.id_sequence.findFirst({ where: { type } });
   const newCount = incrementLastCount(lastSeq?.last_count as string);
@@ -661,7 +643,6 @@ export async function UpdateId(
   newYear: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   await prisma.id_sequence.update({
     where: {
@@ -697,7 +678,6 @@ export function getYear() {
 }
 
 export async function deleteClientById(client_id: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
   const contactId: any = await prisma.$queryRawUnsafe(` 
    SELECT client_contact_details_id FROM entry_client where entry_client_id = '${client_id}' ;
 `);

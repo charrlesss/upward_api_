@@ -1,12 +1,10 @@
 import { Request } from "express";
-import { PrismaList } from "../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
 
 export async function getPettyCashTransaction(
   transactionCodeSearch: any,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.$queryRawUnsafe(`
       SELECT 
@@ -25,13 +23,11 @@ export async function getPettyCashTransaction(
 }
 
 export async function addPettyCashTransaction(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.petty_log.create({ data });
 }
 
 export async function updatePettyCashTransaction(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.petty_log.update({
     data,
@@ -39,7 +35,6 @@ export async function updatePettyCashTransaction(data: any, req: Request) {
   });
 }
 export async function deletePettyCashTransaction(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.petty_log.delete({
     where: { Petty_Log: data.Petty_Log },

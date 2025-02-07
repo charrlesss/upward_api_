@@ -1,11 +1,9 @@
 import { Request } from "express";
 import { PrismaList } from "../../connection";
 import { selectClient } from "./pdc.model";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../../controller/index";
 
 export async function searchPDCCLients(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const qry = `
  SELECT 
     PNo, max(Name) as Name, 'HO' AS branch_code, 'Head Office' AS branch_name
@@ -20,8 +18,6 @@ WHERE
 }
 
 export async function checkPostponementRequestAutoID(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   return await prisma.$queryRawUnsafe(`
     SELECT 
       concat('CDPR-',a.year, LEFT(a.last_count ,length(a.last_count) -length(a.last_count + 1)),a.last_count + 1) as pullout_request
@@ -32,8 +28,6 @@ export async function checkPostponementRequestAutoID(req: Request) {
   ;`);
 }
 export async function getCheckPostponementPNNo(search: string, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
     SELECT 
         a.PNo, MAX(a.IDNo) as IDNo, MAX(a.Name) as Name , MAX(c.ShortName) as branch
@@ -117,16 +111,12 @@ export async function getCheckPostponementPNNo(search: string, req: Request) {
 }
 
 export async function getRCPNList(req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   return await prisma.$queryRawUnsafe(`
    Select RPCDNo from postponement Where Status = 'PENDING'
   ;`);
 }
 
 export async function getRCPNDetails(req: Request, RPCDNo: string) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const qry = `
    SELECT 
     a.RPCDNo,
@@ -255,8 +245,6 @@ export async function getSelectedCheckPostponementPNNo(
   PNNo: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
       SELECT 
           PDC_ID,
@@ -280,18 +268,18 @@ export async function getSelectedCheckPostponementPNNo(
 }
 
 export async function deleteOnUpdate(req: Request, RPCDNo: string) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
-  await prisma.$queryRawUnsafe(`Delete from Postponement where RPCDNo = '${RPCDNo}'`);
-  await prisma.$queryRawUnsafe(`Delete from Postponement_Detail where RPCD ='${RPCDNo}' `);
+  await prisma.$queryRawUnsafe(
+    `Delete from Postponement where RPCDNo = '${RPCDNo}'`
+  );
+  await prisma.$queryRawUnsafe(
+    `Delete from Postponement_Detail where RPCD ='${RPCDNo}' `
+  );
 }
 
 export async function searchEditPostponentRequest(
   search: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
   SELECT 
     RPCDNo,
@@ -324,8 +312,6 @@ export async function searchSelectedEditPostponentRequest(
   RPCD: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
     SELECT 
         b.Check_No,
@@ -354,8 +340,6 @@ export async function updateOnCancelPostponentRequest(
   RPCD: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
     update    postponement a set a.Status = 'CANCEL'  where a.RPCDNo = '${RPCD}'
     ;`;
@@ -365,26 +349,18 @@ export async function updateOnCancelPostponentRequestDetails(
   RPCD: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
     update    postponement_detail a set a.cancel = 1  where a.RPCD = '${RPCD}'
     ;`;
   return await prisma.$queryRawUnsafe(query);
 }
 export async function createPostponement(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   return await prisma.postponement.create({ data });
 }
 export async function createPostponementDetails(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   return await prisma.postponement_detail.create({ data });
 }
 export async function approvalCodePostponement(data: any, req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   return await prisma.postponement_auth_codes.create({ data });
 }
 export async function updatePostponementStatus(
@@ -393,8 +369,6 @@ export async function updatePostponementStatus(
   Approved_By: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
   UPDATE  postponement a 
   SET 
@@ -411,8 +385,6 @@ export async function findApprovalPostponementCode(
   RPCD: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
     SELECT * FROM   postponement_auth_codes a where a.Approved_Code  = '${code}' AND a.RPCD='${RPCD}';
   `;
@@ -423,8 +395,6 @@ export async function updateApprovalPostponementCode(
   RPCDNo: string,
   req: Request
 ) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
-
   const query = `
   UPDATE  postponement_auth_codes a 
   SET 

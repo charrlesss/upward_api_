@@ -1,6 +1,6 @@
 import { Request } from "express";
-import { PrismaList } from "../connection";
-const { CustomPrismaClient } = PrismaList();
+import { prisma } from "../../controller/index";
+
 
 interface PolicyAccountType {
   Account: string;
@@ -20,13 +20,11 @@ interface PolicyAccountType {
 }
 
 export async function checkedAccountIsExisting(Account: string,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.policy_account.findUnique({ where: { Account } });
 }
 
 export async function createPolicyAccount(policyAccount: PolicyAccountType,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.policy_account.create({ data: policyAccount });
 }
@@ -35,7 +33,6 @@ export async function searchPolicy(
   policySearch: string,
   hasLimit: boolean = false
 ,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   const query = ` SELECT 
   a.Account,
@@ -66,7 +63,6 @@ export async function updatePolicyAccount(
   policyAccount: PolicyAccountType,
   Account: string
 ,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.policy_account.update({
     data: policyAccount,
@@ -74,7 +70,6 @@ export async function updatePolicyAccount(
   });
 }
 export async function deletePolicyAccount(Account: string,req: Request) {
-  const prisma = CustomPrismaClient(req.cookies["up-dpm-login"]);
 
   return await prisma.policy_account.delete({
     where: { Account },
