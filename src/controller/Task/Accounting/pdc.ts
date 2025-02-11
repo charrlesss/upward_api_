@@ -461,7 +461,7 @@ PDC.post("/print", async (req, res) => {
       const props: any = {
         data: newData,
         BASE_FONT_SIZE: 8,
-        columnWidths: [100, 100, 110, 110, 90, 50],
+        columnWidths: [70, 70, 150, 150, 90, 35],
         headers: [
           { headerName: "CHECK NO", textAlign: "left" },
           { headerName: "DATE", textAlign: "left" },

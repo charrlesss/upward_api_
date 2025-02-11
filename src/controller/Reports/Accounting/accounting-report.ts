@@ -3,6 +3,7 @@ import {
   _GeneralLedgerReport,
   AbstractCollections,
   AgingAccountsReport,
+  CashDisbursementBook_GJB,
   FinancialStatement,
   FinancialStatementSumm,
   PostDatedCheckRegistered,
@@ -15,6 +16,8 @@ import PDFReportGenerator from "../../../lib/pdf-generator";
 import { formatNumber, getSum } from "../Production/production-report";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 import { prisma } from "../../index";
+import PDFDocument, { text } from "pdfkit";
+import fs from "fs";
 
 const accountingReporting = express.Router();
 
@@ -193,6 +196,21 @@ accountingReporting.post(
   async (req, res) => {
     try {
       AbstractCollection(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+// General Journal Book - GJB
+accountingReporting.post(
+  "/report/generate-report-general-journal-book-GJB",
+  async (req, res) => {
+    try {
+      GeneralJournalBookGJB(req, res);
     } catch (err: any) {
       res.send({
         message: err.message,
@@ -1002,12 +1020,24 @@ async function SubsidiaryLedger(req: Request, res: Response) {
   if (GL_Code.trim() !== "ALL") {
     // For specific GL_Code
     Qry = `
-          SELECT qryJournal.Number, qryJournal.Hide_Code, qryJournal.Date_Entry, qryJournal.Source_Type,
-                qryJournal.Source_No, COALESCE(qryJournal.Explanation, '') as Explanation, 
-                COALESCE(qryJournal.Payto, '') as Payto, qryJournal.GL_Acct, qryJournal.Sub_Acct, 
-                qryJournal.ID_No, qryJournal.mShort, qryJournal.mSub_Acct, qryJournal.mID, 
-                qryJournal.mDebit, qryJournal.mCredit, COALESCE(qryJournal.Check_Date, '') as Check_Date, 
-                COALESCE(qryJournal.Checked, '') as Checked, COALESCE(qryJournal.Bank, '') as Bank, 
+          SELECT 
+          qryJournal.Number, 
+          qryJournal.Hide_Code, 
+          qryJournal.Date_Entry, 
+          qryJournal.Source_Type,
+                qryJournal.Source_No, 
+                COALESCE(qryJournal.Explanation, '') as Explanation, 
+                COALESCE(qryJournal.Payto, '') as Payto, 
+                qryJournal.GL_Acct, qryJournal.Sub_Acct, 
+                qryJournal.ID_No, 
+                qryJournal.mShort, 
+                qryJournal.mSub_Acct, 
+                qryJournal.mID, 
+                qryJournal.mDebit, 
+                qryJournal.mCredit, 
+                COALESCE(qryJournal.Check_Date, '') as Check_Date, 
+                COALESCE(qryJournal.Checked, '') as Checked, 
+                COALESCE(qryJournal.Bank, '') as Bank, 
                 COALESCE(qryJournal.Remarks, '') as Remarks 
           FROM (${_qryJournal}) qryJournal
           WHERE qryJournal.Date_Entry BETWEEN '${format(
@@ -1037,12 +1067,12 @@ async function SubsidiaryLedger(req: Request, res: Response) {
           ORDER BY   qryJournal.Number,qryJournal.Date_Entry,qryJournal.Source_No, qryJournal.Auto;
         `;
   }
-  console.log(Qry);
 
   // Execute the transaction query
   dt = await prisma.$queryRawUnsafe(Qry);
 
   // Processing query results
+  console.log(dt);
 
   if (dt.length > 0) {
     let lastAcct = "";
@@ -2638,126 +2668,7 @@ async function GeneralLedger(req: Request, res: Response) {
   const pdfReportGenerator = new PDFReportGenerator(props);
   return pdfReportGenerator.generatePDF(res);
 }
-async function AbstractCollection(req: Request, res: Response) {
-  const { queryCollection, queryJournal } = AbstractCollections(
-    req.body.report,
-    req.body.subAccount.toUpperCase(),
-    req.body.date,
-    req.body.order
-  );
-  const queryCollectionData: Array<any> = await prisma.$queryRawUnsafe(
-    queryCollection
-  );
-  const data: any = queryCollectionData.map((itm: any) => {
-    itm.Debit = formatNumber(
-      parseFloat(itm.Debit.toString().replace(/,/g, ""))
-    );
-    itm.Credit = formatNumber(
-      parseFloat(itm.Credit.toString().replace(/,/g, ""))
-    );
-    return itm;
-  });
-  const summary: any = await prisma.$queryRawUnsafe(queryJournal);
 
-  console.log(data);
-
-  let PAGE_WIDTH = 792 + 270;
-  let PAGE_HEIGHT = 612;
-  const props: any = {
-    data: data,
-    columnWidths: [60, 80, 120, 60, 100, 70, 70, 90, 70, 90, 100, 100],
-    headers: [
-      { headerName: "Date", textAlign: "left" },
-      { headerName: "ID#", textAlign: "left" },
-      { headerName: "CLIENT NAME", textAlign: "left" },
-      { headerName: "OR#", textAlign: "left" },
-      { headerName: "BANK/BRANCH", textAlign: "left" },
-      { headerName: "CHECK #", textAlign: "left" },
-      { headerName: "AMOUNT", textAlign: "right" },
-      { headerName: "ACCOUNTS", textAlign: "left" },
-      { headerName: "AMOUNT", textAlign: "right" },
-      { headerName: "ACCOUNTS", textAlign: "left" },
-      { headerName: "PURPOSE", textAlign: "left" },
-      { headerName: "REMARKS", textAlign: "left" },
-    ],
-    keys: [
-      "Date",
-      "IDNo",
-      "cName",
-      "ORNo",
-      "Bank",
-      "cCheck_No",
-      "Debit",
-      "DRTitle",
-      "Credit",
-      "CRTitle",
-      "Purpose",
-      "CRRemarks",
-    ],
-    title: req.body.title,
-    adjustTitleFontSize: 6,
-    setRowFontSize: 10,
-    BASE_FONT_SIZE: 8,
-    PAGE_WIDTH,
-    PAGE_HEIGHT,
-    addHeaderBorderTop: false,
-    MARGIN: { top: 20, right: 20, bottom: 30, left: 20 },
-    beforeDraw: (
-      pdfReportGenerator: PDFReportGenerator,
-      doc: PDFKit.PDFDocument
-    ) => {
-      // pdfReportGenerator.boldRow(data.length - 1);
-      // pdfReportGenerator.SpanRow(data.length - 1, 3, 2);
-      // pdfReportGenerator.SpanRow(data.length - 1, 0, 2);
-      // pdfReportGenerator.borderColumnInRow(
-      //   data.length - 1,
-      //   [{ column: 6, key: "Check_Amnt" }],
-      //   {
-      //     top: true,
-      //     bottom: false,
-      //     left: false,
-      //     right: false,
-      //   }
-      // );
-    },
-    beforePerPageDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
-      doc.font("Helvetica-Bold");
-      doc.fontSize(11);
-      doc.text("DEBIT", PAGE_WIDTH - 410, 85);
-      doc.text("CREDIT", PAGE_WIDTH - 270, 85);
-    },
-    drawPageNumber: (
-      doc: PDFKit.PDFDocument,
-      currentPage: number,
-      totalPages: number,
-      pdfReportGenerator: any
-    ) => {
-      doc.font("Helvetica");
-      const pageNumberText = `Page ${currentPage}`;
-      doc.text(
-        pageNumberText,
-        PAGE_WIDTH - 160,
-        pdfReportGenerator.PAGE_HEIGHT - 35,
-        {
-          align: "right",
-          width: 100,
-        }
-      );
-
-      doc.text(
-        `Printed: ${format(new Date(), "MM/dd/yyyy, hh:mm a")}`,
-        -35,
-        pdfReportGenerator.PAGE_HEIGHT - 35,
-        {
-          align: "right",
-          width: 200,
-        }
-      );
-    },
-  };
-  const pdfReportGenerator = new PDFReportGenerator(props);
-  return pdfReportGenerator.generatePDF(res);
-}
 async function PostDatedChecksRegistry(req: Request, res: Response) {
   const title = req.body.title;
   const dateFrom = format(new Date(req.body.dateFrom), "yyyy-MM-dd");
@@ -3107,4 +3018,428 @@ function clrStr(str: string) {
   return str?.trim();
 }
 
+const abstractDataCollection = async (req: Request) => {
+  const { queryCollection, queryJournal } = AbstractCollections(
+    req.body.report,
+    req.body.subAccount.toUpperCase(),
+    req.body.date,
+    req.body.order
+  );
+  const queryCollectionData: Array<any> = await prisma.$queryRawUnsafe(
+    queryCollection
+  );
+  const data: any = queryCollectionData.map((itm: any) => {
+    itm.Debit = formatNumber(
+      parseFloat(itm.Debit.toString().replace(/,/g, ""))
+    );
+    itm.Credit = formatNumber(
+      parseFloat(itm.Credit.toString().replace(/,/g, ""))
+    );
+    return itm;
+  });
+  const _summary: any = await prisma.$queryRawUnsafe(queryJournal);
+
+  const summary = _summary.map((itm: any) => {
+    itm.Title = `${itm.GL_Acct}   ${itm.Title}`;
+    itm.mDebit = formatNumber(
+      parseFloat(itm.mDebit.toString().replace(/,/g, ""))
+    );
+    itm.mCredit = formatNumber(
+      parseFloat(itm.mCredit.toString().replace(/,/g, ""))
+    );
+    return itm;
+  });
+  console.log(data);
+
+  return { data, summary };
+};
+async function AbstractCollection(req: Request, res: Response) {
+  const { data, summary } = await abstractDataCollection(req);
+  const headers = [
+    { label: "DATE", key: "Date", style: { width: 60, textAlign: "left" } },
+    { label: "ID #", key: "IDNo", style: { width: 80, textAlign: "left" } },
+    {
+      label: "CLIENT NAME",
+      key: "cName",
+      style: { width: 150, textAlign: "left" },
+    },
+    { label: "OR #", key: "ORNo", style: { width: 50, textAlign: "left" } },
+    {
+      label: "BANK/BRANCH",
+      key: "Bank",
+      style: { width: 100, textAlign: "left" },
+    },
+    {
+      label: "CHECK #",
+      key: "cCheck_No",
+      style: { width: 65, textAlign: "left" },
+    },
+    {
+      label: "AMOUNT",
+      key: "Debit",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "ACCOUNT",
+      key: "DRTitle",
+      style: { width: 100, textAlign: "left" },
+    },
+    {
+      label: "AMOUNT",
+      key: "Credit",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "ACCOUNT",
+      key: "CRTitle",
+      style: { width: 100, textAlign: "left" },
+    },
+    {
+      label: "PURPOSE",
+      key: "Purpose",
+      style: { width: 100, textAlign: "left" },
+    },
+    {
+      label: "REMARKS",
+      key: "CRRemarks",
+      style: { width: 100, textAlign: "left" },
+    },
+  ];
+
+  const summaryHeaders = [
+    {
+      label: "ACCOUNTING TITLE",
+      key: "Title",
+      style: { width: 250, textAlign: "left" },
+    },
+    { label: "DEBIT", key: "mDebit", style: { width: 80, textAlign: "right" } },
+    {
+      label: "CREDIT",
+      key: "mCredit",
+      style: { width: 80, textAlign: "right" },
+    },
+  ];
+  const outputFilePath = "manok.pdf";
+
+  const PAGE_WIDTH = 1150; // A4 Portrait width
+  const PAGE_HEIGHT = 595; // A4 Portrait height
+  const MARGINS = {
+    top: 100,
+    bottom: 50,
+    left: 20,
+    right: 20,
+  };
+  const rowFontSize = 9;
+  const doc = new PDFDocument({
+    margin: 0,
+    size: [PAGE_WIDTH, PAGE_HEIGHT],
+    bufferPages: true,
+  });
+  const writeStream = fs.createWriteStream(outputFilePath);
+  doc.pipe(writeStream);
+
+  function getRowHeight(itm: any, headers: any) {
+    const rowHeight = Math.max(
+      ...headers.map((hItm: any) => {
+        return doc.heightOfString(itm[hItm.key] || "-", {
+          width: hItm.style.width - 5,
+          align: hItm.style.textAlign,
+        });
+      }),
+      rowFontSize + 1
+    );
+
+    return rowHeight + 5;
+  }
+  function addPageHeader(header: Array<any>, y: number, _x: any = 0) {
+    doc.font("Helvetica-Bold");
+    doc.fontSize(11);
+    const rowHeight = Math.max(
+      ...header.map((itm) =>
+        doc.heightOfString(itm.label, { width: itm.style.width })
+      ),
+      10
+    );
+    let x = MARGINS.left + _x;
+    header.forEach((itm) => {
+      doc.text(itm.label, x, y, {
+        width: itm.style.width - 5,
+        align:
+          itm.label === "ACCOUNTING TITLE"
+            ? "center"
+            : itm.style.textAlign === "right"
+            ? "center"
+            : itm.style.textAlign,
+      });
+      x += itm.style.width + 5;
+    });
+    return y + rowHeight + 5;
+  }
+  function drawTitle() {
+    doc.font("Helvetica-Bold");
+    doc.fontSize(12);
+    doc.text(req.body.title, 20, 30);
+  }
+  function drawAfter(yAxis: any, rowHeight: any) {
+    doc.text("------ Nothing Follows -------", PAGE_WIDTH / 2 - 60, yAxis, {
+      width: 120,
+    });
+    doc.font("Helvetica-Bold");
+    yAxis += 20;
+    const DRAccount = headers.slice(0, 7).reduce((c: any, itm) => {
+      return (c += itm.style.width);
+    }, 0);
+
+    const CRAccount = headers.slice(0, 9).reduce((c: any, itm) => {
+      return (c += itm.style.width);
+    }, 0);
+    doc
+      .moveTo(DRAccount, yAxis - 5)
+      .lineTo(CRAccount + 120, yAxis - 5)
+      .lineWidth(1)
+      .stroke();
+
+    doc.text("TOTAL :", 500, yAxis, { width: 100 });
+    doc.text(formatNumber(getSum(data, "Debit")), DRAccount + 10, yAxis, {
+      width: 100,
+      align: "right",
+    });
+    doc.text(formatNumber(getSum(data, "Credit")), CRAccount + 10, yAxis, {
+      width: 100,
+      align: "right",
+    });
+
+    return rowHeight + yAxis;
+  }
+
+  drawTitle();
+  let currentPage = 1;
+  let yAxis = MARGINS.top;
+  yAxis = addPageHeader(headers, yAxis);
+
+  data.forEach((itm: any, idx: number) => {
+    let rowHeight = getRowHeight(itm, headers);
+
+    if (yAxis + rowHeight > PAGE_HEIGHT - MARGINS.bottom) {
+      currentPage = currentPage + 1;
+      doc.addPage({
+        size: [PAGE_WIDTH, PAGE_HEIGHT],
+        margin: 0,
+        bufferPages: true,
+      });
+      drawTitle();
+      yAxis = addPageHeader(headers, MARGINS.top);
+    }
+
+    let x = MARGINS.left;
+    headers.forEach((hItm: any) => {
+      const value = itm[hItm.key] || "-";
+      doc.font("Helvetica");
+      doc.fontSize(10);
+      doc.text(value, x, yAxis, {
+        width: hItm.style.width - 5,
+        align: value === "-" ? "center" : hItm.style.textAlign,
+      });
+      x += hItm.style.width + 5;
+    });
+
+    yAxis += rowHeight;
+  });
+
+  yAxis += 5;
+  yAxis = drawAfter(yAxis, 30);
+
+  // ================ SUAMMARY ========================
+  // summaryHeaders
+  const totalSumarryHeigth = summary.reduce((container: any, itm: any) => {
+    container += getRowHeight(itm, summaryHeaders);
+    return container;
+  }, 65);
+
+  if (yAxis + totalSumarryHeigth > PAGE_HEIGHT - MARGINS.top) {
+    console.log("here 1");
+    const extraX = 350;
+    currentPage = currentPage + 1;
+    doc.addPage({
+      size: [PAGE_WIDTH, PAGE_HEIGHT],
+      margin: 0,
+      bufferPages: true,
+    });
+
+    drawTitle();
+    let yAxis = MARGINS.top;
+    yAxis = addPageHeader(summaryHeaders, yAxis, extraX);
+    summary.forEach((itm: any, idx: number) => {
+      let rowHeight = getRowHeight(itm, summaryHeaders);
+
+      if (yAxis + rowHeight > PAGE_HEIGHT - MARGINS.bottom) {
+        currentPage = currentPage + 1;
+        doc.addPage({
+          size: [PAGE_WIDTH, PAGE_HEIGHT],
+          margin: 0,
+          bufferPages: true,
+        });
+        drawTitle();
+        yAxis = addPageHeader(summaryHeaders, MARGINS.top, extraX);
+      }
+
+      let x = MARGINS.left;
+      summaryHeaders.forEach((hItm: any) => {
+        const value = itm[hItm.key] || "-";
+        doc.font("Helvetica");
+        doc.fontSize(10);
+        doc.text(value, x + extraX, yAxis, {
+          width: hItm.style.width - 5,
+          align: value === "-" ? "center" : hItm.style.textAlign,
+        });
+        x += hItm.style.width + 5;
+      });
+
+      yAxis += rowHeight;
+    });
+
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    doc.font("Helvetica-Bold");
+    doc.text("TOTAL :", extraX + 200, yAxis + 5);
+    doc.text(formatNumber(getSum(summary, "mDebit")), extraX + 270, yAxis + 5, {
+      width: 80,
+      align: "right",
+    });
+    doc.text(
+      formatNumber(getSum(summary, "mCredit")),
+      extraX + 270 + 85,
+      yAxis + 5,
+      { width: 80, align: "right" }
+    );
+    yAxis += 22;
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    yAxis += 40;
+
+    doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
+    doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
+    doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
+
+    doc.font("Helvetica");
+  } else {
+    const extraX = 350;
+    yAxis += 50;
+    doc.font("Helvetica-Bold");
+    doc.text("SUMMARY:", extraX, yAxis);
+    yAxis += 30;
+    yAxis = addPageHeader(summaryHeaders, yAxis, extraX);
+    summary.forEach((itm: any, idx: number) => {
+      let rowHeight = getRowHeight(itm, summaryHeaders);
+      let x = MARGINS.left;
+      summaryHeaders.forEach((hItm: any) => {
+        const value = itm[hItm.key] || "-";
+        doc.font("Helvetica");
+        doc.fontSize(10);
+        doc.text(value, x + extraX, yAxis, {
+          width: hItm.style.width - 5,
+          align: value === "-" ? "center" : hItm.style.textAlign,
+        });
+        x += hItm.style.width + 5;
+      });
+      yAxis += rowHeight;
+    });
+
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    doc.font("Helvetica-Bold");
+    doc.text("TOTAL :", extraX + 200, yAxis + 5);
+    doc.text(formatNumber(getSum(summary, "mDebit")), extraX + 270, yAxis + 5, {
+      width: 80,
+      align: "right",
+    });
+    doc.text(
+      formatNumber(getSum(summary, "mCredit")),
+      extraX + 270 + 85,
+      yAxis + 5,
+      { width: 80, align: "right" }
+    );
+    yAxis += 22;
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    yAxis += 40;
+
+    doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
+    doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
+    doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
+
+    doc.font("Helvetica");
+  }
+
+  const range = doc.bufferedPageRange();
+  let i;
+  let end;
+
+  for (
+    i = range.start, end = range.start + range.count, range.start <= end;
+    i < end;
+    i++
+  ) {
+    doc.switchToPage(i);
+    doc.text(
+      `Page ${i + 1} of ${range.count}`,
+      PAGE_WIDTH - 80,
+      PAGE_HEIGHT - 30
+    );
+    doc.text(
+      `Printed ${format(new Date(), "MM/dd/yyyy hh:mm a")}`,
+      20,
+      PAGE_HEIGHT - 30
+    );
+  }
+
+  doc.end();
+
+  writeStream.on("finish", (e: any) => {
+    console.log(`PDF created successfully at: ${outputFilePath}`);
+    const readStream = fs.createReadStream(outputFilePath);
+    readStream.pipe(res);
+
+    readStream.on("end", () => {
+      fs.unlink(outputFilePath, (err: any) => {
+        if (err) {
+          console.error("Error deleting file:", err);
+        } else {
+          console.log(`File ${outputFilePath} deleted successfully.`);
+        }
+      });
+    });
+  });
+}
+const generalJournalBookGJBData = async (req: Request) => {
+  const qry = CashDisbursementBook_GJB(
+    req.body.sub_acct,
+    req.body.date,
+    req.body.dateFormat,
+    req.body.order
+  );
+
+  const data: any = await prisma.$queryRawUnsafe(qry.strSQL);
+  const summary: any = await prisma.$queryRawUnsafe(qry.strSubSQL);
+  return { data, summary };
+};
+async function GeneralJournalBookGJB(req: Request, res: Response) {
+  
+}
 export default accountingReporting;

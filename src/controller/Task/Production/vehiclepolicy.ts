@@ -919,7 +919,7 @@ async function insertNewVPolicy(
         Explanation: `${policy} Production`,
         GL_Acct: "1.03.03",
         Sub_Acct: strArea,
-        ID_No: clientIDRef,
+        ID_No: policyNoRef,
         cGL_Acct: "Premium Receivable",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
@@ -941,7 +941,7 @@ async function insertNewVPolicy(
         Explanation: `${policy} Production`,
         GL_Acct: "1.03.01",
         Sub_Acct: strArea,
-        ID_No: clientIDRef,
+        ID_No: policyNoRef,
         cGL_Acct: "Premium Receivable",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
@@ -965,7 +965,7 @@ async function insertNewVPolicy(
         Explanation: `${policy} Production`,
         GL_Acct: "4.02.07",
         Sub_Acct: strArea,
-        ID_No: clientIDRef,
+        ID_No: policyNoRef,
         cGL_Acct: "A/P",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
@@ -987,7 +987,7 @@ async function insertNewVPolicy(
         Explanation: `${policy} Production`,
         GL_Acct: "4.02.01",
         Sub_Acct: strArea,
-        ID_No: clientIDRef,
+        ID_No: policyNoRef,
         cGL_Acct: "A/P",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
@@ -1012,7 +1012,7 @@ async function insertNewVPolicy(
         Explanation: `${policy} Production`,
         GL_Acct: "4.02.01",
         Sub_Acct: strArea,
-        ID_No: clientIDRef,
+        ID_No: policyNoRef,
         cGL_Acct: "A/P",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
@@ -1033,7 +1033,7 @@ async function insertNewVPolicy(
         Explanation: `${policy} Production`,
         GL_Acct: "1.04.01",
         Sub_Acct: strArea,
-        ID_No: clientIDRef,
+        ID_No: policyNoRef,
         cGL_Acct: "CTPL Inventory",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
@@ -1054,7 +1054,7 @@ async function insertNewVPolicy(
         Explanation: `${policy} Production`,
         GL_Acct: "6.01.10",
         Sub_Acct: strArea,
-        ID_No: clientIDRef,
+        ID_No: policyNoRef,
         cGL_Acct: "CTPL Income",
         cSub_Acct: cStrArea,
         cID_No: clientNameRef,
@@ -1158,7 +1158,6 @@ VehiclePolicy.get(
     }
   }
 );
-
 VehiclePolicy.post("/tpl-add-vehicle-policy", async (req, res) => {
   // convertToPassitive(req);
   const { sub_account, client_id, PolicyAccount, PolicyNo, Denomination } =
@@ -1269,7 +1268,6 @@ VehiclePolicy.post("/tpl-update-vehicle-policy", async (req, res) => {
     res.send({ message: err.message, success: false });
   }
 });
-
 VehiclePolicy.get("/tpl-search-vehicle-policy", async (req, res) => {
   const { form_type, form_action, search } = req.query;
   const getSearch = await searchDataVPolicy(
