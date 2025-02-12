@@ -64,7 +64,6 @@ Collection.get("/get-client-checked-by-id", async (req, res) => {
 });
 Collection.get("/get-transaction-code-title", async (req, res) => {
   try {
-    console.log(await getTransactionDescription(req));
     res.send({
       message: "Get Data Successfully",
       success: true,
@@ -442,7 +441,7 @@ Collection.post("/print-or", async (req, res) => {
       });
     });
   } catch (error: any) {
-    console.log(error.message);
+    console.log(error);
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
@@ -675,27 +674,30 @@ function drawOfficialReceiptPDF({
     align: "left",
     width: 80,
   });
-  doc.font("Helvetica-Bold");
+  doc.font("Helvetica-Bold"); 
 
   for (let index = 0; index < dataToPrint.debit.length; index++) {
     autoAdjustTextHeigth(
       doc,
-      `${dataToPrint.debit[index].Payment}   ${format(new Date(dataToPrint.debit[index].Check_Date),'MM/dd/yyyy')} - ${dataToPrint.debit[index].Check_No} - ${dataToPrint.debit[index].Bank_Branch}`,
+      dataToPrint.debit[index].Payment.toLowerCase() === 'cash' ? dataToPrint.debit[index].Payment : `${dataToPrint.debit[index].Payment}    ${format(new Date(dataToPrint.debit[index].Check_Date),'MM/dd/yyyy')} - ${dataToPrint.debit[index].Check_No} - ${dataToPrint.debit[index].Bank_Branch}`,
       112,
       215 + rowH + adjustHeigth,
       400,
       22
     );
+    console.log(dataToPrint.debit[index])
 
     autoAdjustTextHeigth(
       doc,
       dataToPrint.debit[index].Amount,
-      410,
+      160,
       215 + rowH + adjustHeigth,
       400,
       22,
       "right"
     );
+
+
     rowH += 13;
   }
 

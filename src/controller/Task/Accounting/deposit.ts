@@ -155,6 +155,8 @@ Deposit.post("/add-deposit", async (req, res) => {
     let parts = req.body.depositSlip.split("-");
     let firstPart = parts[0].slice(0, 2);
     let secondPart = parts[0].slice(2);
+
+
     updateDepositIDSequence(
       {
         last_count: parts[1],
@@ -178,6 +180,7 @@ Deposit.post("/add-deposit", async (req, res) => {
 });
 Deposit.get("/search-deposit", async (req, res) => {
   try {
+    console.log('qweqw')
     const deposit: any = await searchDeposit(
       req.query.searchDeposit as string,
       req
@@ -197,6 +200,8 @@ Deposit.get("/search-deposit", async (req, res) => {
 });
 Deposit.post("/search-deposit", async (req, res) => {
   try {
+    console.log(req.body.search)
+
     const data: any = await searchDeposit(req.body.search, req);
     res.send({
       message: "Successfully Search Deposit.",
@@ -410,25 +415,25 @@ async function addDeposit(req: any) {
     0.0
   );
 
-  // await addDepositSlip(
-  //   {
-  //     Date: defaultFormat(new Date(req.body.depositdate)),
-  //     SlipCode: req.body.depositSlip,
-  //     Slip: req.body.BankAcctCodeTag,
-  //     BankAccount: req.body.BankAcctCode,
-  //     AccountName: req.body.BankAcctName,
-  //     CheckDeposit: checkTotal.toLocaleString("en-US", {
-  //       minimumFractionDigits: 2,
-  //       maximumFractionDigits: 2,
-  //     }),
-  //     CashDeposit: cashTotal.toLocaleString("en-US", {
-  //       minimumFractionDigits: 2,
-  //       maximumFractionDigits: 2,
-  //     }),
-  //     IDNo: req.body.BankAcctCodeTag,
-  //   },
-  //   req
-  // );
+  await addDepositSlip(
+    {
+      Date: defaultFormat(new Date(req.body.depositdate)),
+      SlipCode: req.body.depositSlip,
+      Slip: req.body.BankAcctCodeTag,
+      BankAccount: req.body.BankAcctCode,
+      AccountName: req.body.BankAcctName,
+      CheckDeposit: checkTotal.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      CashDeposit: cashTotal.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      IDNo: req.body.BankAcctCodeTag,
+    },
+    req
+  );
 
   let Cnt = 0;
   const Amount = [checkTotal, cashTotal];

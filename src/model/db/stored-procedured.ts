@@ -7,7 +7,7 @@ import {
   lastDayOfMonth,
 } from "date-fns";
 
-import { clients_view, qryJournal } from "./views";
+import { clients_view, qry_id_policy_sub, qryJournal } from "./views";
 
 
 export function parseDate(vbDate: any) {
@@ -1279,11 +1279,11 @@ export function AbstractCollections(
     }
   } else if (reportType === "Monthly") {
     if (subAcct === "ALL") {
-      sWhere1 = `WHERE Collection.Date_OR >= '${firstDayOfMonthCollection}' AND Collection.Date_OR <= '${lastDayCollection}'`;
-      sWhere2 = `WHERE Journal.Source_Type = 'OR' AND Journal.Date_Entry >= '${firstDayOfMonthJournal}' AND Journal.Date_Entry <= '${lastDayJournal}'`;
+      sWhere1 = `WHERE STR_TO_DATE(Collection.Date_OR, '%Y-%m-%d') >= '${firstDayOfMonthCollection}' AND STR_TO_DATE(Collection.Date_OR, '%Y-%m-%d') <= '${lastDayCollection}'`;
+      sWhere2 = `WHERE Journal.Source_Type = 'OR' AND STR_TO_DATE(Journal.Date_Entry, '%Y-%m-%d') >= '${firstDayOfMonthJournal}' AND STR_TO_DATE(Journal.Date_Entry, '%Y-%m-%d') <= '${lastDayJournal}'`;
     } else {
-      sWhere1 = `WHERE Collection.Date_OR >= '${firstDayOfMonthCollection}' AND Collection.Date_OR <= '${lastDayCollection}' AND Collection.Status = '${subAcct.trim()}'`;
-      sWhere2 = `WHERE Journal.Source_Type = 'OR' AND Journal.Date_Entry >= '${firstDayOfMonthJournal}' AND Journal.Date_Entry <= '${lastDayJournal}' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
+      sWhere1 = `WHERE STR_TO_DATE(Collection.Date_OR, '%Y-%m-%d') >= '${firstDayOfMonthCollection}' AND STR_TO_DATE(Collection.Date_OR, '%Y-%m-%d') <= '${lastDayCollection}' AND Collection.Status = '${subAcct.trim()}'`;
+      sWhere2 = `WHERE Journal.Source_Type = 'OR' AND STR_TO_DATE(Journal.Date_Entry, '%Y-%m-%d') >= '${firstDayOfMonthJournal}' AND STR_TO_DATE(Journal.Date_Entry, '%Y-%m-%d') <= '${lastDayJournal}' AND LTRIM(RTRIM(Journal.Branch_Code)) = '${subAcct.trim()}'`;
     }
   }
 
@@ -1737,13 +1737,12 @@ export function CashDisbursementBook_GJB(
   dateFilterType: string,
   sortOrder: string
 ) {
-  console.log(_reportDate);
+  const {IDEntryWithPolicy} = qry_id_policy_sub()
   let strSQL = "";
   let strSubSQL = "";
   const sourceType = "GL";
   const qryJournals = qryJournal();
-  const reportDate = parseDate(_reportDate.toString());
-  console.log(reportDate);
+  const reportDate = new Date(_reportDate)
 
   const formattedDate = format(reportDate, "yyyy-MM-dd");
   const formattedMonthStart = format(startOfMonth(reportDate), "yyyy-MM-dd");
@@ -1818,6 +1817,43 @@ export function CashDisbursementBook_GJB(
     }
   }
 
+
+strSQL = `
+select 
+    a.Branch_Code,
+    a.Date_Query,
+    a.Date_Entry,
+    a.Source_Type,
+    a.Source_No,
+    a.Explanation,
+    a.Payto,
+    a.GL_Acct,
+    a.mShort,
+    a.Short,
+    a.ID_No,
+    a.Check_Collect,
+    a.Check_Date,
+    a.Checked,
+    a.Bank,
+    a.Check_Return,
+    a.Check_Deposit,
+    a.Check_Reason,
+    a.mDebit,
+    a.mCredit,
+    a.TC,
+    a.Remarks,
+    a.Books_Desc,
+    a.Hide_Code,
+    a.Number,
+    a.Book_Code,
+    id_entry.Sub_Acct as Sub_Acct,
+    id_entry.ShortName as mSub_Acct  ,
+    id_entry.client_name  as mID,
+    a.Auto,
+    a.Check_No
+ from (${strSQL}) a
+left join (${IDEntryWithPolicy}) id_entry on a.ID_No = id_entry.IDNo
+`
   return { strSQL, strSubSQL };
 }
 export function ProductionBook(
