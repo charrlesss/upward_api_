@@ -1566,7 +1566,7 @@ export function getSum(data: Array<any>, key: string): number {
     return 0
   }
   return data.reduce((total: number, row: any) => {
-    total += parseFloat(row[key].toString().replace(/,/g, ''))
+    total += parseFloat((row[key] || 0).toString().replace(/,/g, ''))
     return total
   }, 0)
 }

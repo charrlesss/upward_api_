@@ -4,6 +4,7 @@ import {
   AbstractCollections,
   AgingAccountsReport,
   CashDisbursementBook_GJB,
+  DepositedCollections,
   FinancialStatement,
   FinancialStatementSumm,
   PostDatedCheckRegistered,
@@ -196,6 +197,21 @@ accountingReporting.post(
   async (req, res) => {
     try {
       AbstractCollection(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+// Deposit of Collections
+accountingReporting.post(
+  "/report/generate-report-deposit-collection",
+  async (req, res) => {
+    try {
+      DepositCollections(req, res);
     } catch (err: any) {
       res.send({
         message: err.message,
@@ -3206,6 +3222,404 @@ async function AbstractCollection(req: Request, res: Response) {
       align: "right",
     });
     doc.text(formatNumber(getSum(data, "Credit")), CRAccount + 10, yAxis, {
+      width: 100,
+      align: "right",
+    });
+
+    return rowHeight + yAxis;
+  }
+
+  drawTitle();
+  let currentPage = 1;
+  let yAxis = MARGINS.top;
+  yAxis = addPageHeader(headers, yAxis);
+
+  data.forEach((itm: any, idx: number) => {
+    let rowHeight = getRowHeight(itm, headers);
+
+    if (yAxis + rowHeight > PAGE_HEIGHT - MARGINS.bottom) {
+      currentPage = currentPage + 1;
+      doc.addPage({
+        size: [PAGE_WIDTH, PAGE_HEIGHT],
+        margin: 0,
+        bufferPages: true,
+      });
+      drawTitle();
+      yAxis = addPageHeader(headers, MARGINS.top);
+    }
+
+    let x = MARGINS.left;
+    headers.forEach((hItm: any) => {
+      const value = itm[hItm.key] || "-";
+      doc.font("Helvetica");
+      doc.fontSize(10);
+      doc.text(value, x, yAxis, {
+        width: hItm.style.width - 5,
+        align: value === "-" ? "center" : hItm.style.textAlign,
+      });
+      x += hItm.style.width + 5;
+    });
+
+    yAxis += rowHeight;
+  });
+
+  yAxis += 5;
+  yAxis = drawAfter(yAxis, 30);
+
+  // ================ SUAMMARY ========================
+  // summaryHeaders
+  const totalSumarryHeigth = summary.reduce((container: any, itm: any) => {
+    container += getRowHeight(itm, summaryHeaders);
+    return container;
+  }, 65);
+
+  if (yAxis + totalSumarryHeigth > PAGE_HEIGHT - MARGINS.top) {
+    console.log("here 1");
+    const extraX = 350;
+    currentPage = currentPage + 1;
+    doc.addPage({
+      size: [PAGE_WIDTH, PAGE_HEIGHT],
+      margin: 0,
+      bufferPages: true,
+    });
+
+    drawTitle();
+    let yAxis = MARGINS.top;
+    yAxis = addPageHeader(summaryHeaders, yAxis, extraX);
+    summary.forEach((itm: any, idx: number) => {
+      let rowHeight = getRowHeight(itm, summaryHeaders);
+
+      if (yAxis + rowHeight > PAGE_HEIGHT - MARGINS.bottom) {
+        currentPage = currentPage + 1;
+        doc.addPage({
+          size: [PAGE_WIDTH, PAGE_HEIGHT],
+          margin: 0,
+          bufferPages: true,
+        });
+        drawTitle();
+        yAxis = addPageHeader(summaryHeaders, MARGINS.top, extraX);
+      }
+
+      let x = MARGINS.left;
+      summaryHeaders.forEach((hItm: any) => {
+        const value = itm[hItm.key] || "-";
+        doc.font("Helvetica");
+        doc.fontSize(10);
+        doc.text(value, x + extraX, yAxis, {
+          width: hItm.style.width - 5,
+          align: value === "-" ? "center" : hItm.style.textAlign,
+        });
+        x += hItm.style.width + 5;
+      });
+
+      yAxis += rowHeight;
+    });
+
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    doc.font("Helvetica-Bold");
+    doc.text("TOTAL :", extraX + 200, yAxis + 5);
+    doc.text(formatNumber(getSum(summary, "mDebit")), extraX + 270, yAxis + 5, {
+      width: 80,
+      align: "right",
+    });
+    doc.text(
+      formatNumber(getSum(summary, "mCredit")),
+      extraX + 270 + 85,
+      yAxis + 5,
+      { width: 80, align: "right" }
+    );
+    yAxis += 22;
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    yAxis += 40;
+
+    doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
+    doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
+    doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
+
+    doc.font("Helvetica");
+  } else {
+    const extraX = 350;
+    yAxis += 50;
+    doc.font("Helvetica-Bold");
+    doc.text("SUMMARY:", extraX, yAxis);
+    yAxis += 30;
+    yAxis = addPageHeader(summaryHeaders, yAxis, extraX);
+    summary.forEach((itm: any, idx: number) => {
+      let rowHeight = getRowHeight(itm, summaryHeaders);
+      let x = MARGINS.left;
+      summaryHeaders.forEach((hItm: any) => {
+        const value = itm[hItm.key] || "-";
+        doc.font("Helvetica");
+        doc.fontSize(10);
+        doc.text(value, x + extraX, yAxis, {
+          width: hItm.style.width - 5,
+          align: value === "-" ? "center" : hItm.style.textAlign,
+        });
+        x += hItm.style.width + 5;
+      });
+      yAxis += rowHeight;
+    });
+
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    doc.font("Helvetica-Bold");
+    doc.text("TOTAL :", extraX + 200, yAxis + 5);
+    doc.text(formatNumber(getSum(summary, "mDebit")), extraX + 270, yAxis + 5, {
+      width: 80,
+      align: "right",
+    });
+    doc.text(
+      formatNumber(getSum(summary, "mCredit")),
+      extraX + 270 + 85,
+      yAxis + 5,
+      { width: 80, align: "right" }
+    );
+    yAxis += 22;
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    yAxis += 40;
+
+    doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
+    doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
+    doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
+
+    doc.font("Helvetica");
+  }
+
+  const range = doc.bufferedPageRange();
+  let i;
+  let end;
+
+  for (
+    i = range.start, end = range.start + range.count, range.start <= end;
+    i < end;
+    i++
+  ) {
+    doc.switchToPage(i);
+    doc.text(
+      `Page ${i + 1} of ${range.count}`,
+      PAGE_WIDTH - 80,
+      PAGE_HEIGHT - 30
+    );
+    doc.text(
+      `Printed ${format(new Date(), "MM/dd/yyyy hh:mm a")}`,
+      20,
+      PAGE_HEIGHT - 30
+    );
+  }
+
+  doc.end();
+
+  writeStream.on("finish", (e: any) => {
+    console.log(`PDF created successfully at: ${outputFilePath}`);
+    const readStream = fs.createReadStream(outputFilePath);
+    readStream.pipe(res);
+
+    readStream.on("end", () => {
+      fs.unlink(outputFilePath, (err: any) => {
+        if (err) {
+          console.error("Error deleting file:", err);
+        } else {
+          console.log(`File ${outputFilePath} deleted successfully.`);
+        }
+      });
+    });
+  });
+}
+
+const depositDataCollection = async (req: Request) => {
+  const { queryDeposit, queryJournal } = DepositedCollections(
+    req.body.report,
+    req.body.subAccount.toUpperCase(),
+    new  Date(req.body.date),
+    req.body.order
+  );
+  const queryCollectionData: Array<any> = await prisma.$queryRawUnsafe(
+    queryDeposit
+  );
+
+  const data: any = queryCollectionData.map((itm: any) => {
+    itm.Debit = formatNumber(
+      parseFloat(itm.Debit?.toString().replace(/,/g, ""))
+    );
+    itm.Credit = formatNumber(
+      parseFloat(itm.Credit?.toString().replace(/,/g, ""))
+    );
+    itm.Account_ID =  `${itm.Account_ID}  ${itm.Account_Name}`
+    return itm;
+  });
+  const _summary: any = await prisma.$queryRawUnsafe(queryJournal);
+
+  const summary = _summary.map((itm: any) => {
+    itm.Title = `${itm.GL_Acct}   ${itm.Title}`;
+    itm.mDebit = formatNumber(
+      parseFloat(itm.mDebit.toString().replace(/,/g, ""))
+    );
+    itm.mCredit = formatNumber(
+      parseFloat(itm.mCredit.toString().replace(/,/g, ""))
+    );
+    return itm;
+  });
+
+  return { data, summary };
+};
+async function DepositCollections(req: Request, res: Response) {
+  const { data, summary } = await depositDataCollection(req);
+  console.log(data)
+
+  const headers = [
+    { label: "DATE", key: "Date_Deposit", style: { width: 60, textAlign: "left" } },
+    { label: "SLIP CODE", key: "Slip_Code", style: { width: 70, textAlign: "left" } },
+    {
+      label: "ACCOUNT NAME",
+      key: "Account_ID",
+      style: { width: 120, textAlign: "left" },
+    },
+    { label: "IDENTITY", key: "IDNo", style: { width: 200, textAlign: "left" } },
+    {
+      label: "BANK/BRANCH",
+      key: "Bank",
+      style: { width: 200, textAlign: "left" },
+    },
+    {
+      label: "CHECK #",
+      key: "cCheck_No",
+      style: { width: 65, textAlign: "left" },
+    },
+    {
+      label: "DEBIT",
+      key: "Debit",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "CREDIT",
+      key: "Credit",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "REF#",
+      key: "Ref_No",
+      style: { width: 100, textAlign: "left" },
+    },
+  ];
+
+  const summaryHeaders = [
+    {
+      label: "ACCOUNTING TITLE",
+      key: "Title",
+      style: { width: 250, textAlign: "left" },
+    },
+    { label: "DEBIT", key: "mDebit", style: { width: 80, textAlign: "right" } },
+    {
+      label: "CREDIT",
+      key: "mCredit",
+      style: { width: 80, textAlign: "right" },
+    },
+  ];
+  const outputFilePath = "manok.pdf";
+
+  const PAGE_WIDTH = 1020; // A4 Portrait width
+  const PAGE_HEIGHT = 595; // A4 Portrait height
+  const MARGINS = {
+    top: 100,
+    bottom: 50,
+    left: 20,
+    right: 20,
+  };
+  const rowFontSize = 9;
+  const doc = new PDFDocument({
+    margin: 0,
+    size: [PAGE_WIDTH, PAGE_HEIGHT],
+    bufferPages: true,
+  });
+  const writeStream = fs.createWriteStream(outputFilePath);
+  doc.pipe(writeStream);
+
+  function getRowHeight(itm: any, headers: any) {
+    const rowHeight = Math.max(
+      ...headers.map((hItm: any) => {
+        return doc.heightOfString(itm[hItm.key] || "-", {
+          width: hItm.style.width - 5,
+          align: hItm.style.textAlign,
+        });
+      }),
+      rowFontSize + 1
+    );
+
+    return rowHeight + 5;
+  }
+  function addPageHeader(header: Array<any>, y: number, _x: any = 0) {
+    doc.font("Helvetica-Bold");
+    doc.fontSize(11);
+    const rowHeight = Math.max(
+      ...header.map((itm) =>
+        doc.heightOfString(itm.label, { width: itm.style.width })
+      ),
+      10
+    );
+    let x = MARGINS.left + _x;
+    header.forEach((itm) => {
+      doc.text(itm.label, x, y, {
+        width: itm.style.width - 5,
+        align:
+          itm.label === "ACCOUNTING TITLE"
+            ? "center"
+            : itm.style.textAlign === "right"
+            ? "center"
+            : itm.style.textAlign,
+      });
+      x += itm.style.width + 5;
+    });
+    return y + rowHeight + 5;
+  }
+  function drawTitle() {
+    doc.font("Helvetica-Bold");
+    doc.fontSize(12);
+    doc.text(req.body.title, 20, 30);
+  }
+  function drawAfter(yAxis: any, rowHeight: any) {
+    doc.text("------ Nothing Follows -------", PAGE_WIDTH / 2 - 60, yAxis, {
+      width: 120,
+    });
+    doc.font("Helvetica-Bold");
+    yAxis += 20;
+    const DRAccount = headers.slice(0, 6).reduce((c: any, itm) => {
+      return (c += itm.style.width);
+    }, 0);
+
+    const CRAccount = headers.slice(0, 7).reduce((c: any, itm) => {
+      return (c += itm.style.width);
+    }, 0);
+    doc
+      .moveTo(DRAccount, yAxis - 5)
+      .lineTo(CRAccount + 130, yAxis - 5)
+      .lineWidth(1)
+      .stroke();
+
+    doc.text("TOTAL :", DRAccount - 50, yAxis, { width: 100 });
+    doc.text(formatNumber(getSum(data, "Debit")), DRAccount + 30, yAxis, {
+      width: 100,
+      align: "right",
+    });
+    doc.text(formatNumber(getSum(data, "Credit")), CRAccount + 30, yAxis, {
       width: 100,
       align: "right",
     });

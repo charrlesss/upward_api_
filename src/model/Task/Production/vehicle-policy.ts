@@ -10,11 +10,7 @@ export async function searchClientByNameOrByID(input: string, req: Request) {
         IF(a.company <> ''
                 AND a.company IS NOT NULL,
             a.company,
-            CONCAT(IF(a.lastname <> ''
-                            AND a.lastname IS NOT NULL,
-                        CONCAT(a.lastname, ', '),
-                        ''),
-                    a.firstname)) AS Name,
+            CONCAT(IF(a.lastname <> '' AND a.lastname IS NOT NULL, CONCAT(a.lastname, ', '),''),a.firstname, if(a.suffix <> '' and  a.suffix is not null,concat(', ',a.suffix),''))) AS Name,
         'Client' AS IDType,
          a.address,
          a.sale_officer
@@ -25,7 +21,7 @@ export async function searchClientByNameOrByID(input: string, req: Request) {
   a.IDNo like '%${input}%' OR
   a.name like '%${input}%' 
   order by a.name asc
-  limit 500
+  limit 100
   `;
   return (await prisma.$queryRawUnsafe(qry)) as any;
 }

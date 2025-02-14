@@ -741,7 +741,7 @@ model ledger {
 }
 
 model pdc {
-  PDC_ID          String  @id
+  PDC_ID           BigInt   @id @default(autoincrement())
   Ref_No          String  @db.VarChar(50)
   PNo             String? @db.VarChar(50)
   IDNo            String? @db.VarChar(50)

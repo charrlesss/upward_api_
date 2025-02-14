@@ -432,12 +432,15 @@ CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
         req
       );
 
+      console.log(PrintTable)
+
       PrintTable.push({
         Account: "",
         Identity: "",
         Debit: formatNumber(getSum(PrintTable, "Debit")),
         Credit: formatNumber(getSum(PrintTable, "Credit")),
       });
+
       let PAGE_WIDTH = 612;
       let PAGE_HEIGHT = 792;
       const props: any = {

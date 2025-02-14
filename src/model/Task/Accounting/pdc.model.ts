@@ -87,7 +87,7 @@ SELECT
             a.entry_client_id AS IDNo,
             sub_account,
             IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
-                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS Shortname,
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.suffix,'.'), CONCAT(a.lastname, ', ', a.firstname, ' ', a.suffix,'.'))) AS Shortname,
             a.entry_client_id AS client_id,
             a.address
     FROM
@@ -151,7 +151,7 @@ SELECT
             a.entry_client_id AS IDNo,
             sub_account,
             IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
-                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.middlename), CONCAT(a.lastname, ', ', a.firstname, ' ', a.middlename))) AS Shortname,
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.suffix,','), CONCAT(a.lastname, ', ', a.firstname, ' ', a.suffix,','))) AS Shortname,
             a.entry_client_id AS client_id,
             a.address
     FROM
@@ -270,7 +270,8 @@ export async function getPdcUpload(ref_no: string, req: Request) {
 }
 export async function deletePdcByRefNo(Ref_No: string, req: Request) {
 
-  return await prisma.pdc.deleteMany({ where: { Ref_No } });
+  // return await prisma.pdc.deleteMany({ where: { Ref_No } });
+ return await prisma.$queryRawUnsafe(`DELETE FROM PDC  where Ref_No ='${Ref_No}' `);
 }
 export async function createPDC(data: any, req: Request) {
 
@@ -289,7 +290,7 @@ export async function searchPDC(search: any, req: Request) {
         LEFT(a.Name, 7) <> '--Void'
             AND (a.Ref_No LIKE '%${search}%' OR a.Name LIKE '%${search}%')
     GROUP BY a.Ref_No , a.Date , a.Name
-    ORDER BY a.Date DESC , a.Name
+    ORDER BY a.Ref_No DESC
     LIMIT 50
   `);
 }

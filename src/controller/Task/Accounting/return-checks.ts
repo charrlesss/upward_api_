@@ -452,6 +452,7 @@ ReturnCheck.post("/return-checks/save", async (req, res) => {
         req
       );
     }
+    await updateRCID(req.body.refNo.split("-")[1], req);
 
     await saveUserLogs(
       req,

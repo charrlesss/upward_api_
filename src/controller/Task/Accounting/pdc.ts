@@ -24,6 +24,7 @@ import { VerifyToken } from "../../Authentication";
 import { format } from "date-fns";
 import PDFReportGenerator from "../../../lib/pdf-generator";
 import PDFDocument from "pdfkit";
+import { __executeQuery } from "../../../model/Task/Production/policy";
 const PDC = express.Router();
 
 PDC.post("/add-pdc", async (req, res) => {
@@ -53,22 +54,11 @@ PDC.post("/add-pdc", async (req, res) => {
     }
     await deletePdcByRefNo(req.body.Ref_No, req);
     const checks = JSON.parse(req.body.checks);
-    let num = 0;
-    const id = await IDGenerator("chk", "pdc-chk", req);
 
-    const year = format(new Date(), "yy");
-    const month = format(new Date(), "MM");
-    const count = id.split("-")[2];
-    num = parseInt(count, 10);
-    let newId = "";
     checks.forEach(async (check: any) => {
-      newId = "chk-" + num.toString().padStart(count.length, "0");
-      num++;
-
       if (check.DateDeposit === "") {
         await createPDC(
           {
-            PDC_ID: newId,
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
@@ -89,7 +79,6 @@ PDC.post("/add-pdc", async (req, res) => {
       } else {
         await createPDC(
           {
-            PDC_ID: newId,
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
@@ -111,8 +100,10 @@ PDC.post("/add-pdc", async (req, res) => {
         );
       }
     });
-    await UpdateId("pdc-chk", newId.split("-")[1], month, year, req);
-    await UpdateId("pdc", req.body.Ref_No.split(".")[1], month, year, req);
+
+    await UpdateId("pdc", req.body.Ref_No.split(".")[1], format(new Date(), "MM"), format(new Date(), "yy"), req);
+
+
     const uploadDir = path.join("./static/pdc", `${req.body.Ref_No}`);
     if (fs.existsSync(uploadDir)) {
       fs.rmSync(uploadDir, { recursive: true });
@@ -126,12 +117,10 @@ PDC.post("/add-pdc", async (req, res) => {
       },
       req
     );
-    const newPdcId = await pdcIDGenerator(req);
     await saveUserLogs(req, req.body.Ref_No, "add", "PDC");
     res.send({
       message: "Create New PDC Successfully.",
       success: true,
-      // PdcId: newPdcId,
     });
   } catch (error: any) {
     console.log(error.message);
@@ -149,7 +138,7 @@ PDC.post("/update-pdc", async (req, res) => {
   );
   if (userAccess.includes("ADMIN")) {
     return res.send({
-      message: `CAN'T UPDATE, ADMIN IS FOR VIEWING ONLY!`,
+      message: `CAN'T SAVE, ADMIN IS FOR VIEWING ONLY!`,
       success: false,
     });
   }
@@ -164,33 +153,20 @@ PDC.post("/update-pdc", async (req, res) => {
   }
 
   try {
+
     if (!(await saveUserLogsCode(req, "edit", req.body.Ref_No, "PDC"))) {
       return res.send({ message: "Invalid User Code", success: false });
     }
-    if ((await findPdc(req.body.Ref_No, req)).length <= 0) {
-      return res.send({
-        message: "REF No. you try to update is not exist!",
-        success: false,
-      });
-    }
+
 
     await deletePdcByRefNo(req.body.Ref_No, req);
     const checks = JSON.parse(req.body.checks);
-    let num = 0;
-    const id = await IDGenerator("pdc", "pdc", req);
-    const year = format(new Date(), "yy");
-    const month = format(new Date(), "MM");
-    const count = id.split("-")[2];
-    num = parseInt(count, 10);
-    let newId = "";
-    checks.forEach(async (check: any) => {
-      newId = num.toString().padStart(count.length, "0");
-      num++;
 
+   
+    checks.forEach(async (check: any) => {
       if (check.DateDeposit === "") {
         await createPDC(
           {
-            PDC_ID: newId,
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
@@ -201,7 +177,7 @@ PDC.post("/update-pdc", async (req, res) => {
             Branch: check.Branch,
             Check_Date: check.Check_Date,
             Check_No: check.Check_No,
-            Check_Amnt: check.Check_Amnt.replace(/,/g, ""),
+            Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
             ORNum: check.OR_No,
             PDC_Status: "Received",
@@ -211,7 +187,6 @@ PDC.post("/update-pdc", async (req, res) => {
       } else {
         await createPDC(
           {
-            PDC_ID: newId,
             Ref_No: req.body.Ref_No,
             PNo: req.body.PNo,
             IDNo: req.body.IDNo,
@@ -222,13 +197,10 @@ PDC.post("/update-pdc", async (req, res) => {
             Branch: check.Branch,
             Check_Date: check.Check_Date,
             Check_No: check.Check_No,
-            Check_Amnt: check.Check_Amnt.replace(/,/g, ""),
+            Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
-            SlipCode: req.body.Deposit_Slip,
-            DateDepo:
-              req.body.DateDeposit && req.body.DateDeposit !== ""
-                ? req.body.DateDeposit
-                : undefined,
+            SlipCode: check.Deposit_Slip,
+            DateDepo: check.DateDeposit === "" ? "" : check.DateDeposit,
             ORNum: check.OR_No,
             PDC_Status: "Received",
           },
@@ -237,29 +209,35 @@ PDC.post("/update-pdc", async (req, res) => {
       }
     });
 
+    
     const uploadDir = path.join("./static/pdc", `${req.body.Ref_No}`);
     if (fs.existsSync(uploadDir)) {
       fs.rmSync(uploadDir, { recursive: true });
     }
     const files = UploadFile(req.body.fileToSave, uploadDir, res);
-    await pdcUploadsUpdate(
+    await pdcUploads(
       {
+        pdc_upload_id: uuidV4(),
         ref_no: req.body.Ref_No,
         upload: JSON.stringify(files),
       },
       req
     );
-
-    // await UpdateId("pdc", newId, month, year, req);
-    res.send({ message: "Update PDC Successfully.", success: true });
+    await saveUserLogs(req, req.body.Ref_No, "update", "PDC");
+    res.send({
+      message: `Update PDC REF No ${req.body.Ref_No} Successfully.`,
+      success: true,
+    });
   } catch (error: any) {
     console.log(error.message);
-
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
+      PdcId: null,
     });
   }
+
+
 });
 PDC.post("/search-pdc-policy-id", async (req, res) => {
   try {

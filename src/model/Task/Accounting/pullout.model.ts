@@ -112,7 +112,7 @@ export async function loadDetails(req: Request, RCPNo: string) {
         c.Name ,
         a.Reason,
         b.CheckNo,
-        c.Check_Date,
+        date_format(c.Check_Date, '%Y-%m-%d') as Check_Date,
         c.Bank,
         b.CheckNo,
         c.Check_Amnt 

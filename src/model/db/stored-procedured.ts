@@ -1318,15 +1318,22 @@ export function AbstractCollections(
 export function DepositedCollections(
   reportType: string,
   subAcct: string,
-  _date: Date,
+  date: Date,
   order: string
 ) {
   let sWhere1 = "";
   let sWhere2 = "";
-  const date = parseDate(_date);
+  // const date = parseDate(_date);
+
+  // const formattedDate = format(date, "yyyy-MM-dd");
+  // console.log(formattedDate);
+  // const firstDayOfMonth = format(
+  //   new Date(date.getFullYear(), date.getMonth(), 1),
+  //   "yyyy-MM-dd"
+  // );
+
 
   const formattedDate = format(date, "yyyy-MM-dd");
-  console.log(formattedDate);
   const firstDayOfMonth = format(
     new Date(date.getFullYear(), date.getMonth(), 1),
     "yyyy-MM-dd"
