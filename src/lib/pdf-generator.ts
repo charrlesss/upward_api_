@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import { PassThrough } from "stream";
 import { Response } from "express";
+import { format } from "date-fns";
 
 interface PDFReportGeneratorProps {
   data: Array<any>;
@@ -37,6 +38,31 @@ interface PDFReportGeneratorProps {
   addPadingfFromLeft: any;
   addRowHeight: any;
   adjustTitleFontSize: number;
+}
+
+function pageNumber(doc:PDFKit.PDFDocument,PAGE_WIDTH:number ,PAGE_HEIGHT:number){
+   const range = doc.bufferedPageRange();
+    let i;
+    let end;
+  
+    for (
+      i = range.start, end = range.start + range.count, range.start <= end;
+      i < end;
+      i++
+    ) {
+      doc.font("Helvetica")
+      doc.switchToPage(i);
+      doc.text(
+        `Page ${i + 1} of ${range.count}`,
+        PAGE_WIDTH - 80,
+        PAGE_HEIGHT - 30
+      );
+      doc.text(
+        `Printed ${format(new Date(), "MM/dd/yyyy hh:mm a")}`,
+        20,
+        PAGE_HEIGHT - 30
+      );
+    }
 }
 class PDFReportGenerator {
   public data: Array<any> = [];
@@ -114,6 +140,7 @@ class PDFReportGenerator {
     this.addRowHeight = props.addRowHeight || null;
     this.adjustTitleFontSize = props.adjustTitleFontSize || 3;
   }
+
   setAlignment(rowIndex: number, columnIndex: number, align: string) {
     this.alignmentMap.set(rowIndex, { columnIndex, align });
   }
@@ -486,6 +513,7 @@ class PDFReportGenerator {
     const doc = new PDFDocument({
       size: [this.PAGE_WIDTH, this.PAGE_HEIGHT],
       margin: 0,
+      bufferPages:true
     });
 
     const writeStream = fs.createWriteStream(outputFilePath);
@@ -518,8 +546,9 @@ class PDFReportGenerator {
         if (this.beforePerPageDraw) {
           this.beforePerPageDraw(this, doc);
         }
-        this.drawPageNumber(doc, currentPage, 0, this);
-        doc.addPage();
+        // this.drawPageNumber(doc, currentPage, 0, this);
+        pageNumber(doc,this.PAGE_WIDTH,this.PAGE_HEIGHT)
+        doc.addPage({bufferPages:true});
 
         currentPage += 1;
         startY = this.drawTitleAndHeader(doc, this.MARGIN.top / 2);
@@ -531,7 +560,8 @@ class PDFReportGenerator {
     if (this.beforePerPageDraw) {
       this.beforePerPageDraw(this, doc);
     }
-    this.drawPageNumber(doc, currentPage, 0, this);
+    // this.drawPageNumber(doc, currentPage, 0, this);
+    pageNumber(doc,this.PAGE_WIDTH,this.PAGE_HEIGHT)
     doc.end();
     writeStream.on("finish", (e: any) => {
       console.log(`PDF created successfully at: ${outputFilePath}`);
@@ -549,6 +579,8 @@ class PDFReportGenerator {
       });
     });
   }
+
+
 }
 
 export default PDFReportGenerator;

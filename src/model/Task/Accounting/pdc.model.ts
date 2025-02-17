@@ -87,7 +87,7 @@ SELECT
             a.entry_client_id AS IDNo,
             sub_account,
             IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
-                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.suffix,'.'), CONCAT(a.lastname, ', ', a.firstname, ' ', a.suffix,'.'))) AS Shortname,
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ',if(a.suffix is not null and a.suffix <> '' , concat(a.suffix,'.'),'')), CONCAT(a.lastname, ', ', a.firstname, ' ', if(a.suffix is not null and a.suffix <> '' , concat(a.suffix,'.'),'')))) AS Shortname,
             a.entry_client_id AS client_id,
             a.address
     FROM
@@ -151,7 +151,7 @@ SELECT
             a.entry_client_id AS IDNo,
             sub_account,
             IF(a.option = 'company', a.company, IF(a.lastname IS NOT NULL
-                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', a.suffix,','), CONCAT(a.lastname, ', ', a.firstname, ' ', a.suffix,','))) AS Shortname,
+                AND TRIM(a.lastname) = '', CONCAT(a.firstname, ' ', if(a.suffix is not null and a.suffix <> '' , concat(a.suffix,'.'),'')), CONCAT(a.lastname, ', ', a.firstname, ' ', if(a.suffix is not null and a.suffix <> '' , concat(a.suffix,'.'),'')))) AS Shortname,
             a.entry_client_id AS client_id,
             a.address
     FROM
@@ -334,6 +334,7 @@ export async function getSearchPDCheck(ref_no: any, req: Request) {
         LEFT JOIN bank d ON a.Bank = d.Bank_Code
         WHERE
         a.Ref_No = '${ref_no}'
+        order by  a.Check_No
   `;
   console.log(qry);
   return await prisma.$queryRawUnsafe(qry);

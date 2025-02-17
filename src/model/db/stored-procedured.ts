@@ -1409,10 +1409,9 @@ export function DepositedCollections(
 export function ReturnedChecksCollection(
   reportType: string,
   subAcct: string,
-  _date: Date,
+  date: Date,
   order: string
 ) {
-  const date = parseDate(_date);
 
   let sWhere1 = "";
   let sWhere2 = "";
@@ -1449,8 +1448,8 @@ export function ReturnedChecksCollection(
             Journal.Explanation, 
             Journal.GL_Acct, 
             Journal.cGL_Acct, 
-            Journal.ID_No, 
-            Journal.cID_No, 
+               if(GL_Acct = '1.01.10' ,bankaccounts.IDNo, Journal.ID_No) as ID_No,
+             if(GL_Acct = '1.01.10' ,bankaccounts.Identity, Journal.cID_No) as cID_No,
             Journal.Check_No, 
             Journal.Check_Bank, 
             DATE_FORMAT(STR_TO_DATE(Check_Return, '%m/%d/%Y'),'%m/%d/%Y') as Check_Return, 
@@ -1460,6 +1459,7 @@ export function ReturnedChecksCollection(
             Journal.Credit as Credit, 
             'Monthly' AS Rpt 
     FROM Journal 
+    LEFT JOIN bankaccounts on Journal.ID_No = bankaccounts.IDNo
     ${sWhere1}
     ORDER BY Journal.Source_No ${order === "Ascending" ? "ASC" : "DESC"}
   `;
