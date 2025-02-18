@@ -547,8 +547,14 @@ class PDFReportGenerator {
           this.beforePerPageDraw(this, doc);
         }
         // this.drawPageNumber(doc, currentPage, 0, this);
-        pageNumber(doc,this.PAGE_WIDTH,this.PAGE_HEIGHT)
-        doc.addPage({bufferPages:true});
+        // pageNumber(doc,this.PAGE_WIDTH,this.PAGE_HEIGHT)
+        doc.addPage({
+          
+          size: [this.PAGE_WIDTH, this.PAGE_HEIGHT],
+          margin: 0,
+          bufferPages:true
+
+        });
 
         currentPage += 1;
         startY = this.drawTitleAndHeader(doc, this.MARGIN.top / 2);

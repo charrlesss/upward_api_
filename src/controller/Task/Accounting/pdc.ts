@@ -67,7 +67,7 @@ PDC.post("/add-pdc", async (req, res) => {
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: format(new Date(check.Check_Date) ,'yyyy-MM-dd') ,
+            Check_Date: format(new Date(check.Check_Date), "yyyy-MM-dd"),
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
@@ -87,7 +87,7 @@ PDC.post("/add-pdc", async (req, res) => {
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: format(new Date(check.Check_Date) ,'yyyy-MM-dd'),
+            Check_Date: format(new Date(check.Check_Date), "yyyy-MM-dd"),
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
@@ -101,8 +101,13 @@ PDC.post("/add-pdc", async (req, res) => {
       }
     });
 
-    await UpdateId("pdc", req.body.Ref_No.split(".")[1], format(new Date(), "MM"), format(new Date(), "yy"), req);
-
+    await UpdateId(
+      "pdc",
+      req.body.Ref_No.split(".")[1],
+      format(new Date(), "MM"),
+      format(new Date(), "yy"),
+      req
+    );
 
     const uploadDir = path.join("./static/pdc", `${req.body.Ref_No}`);
     if (fs.existsSync(uploadDir)) {
@@ -153,16 +158,13 @@ PDC.post("/update-pdc", async (req, res) => {
   }
 
   try {
-
     if (!(await saveUserLogsCode(req, "edit", req.body.Ref_No, "PDC"))) {
       return res.send({ message: "Invalid User Code", success: false });
     }
 
-
     await deletePdcByRefNo(req.body.Ref_No, req);
     const checks = JSON.parse(req.body.checks);
 
-   
     checks.forEach(async (check: any) => {
       if (check.DateDeposit === "") {
         await createPDC(
@@ -175,7 +177,7 @@ PDC.post("/update-pdc", async (req, res) => {
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: format(new Date(check.Check_Date) ,'yyyy-MM-dd') ,
+            Check_Date: format(new Date(check.Check_Date), "yyyy-MM-dd"),
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
@@ -195,7 +197,7 @@ PDC.post("/update-pdc", async (req, res) => {
             Remarks: req.body.Remarks,
             Bank: check.BankCode,
             Branch: check.Branch,
-            Check_Date: format(new Date(check.Check_Date) ,'yyyy-MM-dd') ,
+            Check_Date: format(new Date(check.Check_Date), "yyyy-MM-dd"),
             Check_No: check.Check_No,
             Check_Amnt: check.Check_Amnt,
             Check_Remarks: check.Check_Remarks,
@@ -209,7 +211,6 @@ PDC.post("/update-pdc", async (req, res) => {
       }
     });
 
-    
     const uploadDir = path.join("./static/pdc", `${req.body.Ref_No}`);
     if (fs.existsSync(uploadDir)) {
       fs.rmSync(uploadDir, { recursive: true });
@@ -236,8 +237,6 @@ PDC.post("/update-pdc", async (req, res) => {
       PdcId: null,
     });
   }
-
-
 });
 PDC.post("/search-pdc-policy-id", async (req, res) => {
   try {
@@ -384,8 +383,6 @@ PDC.post("/get-search-pdc-check", async (req, res) => {
 
 PDC.post("/print", async (req, res) => {
   try {
-    console.log(req.body);
-
     if (req.body.printOption === "labeling") {
       const outputFilePath = "manok.pdf";
       const doc = new PDFDocument({
@@ -432,140 +429,169 @@ PDC.post("/print", async (req, res) => {
       return;
     } else {
       const newData = req.body.pdcTableData.map((itm: any, idx: number) => {
-        return { ...itm, seq: idx + 1 };
+        return { ...itm, seq: idx+ 1 < 10 ? `0${idx +1}`: idx + 1 };
       });
+
       let PAGE_WIDTH = 612;
       let PAGE_HEIGHT = 792;
-      const props: any = {
-        data: newData,
-        BASE_FONT_SIZE: 8,
-        columnWidths: [70, 70, 150, 150, 90, 35],
-        headers: [
-          { headerName: "CHECK NO", textAlign: "left" },
-          { headerName: "DATE", textAlign: "left" },
-          { headerName: "BANK", textAlign: "left" },
-          { headerName: "BRANCH", textAlign: "left" },
-          { headerName: "AMOUNT", textAlign: "right" },
-          { headerName: "SEQ", textAlign: "right" },
-        ],
-        keys: [
-          "Check_No",
-          "Check_Date",
-          "BankName",
-          "Branch",
-          "Check_Amnt",
-          "seq",
-        ],
-        title: "",
-        PAGE_WIDTH,
-        PAGE_HEIGHT,
-        MARGIN: { top: 250, right: 10, bottom: 80, left: 10 },
-        beforeDraw: (pdfReportGenerator: any, doc: PDFKit.PDFDocument) => {
-          doc.text(req.body.reportTitle, 0, 40, {
-            align: "center",
-            baseline: "middle",
-          });
-          doc.text("Post Date Checks Receipt", 0, 52, {
-            align: "center",
-            baseline: "middle",
-          });
 
-          doc.fontSize(9);
-          // first line
-          doc.font("Helvetica-Bold");
-          doc.text("P.N. No. :", 20, 85, {
-            align: "left",
-          });
-          doc.font("Helvetica");
-          doc.text(req.body.state.PNo, 85, 85, {
-            align: "left",
-          });
-          doc.font("Helvetica-Bold");
-          doc.text("Reference No :", PAGE_WIDTH - 150, 85, {
-            align: "left",
-          });
-          doc.font("Helvetica");
-          doc.text(req.body.state.Ref_No, PAGE_WIDTH - 80, 85, {
-            align: "left",
-          });
+      const headers = [
+        { label: "CHECK NO", key: "Check_No" ,style:{align:"left",width:60} },
+        { label: "DATE", key: "Check_Date",style:{align:"left",width:60}  },
+        { label: "BANK", key: "BankName" ,style:{align:"left",width:170} },
+        { label: "BRANCH", key: "Branch",style:{align:"left",width:170}  },
+        { label: "AMOUNT", key: "Check_Amnt" ,style:{align:"right",width:80} },
+        { label: "SEQ", key: "seq" ,style:{align:"right",width:30} },
+      ];
 
-          // second line
-          doc.font("Helvetica-Bold");
-          doc.text("Client Name  :", 20, 100, {
-            align: "left",
-          });
-          doc.font("Helvetica");
-          doc.text(req.body.state.Name, 85, 100, {
-            align: "left",
-          });
-          doc.font("Helvetica-Bold");
-          doc.text("Date Received :", PAGE_WIDTH - 150, 100, {
-            align: "left",
-          });
-          doc.font("Helvetica");
-          doc.text(req.body.state.Date, PAGE_WIDTH - 80, 100, {
-            align: "left",
-          });
-          // third line
-          doc.font("Helvetica-Bold");
-          doc.text("Remarks :", 20, 115, {
-            align: "left",
-          });
-          doc.font("Helvetica");
-          doc.text(req.body.state.Remarks, 85, 115, {
-            align: "left",
-            width: PAGE_WIDTH - 150,
-          });
+      const outputFilePath = "manok.pdf";
+      const doc = new PDFDocument({
+        size: [PAGE_WIDTH, PAGE_HEIGHT],
+        margin: 0,
+        bufferPages: true,
+      });
 
-          doc.fontSize(9);
-          doc.font("Helvetica-Bold");
-        },
-        beforePerPageDraw: (
-          pdfReportGenerator: any,
-          doc: PDFKit.PDFDocument
-        ) => {
-          doc.font("Helvetica");
-          doc.text(
-            "Prepared : __________________     Checked : __________________      Approved : ___________________",
-            30,
-            pdfReportGenerator.PAGE_HEIGHT - 70,
-            {
-              align: "center",
-              width: PAGE_WIDTH - 60,
+      const writeStream = fs.createWriteStream(outputFilePath);
+      doc.pipe(writeStream);
+      doc.fontSize(12);
+      doc.text(req.body.reportTitle, 0, 35, {
+        align: "center",
+        baseline: "middle",
+      });
+      doc.text("Post Date Checks Receipt", 0, 52, {
+        align: "center",
+        baseline: "middle",
+      });
+
+      doc.fontSize(8);
+      // first line
+      doc.font("Helvetica-Bold");
+      doc.text("P.N. No. :", 20, 85, {
+        align: "left",
+      });
+      doc.font("Helvetica");
+      doc.text(req.body.state.PNo, 85, 85, {
+        align: "left",
+      });
+      doc.font("Helvetica-Bold");
+      doc.text("Reference No :", PAGE_WIDTH - 150, 85, {
+        align: "left",
+      });
+      doc.font("Helvetica");
+      doc.text(req.body.state.Ref_No, PAGE_WIDTH - 80, 85, {
+        align: "left",
+      });
+
+      // second line
+      doc.font("Helvetica-Bold");
+      doc.text("Client Name  :", 20, 100, {
+        align: "left",
+      });
+      doc.font("Helvetica");
+      doc.text(req.body.state.Name, 85, 100, {
+        align: "left",
+      });
+      doc.font("Helvetica-Bold");
+      doc.text("Date Received :", PAGE_WIDTH - 150, 100, {
+        align: "left",
+      });
+      doc.font("Helvetica");
+      doc.text(req.body.state.Date, PAGE_WIDTH - 80, 100, {
+        align: "left",
+      });
+      // third line
+      doc.font("Helvetica-Bold");
+      doc.text("Remarks :", 20, 115, {
+        align: "left",
+      });
+      doc.font("Helvetica");
+      doc.text(req.body.state.Remarks, 85, 115, {
+        align: "left",
+        width: PAGE_WIDTH - 150,
+      });
+      let yAxis = 115 + 35
+
+      doc.font("Helvetica-Bold");
+
+      let hx = 20
+      headers.forEach((colItm:any,colIndex:number) => {
+        doc.text(colItm.label, hx , yAxis , {
+          align: colItm.style.align === 'right' ? "center" : colItm.style.align,
+          width:colItm.style.width
+        });
+        hx += colItm.style.width
+      });
+
+
+      doc
+      .moveTo(20 , yAxis  + 12)
+      .lineTo(PAGE_WIDTH -20, yAxis + 12)
+      .stroke();
+
+       yAxis += 17
+
+
+       doc.font("Helvetica");
+
+      newData.forEach((rowItm:any,rowIndex:number) => {
+        const rowHeight = Math.max(...headers.map((itm:any)=>{
+          return doc.heightOfString(rowItm[itm.key],{
+            width:itm.style.width,
+            align:itm.style.align
+          })
+        }))
+        let x = 20
+        headers.forEach((colItm:any,colIndex:number) => {
+          doc.text(rowItm[colItm.key], x , yAxis , {
+            align: colItm.style.align,
+            width:colItm.style.width
+          });
+          x+= colItm.style.width
+        });
+
+        yAxis += (rowHeight + 3)
+      });
+      let xs = 10
+      doc.text(`Prepared : _______________________`, 20 + xs, PAGE_HEIGHT - 70, {
+        align: "left",
+        width:200
+      });
+
+      doc.text(`Checked : _______________________`, (20 + xs) + 200, PAGE_HEIGHT - 70, {
+        align: "left",
+        width:200
+      });
+
+      doc.text(`Approved : _______________________`, (20 + xs) + 400, PAGE_HEIGHT - 70, {
+        align: "left",
+        width:200
+      });
+
+      doc.text(`Printed ${format(new Date(), "MM/dd/yyyy hh:mm a")}`, 20, PAGE_HEIGHT - 30, {
+        align: "left",
+      });
+
+      doc.text(`Page 1 of 1`, PAGE_WIDTH - 120, PAGE_HEIGHT - 30, {
+        align: "right",
+        width:100
+      });
+
+      doc.end();
+      writeStream.on("finish", (e: any) => {
+        console.log(`PDF created successfully at: ${outputFilePath}`);
+        const readStream = fs.createReadStream(outputFilePath);
+        readStream.pipe(res);
+
+        readStream.on("end", () => {
+          fs.unlink(outputFilePath, (err) => {
+            if (err) {
+              console.error("Error deleting file:", err);
+            } else {
+              console.log(`File ${outputFilePath} deleted successfully.`);
             }
-          );
-        },
-        drawPageNumber: (
-          doc: PDFKit.PDFDocument,
-          currentPage: number,
-          totalPages: number,
-          pdfReportGenerator: any
-        ) => {
-          doc.font("Helvetica");
-          const pageNumberText = `Page ${currentPage}`;
-          doc.text(
-            pageNumberText,
-            PAGE_WIDTH - 130,
-            pdfReportGenerator.PAGE_HEIGHT - 35,
-            {
-              align: "right",
-              width: 100,
-            }
-          );
-
-          doc.text(
-            format(new Date(), "MM/dd/yyyy"),
-            -25,
-            pdfReportGenerator.PAGE_HEIGHT - 35,
-            {
-              align: "right",
-              width: 100,
-            }
-          );
-        },
-      };
-      const pdfReportGenerator = new PDFReportGenerator(props);
-      return pdfReportGenerator.generatePDF(res);
+          });
+        });
+      });
     }
   } catch (error: any) {
     console.log(error.message);
