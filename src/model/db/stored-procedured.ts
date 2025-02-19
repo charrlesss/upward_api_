@@ -1653,16 +1653,17 @@ export function PettyCashFundDisbursement(
 }
 export function CashDisbursementBook_CDB(
   subAccount: string,
-  _reportDate: Date,
+  reportDate: Date,
   dateFormat: string,
   sortOrder: string
 ) {
+  const {IDEntryWithPolicy} = qry_id_policy_sub()
+
   let sourceType = "CV";
   let strSQL = "";
   let strSubSQL = "";
   const qryJournals = qryJournal();
 
-  const reportDate = parseDate(_reportDate);
   const formattedDate = format(reportDate, "yyyy-MM-dd");
   const formattedMonthStart = format(startOfMonth(reportDate), "yyyy-MM-dd");
   const formattedMonthEnd = format(endOfMonth(reportDate), "yyyy-MM-dd");
@@ -1735,6 +1736,43 @@ export function CashDisbursementBook_CDB(
       `;
     }
   }
+
+  strSQL = `
+select 
+    a.Branch_Code,
+    a.Date_Query,
+    a.Date_Entry,
+    a.Source_Type,
+    a.Source_No,
+    a.Explanation,
+    a.Payto,
+    a.GL_Acct,
+    a.mShort,
+    a.Short,
+    a.ID_No,
+    a.Check_Collect,
+    a.Check_Date,
+    a.Checked,
+    a.Bank,
+    a.Check_Return,
+    a.Check_Deposit,
+    a.Check_Reason,
+    a.mDebit,
+    a.mCredit,
+    a.TC,
+    a.Remarks,
+    a.Books_Desc,
+    a.Hide_Code,
+    a.Number,
+    a.Book_Code,
+    id_entry.Sub_Acct as Sub_Acct,
+    id_entry.ShortName as mSub_Acct  ,
+    id_entry.client_name  as mID,
+    a.Auto,
+    a.Check_No
+ from (${strSQL}) a
+left join (${IDEntryWithPolicy}) id_entry on a.ID_No = id_entry.IDNo
+`
 
   return { strSQL, strSubSQL };
 }
