@@ -5,7 +5,7 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import env from "dotenv";
 import { createIdSequence } from "./src/model/StoredProcedure";
-
+import {hashSync} from 'bcrypt'
 env.config({ path: ".env.umis" });
 const PORT = process.env.PORT;
 
@@ -26,6 +26,7 @@ const corsOptions = {
 };
 
 async function main() {
+  console.log(hashSync('112021',12))
   const app = express();
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json({ limit: "1000mb" }));
