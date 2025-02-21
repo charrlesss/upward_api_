@@ -15,7 +15,7 @@ import {
 import { PrismaList } from "../../../model/connection";
 import { __executeQuery } from "../../../model/Task/Production/policy";
 import { qry_id_policy_sub, qryJournal } from "../../../model/db/views";
-import { format, subDays } from "date-fns";
+import { format, lastDayOfMonth, subDays } from "date-fns";
 import PDFReportGenerator from "../../../lib/pdf-generator";
 import { formatNumber, getSum } from "../Production/production-report";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
@@ -308,6 +308,21 @@ accountingReporting.post(
   async (req, res) => {
     try {
       GeneralJournalBookGJB(req, res);
+    } catch (err: any) {
+      res.send({
+        message: err.message,
+        success: false,
+        data: [],
+      });
+    }
+  }
+);
+// Aging of Accounts
+accountingReporting.post(
+  "/report/generate-report-aging-account",
+  async (req, res) => {
+    try {
+      AgingAccouts(req, res);
     } catch (err: any) {
       res.send({
         message: err.message,
@@ -5042,8 +5057,8 @@ async function PettyCashFundDisbursements(req: Request, res: Response) {
     });
   });
 }
-const cashDisbursementBookData = async (req:Request)=>{
-  const { strSQL,strSubSQL } = CashDisbursementBook_CDB(
+const cashDisbursementBookData = async (req: Request) => {
+  const { strSQL, strSubSQL } = CashDisbursementBook_CDB(
     req.body.subAccount.toUpperCase(),
     new Date(req.body.date),
     req.body.report,
@@ -5134,8 +5149,7 @@ const cashDisbursementBookData = async (req:Request)=>{
   }
   data = displayData(data);
   return { data, summary };
-
-}
+};
 async function CashDisbursementBook(req: Request, res: Response) {
   const { data, summary } = await cashDisbursementBookData(req);
 
@@ -5985,6 +5999,440 @@ async function GeneralJournalBookGJB(req: Request, res: Response) {
 
   doc.end();
 
+  writeStream.on("finish", (e: any) => {
+    console.log(`PDF created successfully at: ${outputFilePath}`);
+    const readStream = fs.createReadStream(outputFilePath);
+    readStream.pipe(res);
+
+    readStream.on("end", () => {
+      fs.unlink(outputFilePath, (err: any) => {
+        if (err) {
+          console.error("Error deleting file:", err);
+        } else {
+          console.log(`File ${outputFilePath} deleted successfully.`);
+        }
+      });
+    });
+  });
+}
+async function AgingAccouts(req: Request, res: Response) {
+  req.body.date = format(new Date(req.body.date),`yyyy-MM-${format(lastDayOfMonth(new Date(req.body.date)),'dd')}`)
+  const qry = AgingAccountsReport(req.body.date, req.body.policyType);
+
+  const _data = (await prisma.$queryRawUnsafe(qry)) as any;
+  const CurrentDate: any = new Date(req.body.date);
+
+  const data: any = _data.map((itm: any, idx: number) => {
+    const issuedDate:any = new Date(itm.DateIssued); // Directly parse YYYY-MM-DD
+    // Ensure the date is valid
+    if (isNaN(issuedDate.getTime())) {
+        console.log(`Invalid date format for: ${itm.DateIssued}`);
+        return;
+    }
+    // Calculate the difference in days
+    const dayDifference = Math.floor((CurrentDate - issuedDate) / (1000 * 60 * 60 * 24));
+    // Apply the logic
+    const result = itm.Balance < 0 
+        ? 0 
+        : dayDifference <= 90 
+            ? 0 
+            : dayDifference;
+
+    itm.DateIssued = format(new Date(itm.DateIssued),'MM/dd/yyyy')
+    return {
+      ...itm,
+      record: `${idx + 1 < 10 ? `0${idx + 1}` : idx + 1}`,
+      SumInsured: itm.EstimatedValue ? itm._EstimatedValue : "Group-PA",
+      agingAccounts :result.toLocaleString("en-US"),
+
+    };
+  });
+
+  const headers = [
+    {
+      label: "No",
+      key: "record",
+      style: { width: 30, textAlign: "left" },
+    },
+    {
+      label: "Client ID",
+      key: "IDNo",
+      style: { width: 80, textAlign: "left" },
+    },
+    {
+      label: "Client Name",
+      key: "Shortname",
+      style: { width: 150, textAlign: "left" },
+    },
+    {
+      label: "Policy",
+      key: "PolicyNo",
+      style: { width: 90, textAlign: "left" },
+    },
+    {
+      label: "Unit Insured",
+      key: "UnitInssured",
+      style: { width: 150, textAlign: "left" },
+    },
+    {
+      label: "Date Issued",
+      key: "DateIssued",
+      style: { width: 80, textAlign: "left" },
+    },
+    {
+      label: "Sum Insured",
+      key: "SumInsured",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "Gross Premium",
+      key: "_TotalDue",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "Payment Made",
+      key: "_TotalPaid",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "Comm.",
+      key: "_AgentCom",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "Disc.",
+      key: "_Discount",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "Collectible",
+      key: "_Balance",
+      style: { width: 80, textAlign: "right" },
+    },
+    {
+      label: "Days Due",
+      key: "due_days",
+      style: { width: 80, textAlign: "right" },
+    },
+  ];
+  const summary = [
+    {
+      Title:"Past Due :",
+      mDebit:data.length.toLocaleString("en-US"),
+      mCredit:formatNumber(getSum(data,'_Balance')),
+    }
+  ]
+  const summaryHeaders = [
+    {
+      label: `${format(new Date(req.body.date),'MMMM dd, yyyy')}`,
+      key: "Title",
+      style: { width: 250, textAlign: "right" },
+    },
+    { label: "No. OF ACCOUNTS", key: "mDebit", style: { width: 80, textAlign: "right" } },
+    {
+      label: "TOTAL BALANCE",
+      key: "mCredit",
+      style: { width: 80, textAlign: "right" },
+    },
+  ];
+  const outputFilePath = "manok.pdf";
+
+  const PAGE_WIDTH = 1230; // A4 Portrait width
+  const PAGE_HEIGHT = 595; // A4 Portrait height
+  const MARGINS = {
+    top: 100,
+    bottom: 50,
+    left: 20,
+    right: 20,
+  };
+  const rowFontSize = 9;
+  const doc = new PDFDocument({
+    margin: 0,
+    size: [PAGE_WIDTH, PAGE_HEIGHT],
+    bufferPages: true,
+  });
+  const writeStream = fs.createWriteStream(outputFilePath);
+  doc.pipe(writeStream);
+
+  function getRowHeight(itm: any, headers: any) {
+    const rowHeight = Math.max(
+      ...headers.map((hItm: any) => {
+        return doc.heightOfString(itm[hItm.key] || "-", {
+          width: hItm.style.width - 5,
+          align: hItm.style.textAlign,
+        });
+      }),
+      rowFontSize + 1
+    );
+
+    return rowHeight + 5;
+  }
+  function addPageHeader(header: Array<any>, y: number, _x: any = 0) {
+    doc.font("Helvetica-Bold");
+    doc.fontSize(11);
+    const rowHeight = Math.max(
+      ...header.map((itm) =>
+        doc.heightOfString(itm.label, { width: itm.style.width })
+      ),
+      10
+    );
+    let x = MARGINS.left + _x;
+    header.forEach((itm) => {
+      if (itm.key === "ID_No") {
+        doc.text(itm.label, x, y, {
+          width: header[2].style.width - 5 + (header[3].style.width - 5),
+          align: "center",
+        });
+      } else {
+        doc.text(itm.label, x, y, {
+          width: itm.style.width - 5,
+          align: itm.key === 'Title' ? "right" : 
+            itm.style.textAlign === "right" ? "center" : itm.style.textAlign,
+        });
+      }
+      x += itm.style.width + 5;
+    });
+    return y + rowHeight + 5;
+  }
+  function drawTitle() {
+    doc.font("Helvetica-Bold");
+    doc.fontSize(12);
+    doc.text(req.body.title, 20, 30);
+  }
+  function drawAfter(yAxis: any, rowHeight: any) {
+    doc.text("------ Nothing Follows ------", PAGE_WIDTH / 2 - 60, yAxis, {
+      width: 120,
+    });
+    doc.font("Helvetica-Bold");
+    yAxis += 30;
+    const DRAccount = headers.slice(0, 7).reduce((c: any, itm) => {
+      return (c += itm.style.width);
+    }, 0);
+
+    const CRAccount = headers.slice(0, 8).reduce((c: any, itm) => {
+      return (c += itm.style.width);
+    }, 0);
+
+    const CRaAccount = headers.slice(0, 11).reduce((c: any, itm) => {
+      return (c += itm.style.width);
+    }, 0);
+    doc
+      .moveTo(DRAccount, yAxis - 5)
+      .lineTo(CRaAccount + 150, yAxis - 5)
+      .lineWidth(1)
+      .stroke();
+
+    doc.text("TOTAL :", DRAccount - 50, yAxis, { width: 100 });
+    doc.text(formatNumber(getSum(data, "_TotalDue")), DRAccount + 40, yAxis, {
+      width: 100,
+      align: "right",
+    });
+    doc.text(formatNumber(getSum(data, "_TotalPaid")), CRAccount + 40, yAxis, {
+      width: 100,
+      align: "right",
+    });
+
+    doc.text(formatNumber(getSum(data, "_Balance")), CRaAccount + 50, yAxis, {
+      width: 100,
+      align: "right",
+    });
+
+    return rowHeight + yAxis;
+  }
+
+  drawTitle();
+  let currentPage = 1;
+  let yAxis = MARGINS.top;
+  yAxis = addPageHeader(headers, yAxis);
+
+  data.forEach((itm: any, idx: number) => {
+    let rowHeight = getRowHeight(itm, headers);
+
+    if (yAxis + rowHeight > PAGE_HEIGHT - MARGINS.bottom) {
+      currentPage = currentPage + 1;
+      doc.addPage({
+        size: [PAGE_WIDTH, PAGE_HEIGHT],
+        margin: 0,
+        bufferPages: true,
+      });
+      drawTitle();
+      yAxis = addPageHeader(headers, MARGINS.top);
+    }
+
+    let x = MARGINS.left;
+    headers.forEach((hItm: any) => {
+      const value = itm[hItm.key] || "-";
+      doc.font("Helvetica");
+      doc.fontSize(10);
+      doc.text(value, x, yAxis, {
+        width: hItm.style.width - 5,
+        align: value === "-" ? "center" : hItm.style.textAlign,
+      });
+      x += hItm.style.width + 5;
+    });
+    yAxis += rowHeight;
+  });
+
+  yAxis += 5;
+  yAxis = drawAfter(yAxis, 30);
+
+  // ================ SUAMMARY ========================
+
+
+  // summaryHeaders
+  const totalSumarryHeigth = summary.reduce((container: any, itm: any) => {
+    container += getRowHeight(itm, summaryHeaders);
+    return container;
+  }, 65);
+
+  if (yAxis + totalSumarryHeigth > PAGE_HEIGHT - MARGINS.top) {
+    console.log("here 1");
+    const extraX = 350;
+    currentPage = currentPage + 1;
+    doc.addPage({
+      size: [PAGE_WIDTH, PAGE_HEIGHT],
+      margin: 0,
+      bufferPages: true,
+    });
+
+    drawTitle();
+    let yAxis = MARGINS.top;
+    yAxis = addPageHeader(summaryHeaders, yAxis, extraX);
+    yAxis += 5
+    summary.forEach((itm: any, idx: number) => {
+      let rowHeight = getRowHeight(itm, summaryHeaders);
+
+      if (yAxis + rowHeight > PAGE_HEIGHT - MARGINS.bottom) {
+        currentPage = currentPage + 1;
+        doc.addPage({
+          size: [PAGE_WIDTH, PAGE_HEIGHT],
+          margin: 0,
+          bufferPages: true,
+        });
+        drawTitle();
+        yAxis = addPageHeader(summaryHeaders, MARGINS.top, extraX);
+      }
+
+      let x = MARGINS.left;
+      summaryHeaders.forEach((hItm: any) => {
+        const value = itm[hItm.key] || "-";
+        doc.font("Helvetica");
+        doc.fontSize(10);
+        doc.text(value, x + extraX, yAxis, {
+          width: hItm.style.width - 5,
+          align: value === "-" ? "center" : hItm.style.textAlign,
+        });
+        x += hItm.style.width + 5;
+      });
+
+      yAxis += rowHeight;
+    });
+
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    doc.font("Helvetica-Bold");
+    doc.text("TOTAL :", extraX + 227, yAxis + 5);
+    doc.text(getSum(summary, "mDebit").toLocaleString("en-US"), extraX + 270, yAxis + 5, {
+      width: 80,
+      align: "right",
+    });
+    doc.text(
+      formatNumber(getSum(summary, "mCredit")),
+      extraX + 270 + 85,
+      yAxis + 5,
+      { width: 80, align: "right" }
+    );
+    yAxis += 22;
+    // doc
+    //   .moveTo(extraX + 270, yAxis - 2)
+    //   .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+    //   .lineWidth(1)
+    //   .stroke();
+
+    yAxis += 40;
+
+    doc.font("Helvetica");
+  } else {
+    const extraX = 350;
+    yAxis += 50;
+    doc.font("Helvetica-Bold");
+    doc.text("SUMMARY:", extraX, yAxis);
+    yAxis += 30;
+    yAxis = addPageHeader(summaryHeaders, yAxis, extraX);
+    yAxis += 5
+    summary.forEach((itm: any, idx: number) => {
+      let rowHeight = getRowHeight(itm, summaryHeaders);
+      let x = MARGINS.left;
+      summaryHeaders.forEach((hItm: any) => {
+        const value = itm[hItm.key] || "-";
+        doc.font("Helvetica");
+        doc.fontSize(10);
+        doc.text(value, x + extraX, yAxis, {
+          width: hItm.style.width - 5,
+          align: value === "-" ? "center" : hItm.style.textAlign,
+        });
+        x += hItm.style.width + 5;
+      });
+      yAxis += rowHeight;
+    });
+
+    doc
+      .moveTo(extraX + 270, yAxis - 2)
+      .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+      .lineWidth(1)
+      .stroke();
+
+    doc.font("Helvetica-Bold");
+    doc.text("TOTAL :", extraX + 200, yAxis + 5);
+    doc.text(getSum(summary, "mDebit").toLocaleString("en-US"), extraX + 270, yAxis + 5, {
+      width: 80,
+      align: "right",
+    });
+    doc.text(
+      formatNumber(getSum(summary, "mCredit")),
+      extraX + 270 + 85,
+      yAxis + 5,
+      { width: 80, align: "right" }
+    );
+    yAxis += 22;
+    // doc
+    //   .moveTo(extraX + 270, yAxis - 2)
+    //   .lineTo(extraX + 270 + 80 + 85, yAxis - 2)
+    //   .lineWidth(1)
+    //   .stroke();
+
+    yAxis += 40;
+
+    doc.font("Helvetica");
+  }
+
+  const range = doc.bufferedPageRange();
+  let i;
+  let end;
+
+  for (
+    i = range.start, end = range.start + range.count, range.start <= end;
+    i < end;
+    i++
+  ) {
+    doc.switchToPage(i);
+    doc.text(
+      `Page ${i + 1} of ${range.count}`,
+      PAGE_WIDTH - 80,
+      PAGE_HEIGHT - 30
+    );
+    doc.text(
+      `Printed ${format(new Date(), "MM/dd/yyyy hh:mm a")}`,
+      20,
+      PAGE_HEIGHT - 30
+    );
+  }
+
+  doc.end();
   writeStream.on("finish", (e: any) => {
     console.log(`PDF created successfully at: ${outputFilePath}`);
     const readStream = fs.createReadStream(outputFilePath);

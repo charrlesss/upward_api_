@@ -240,7 +240,7 @@ export async function executeQuery(qry:string ,IDNo:string ,req:Request) {
 }
 
 
-export async function __executeQuery(qry:string ,req:Request) {
+export async function __executeQuery(qry:string ,req:any = null) {
   return await prisma.$queryRawUnsafe(qry)
 }
 export async function __executeQueryWithParams(qry:string,params:any[] ,req:Request) {

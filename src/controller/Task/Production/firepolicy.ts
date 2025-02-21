@@ -23,6 +23,7 @@ import {
   getPolicyAccount,
   getSubAccount,
   getMortgagee,
+  __executeQuery,
 } from "../../../model/Task/Production/policy";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
@@ -30,8 +31,67 @@ import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
 import { format } from "date-fns";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
-
 const FirePolicy = express.Router();
+
+
+///// new //////
+FirePolicy.get("/fire/get-occupancy",async (req,res)=>{
+  try {
+    res.send({
+      message: "Successfully get data",
+      success: true,
+      occupancy: await __executeQuery(`select '' as SubLineName union all select SubLineName from Subline where line = 'Fire';`)
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      occupancy: [],
+    });
+  }
+
+})
+FirePolicy.get("/fire/get-account",async (req,res)=>{
+  try {
+    res.send({
+      message: "Successfully get data",
+      success: true,
+      account: await __executeQuery(`SELECT '' as Account union all SELECT Account FROM policy_account where FIRE = true;`)
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      account: [],
+    });
+  }
+
+})
+FirePolicy.get("/fire/get-mortgagee",async (req,res)=>{
+  try {
+    res.send({
+      message: "Successfully get data",
+      success: true,
+      mortgagee: await __executeQuery(`SELECT '' as Mortgagee union all SELECT Mortgagee FROM mortgagee where Policy = 'FIRE';`)
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      mortgagee: [],
+    });
+  }
+
+})
+
+
+/////// old /////////
 FirePolicy.get("/get-fire-policy", async (req: Request, res: Response) => {
   try {
     promiseAll([
@@ -101,14 +161,13 @@ FirePolicy.get(
     }
   }
 );
-FirePolicy.get("/search-fire-policy", async (req: Request, res: Response) => {
+FirePolicy.post("/search-fire-policy", async (req: Request, res: Response) => {
   try {
-    console.log("wqeqw", req.query.searchFirePolicy);
     res.send({
       message: "Successfully search data",
       success: true,
-      firePolicy: await searchFirePolicy(
-        req.query.searchFirePolicy as string,
+      data: await searchFirePolicy(
+        req.body.search,
         req
       ),
     });
@@ -124,41 +183,41 @@ FirePolicy.get("/search-fire-policy", async (req: Request, res: Response) => {
 });
 async function insertFirePolicy(
   {
-    sub_account,
-    client_id,
-    client_name,
-    agent_id,
-    agent_com,
-    PolicyAccount,
-    PolicyNo,
-    bill_no,
-    DateFrom,
-    DateTo,
-    DateIssued,
-    locRisk,
-    propertyInsured,
-    construction,
-    occupancy,
-    boundaries,
-    mortgage,
-    warranties,
-    insuredValue,
-    percentagePremium,
-    totalPremium,
-    vat,
-    docStamp,
-    localGovTax,
-    totalDue,
+    subAccountRef,
+    clientIDRef,
+    clientNameRef,
+    agentIdRef,
+    agentCommisionRef,
+    accountRef,
+    policyNoRef,
+    billNoRef,
+    dateFromRef,
+    dateToRef,
+    dateIssuedRef,
+    locationRiskRef,
+    propertyInsuredRef,
+    constructionRef,
+    occupancyRef,
+    boundariesRef,
+    mortgageeSelect,
+    warrientiesRef,
+    insuredValueRef,
+    percentageRef,
+    totalPremiumRef,
+    vatRef,
+    docstampRef,
+    _localGovTaxRef,
+    totalDueRef,
     strArea,
     cStrArea,
-    fsTax
+    fsTaxRef
   }: any,
   req: Request
 ) {
 
-  DateFrom = defaultFormat(new Date(DateFrom))
-  DateTo = defaultFormat(new Date(DateTo))
-  DateIssued = defaultFormat(new Date(DateIssued))
+  dateFromRef = defaultFormat(new Date(dateFromRef))
+  dateToRef = defaultFormat(new Date(dateToRef))
+  dateIssuedRef = defaultFormat(new Date(dateIssuedRef))
 
   function formatNumber(num: number) {
     return (num || 0).toLocaleString("en-US", {
@@ -169,62 +228,62 @@ async function insertFirePolicy(
 
   await createPolicy(
     {
-      IDNo: client_id,
-      Account: PolicyAccount,
-      SubAcct: sub_account,
+      IDNo: clientIDRef,
+      Account: accountRef,
+      SubAcct: subAccountRef,
       PolicyType: "FIRE",
-      PolicyNo: PolicyNo,
-      DateIssued,
-      TotalPremium: parseFloat(totalPremium.replace(/,/g, '')),
-      Vat: (parseFloat(vat.replace(/,/g, ''))).toFixed(2),
-      DocStamp: (parseFloat(docStamp.replace(/,/g, ''))).toFixed(2),
-      FireTax: (parseFloat(fsTax.replace(/,/g, ''))).toFixed(2),
-      LGovTax: (parseFloat(localGovTax.replace(/,/g, ''))).toFixed(2),
+      PolicyNo: policyNoRef,
+      DateIssued:dateIssuedRef,
+      TotalPremium: parseFloat(totalPremiumRef.replace(/,/g, '')),
+      Vat: (parseFloat(vatRef.replace(/,/g, ''))).toFixed(2),
+      DocStamp: (parseFloat(docstampRef.replace(/,/g, ''))).toFixed(2),
+      FireTax: (parseFloat(fsTaxRef.replace(/,/g, ''))).toFixed(2),
+      LGovTax: (parseFloat(_localGovTaxRef.replace(/,/g, ''))).toFixed(2),
       Notarial: "0",
       Misc: "0",
-      TotalDue: (parseFloat(totalDue.replace(/,/g, ''))).toFixed(2),
+      TotalDue: (parseFloat(totalDueRef.replace(/,/g, ''))).toFixed(2),
       TotalPaid: "0",
       Journal: false,
-      AgentID: agent_id,
-      AgentCom: agent_com,
+      AgentID: agentIdRef,
+      AgentCom: agentCommisionRef,
     },
     req
   );
 
   await createFirePolicy(
     {
-      PolicyNo,
-      Account: PolicyAccount,
-      BillNo: bill_no,
-      DateFrom: DateFrom,
-      DateTo: DateTo,
-      Location: locRisk,
-      PropertyInsured: propertyInsured,
-      Constraction: construction,
-      Occupancy: occupancy,
-      Boundaries: boundaries,
-      Mortgage: mortgage,
-      Warranties: warranties,
-      InsuredValue:(parseFloat(insuredValue.replace(/,/g, ''))).toFixed(2) ,
-      Percentage: percentagePremium,
+      PolicyNo:policyNoRef,
+      Account: accountRef,
+      BillNo: billNoRef,
+      DateFrom: dateFromRef,
+      DateTo: dateToRef,
+      Location: locationRiskRef,
+      PropertyInsured: propertyInsuredRef,
+      Constraction: constructionRef,
+      Occupancy: occupancyRef,
+      Boundaries: boundariesRef,
+      Mortgage: mortgageeSelect,
+      Warranties: warrientiesRef,
+      InsuredValue:(parseFloat(insuredValueRef.replace(/,/g, ''))).toFixed(2) ,
+      Percentage: percentageRef,
     },
     req
   );
 
   await createJournal(
     {
-      Branch_Code: sub_account,
-      Date_Entry: DateIssued,
-      Source_No: PolicyNo,
+      Branch_Code: subAccountRef,
+      Date_Entry: dateIssuedRef,
+      Source_No: policyNoRef,
       Source_Type: "PL",
       Explanation: "Fire Production",
       GL_Acct: "1.03.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "Premium Receivable",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
-      Debit: parseFloat(totalDue).toFixed(2),
+      cID_No: clientNameRef,
+      Debit: parseFloat(totalDueRef).toFixed(2),
       Credit: "0",
       TC: "P/R",
       Remarks: "",
@@ -235,19 +294,19 @@ async function insertFirePolicy(
 
   await createJournal(
     {
-      Branch_Code: sub_account,
-      Date_Entry: DateIssued,
-      Source_No: PolicyNo,
+      Branch_Code: subAccountRef,
+      Date_Entry: dateIssuedRef,
+      Source_No: policyNoRef,
       Source_Type: "PL",
       Explanation: "Fire Production",
       GL_Acct: "4.02.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "A/P",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
+      cID_No: clientNameRef,
       Debit: 0,
-      Credit: parseFloat(totalDue).toFixed(2),
+      Credit: parseFloat(totalDueRef).toFixed(2),
       TC: "A/P",
       Remarks: "",
       Source_No_Ref_ID: "FIRE",
@@ -268,10 +327,10 @@ FirePolicy.post("/add-fire-policy", async (req, res) => {
     });
   }
 
-  const { sub_account, client_id, PolicyAccount, PolicyNo, occupancy } =
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef, occupancyRef } =
     req.body;
   try {
-    if (await findPolicy(PolicyNo, req)) {
+    if (await findPolicy(policyNoRef, req)) {
       return res.send({
         message: "Unable to save! Policy No. already exists!",
         success: false,
@@ -279,7 +338,7 @@ FirePolicy.post("/add-fire-policy", async (req, res) => {
     }
     //get Commision rate
     const rate = (
-      (await getRate(PolicyAccount, "Fire", occupancy, req)) as Array<any>
+      (await getRate(accountRef, "Fire", occupancyRef, req)) as Array<any>
     )[0];
 
     if (rate == null) {
@@ -289,12 +348,12 @@ FirePolicy.post("/add-fire-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = ((await getClientById(clientIDRef, req)) as Array<any>)[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
     await insertFirePolicy({ ...req.body, cStrArea, strArea }, req);
-    await saveUserLogs(req, PolicyNo, "add", "Fire Policy");
+    await saveUserLogs(req, policyNoRef, "add", "Fire Policy");
     res.send({ message: "Create Fire Policy Successfully", success: true });
   } catch (error: any) {
     console.log(error.message);
@@ -316,16 +375,16 @@ FirePolicy.post("/update-fire-policy", async (req, res) => {
       success: false,
     });
   }
-  const { sub_account, client_id, PolicyAccount, PolicyNo, occupancy } =
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef, occupancyRef } =
     req.body;
   try {
-    if (!(await saveUserLogsCode(req, "edit", PolicyNo, "Fire Policy"))) {
+    if (!(await saveUserLogsCode(req, "edit", policyNoRef, "Fire Policy"))) {
       return res.send({ message: "Invalid User Code", success: false });
     }
 
     //get Commision rate
     const rate = (
-      (await getRate(PolicyAccount, "Fire", occupancy, req)) as Array<any>
+      (await getRate(accountRef, "Fire", occupancyRef, req)) as Array<any>
     )[0];
 
     if (rate == null) {
@@ -335,18 +394,18 @@ FirePolicy.post("/update-fire-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = ((await getClientById(clientIDRef, req)) as Array<any>)[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
 
 
     //delete policy
-    await deletePolicyFromFire(PolicyNo, req);
+    await deletePolicyFromFire(policyNoRef, req);
     //delete v policy
-    await deleteFirePolicy(PolicyNo, req);
+    await deleteFirePolicy(policyNoRef, req);
     //delete journal
-    await deleteJournalBySource(PolicyNo, "PL", req);
+    await deleteJournalBySource(policyNoRef, "PL", req);
 
     // insert fire policy
     await insertFirePolicy({ ...req.body, cStrArea, strArea }, req);

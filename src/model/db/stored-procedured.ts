@@ -2210,7 +2210,7 @@ export function VATBook(
   return { strSQL, strSubSQL };
 }
 export function AgingAccountsReport(date: Date, type: string) {
-  const formattedDate = format(new Date(parseDate(date)), "yyyy-MM-dd");
+  const formattedDate = format(new Date(date), "yyyy-MM-dd");
   console.log(formattedDate);
   let query = "";
 
@@ -2284,7 +2284,7 @@ export function AgingAccountsReport(date: Date, type: string) {
                     WHEN CGLPolicy.Location IS NOT NULL THEN CGLPolicy.Location
                     ELSE (concat(VPolicy.Make,' ',VPolicy.BodyType))
                 END AS UnitInssured,
-                date_format(Policy.DateIssued,'%d/%m/%Y') as DateIssued,
+                date_format(Policy.DateIssued,'%Y-%m-%d') as DateIssued,
                 CASE 
                     WHEN MPolicy.InsuredValue IS NOT NULL THEN MPolicy.InsuredValue
                     WHEN FPolicy.InsuredValue IS NOT NULL THEN FPolicy.InsuredValue
@@ -2339,7 +2339,7 @@ export function AgingAccountsReport(date: Date, type: string) {
                     WHEN CGLPolicy.Location IS NOT NULL THEN CGLPolicy.Location
                     ELSE (concat(VPolicy.Make,' ',VPolicy.BodyType))
                 END AS UnitInssured,
-                date_format(Policy.DateIssued,'%d/%m/%Y') as DateIssued,
+                date_format(Policy.DateIssued,'%Y-%m-%d') as DateIssued,
                 CASE 
                     WHEN MPolicy.InsuredValue IS NOT NULL THEN MPolicy.InsuredValue
                     WHEN FPolicy.InsuredValue IS NOT NULL THEN FPolicy.InsuredValue
