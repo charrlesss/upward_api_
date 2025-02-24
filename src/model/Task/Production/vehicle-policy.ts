@@ -44,7 +44,7 @@ export async function searchAgentByNameOrByID(input: string, req: Request) {
     a.IDNo like '%${input}%' OR
     a.name like '%${input}%' 
     order by a.name asc
-    limit 500
+    limit 100
   `;
   return (await prisma.$queryRawUnsafe(qry)) as any;
 }

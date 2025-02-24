@@ -262,12 +262,14 @@ ReturnCheck.post("/return-checks/return-checks-search", async (req, res) => {
   try {
     const qry = `
       SELECT 
-      date_format(RC_Date,'%M %d %Y') AS RefDate,
-      RC_No AS RefNo,
-      Explanation FROM Return_Checks
+        date_format(RC_Date,'%M %d %Y') AS RefDate,
+        RC_No AS RefNo,
+        Explanation
+      FROM Return_Checks
       WHERE (Left(Explanation,7)<>'-- Void') AND 
       (RC_No LIKE '%${req.body.search}%' OR Explanation LIKE '%${req.body.search}%')
-      GROUP BY RC_Date, RC_No, Explanation ORDER BY RC_Date
+      GROUP BY RC_Date, RC_No, Explanation 
+      ORDER BY RC_Date desc , RC_No desc
       `;
     console.log(qry);
     res.send({

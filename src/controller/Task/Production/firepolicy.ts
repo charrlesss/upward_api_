@@ -15,6 +15,7 @@ import {
   deletePolicyFromFire,
   getRateType,
   searchFirePolicy,
+  searchFirePolicySelected,
 } from "../../../model/Task/Production/fire-policy";
 
 import {
@@ -181,6 +182,26 @@ FirePolicy.post("/search-fire-policy", async (req: Request, res: Response) => {
     });
   }
 });
+FirePolicy.post("/selected-search-fire-policy", async (req: Request, res: Response) => {
+  try {
+    res.send({
+      message: "Successfully search data",
+      success: true,
+      data: await searchFirePolicySelected(req.body.policyNo),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      vehiclePolicy: null,
+    });
+  }
+});
+
+
+
 async function insertFirePolicy(
   {
     subAccountRef,

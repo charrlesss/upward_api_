@@ -22,6 +22,7 @@ import {
 import {
   getSubAccount,
   getPolicyAccount,
+  __executeQuery,
 } from "../../../model/Task/Production/policy";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
@@ -31,6 +32,25 @@ import { format } from "date-fns";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const MarinePolicy = express.Router();
+
+MarinePolicy.get("/marine/get-account",async (req, res) => {
+    try {
+      res.send({
+        message: "Successfully get data",
+        success: true,
+        account: await __executeQuery(`SELECT '' as Account union all SELECT Account FROM policy_account where MAR = true;`)
+      });
+    } catch (error: any) {
+      console.log(error.message);
+  
+      res.send({
+        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+        success: false,
+        account: [],
+      });
+    }
+});
+
 
 MarinePolicy.get("/get-marine-policy", (req, res) => {
   try {

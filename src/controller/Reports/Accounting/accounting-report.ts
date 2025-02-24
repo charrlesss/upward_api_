@@ -4956,9 +4956,9 @@ async function PettyCashFundDisbursements(req: Request, res: Response) {
 
     yAxis += 40;
 
-    // doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
-    // doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
-    // doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
+    doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
+    doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
+    doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
 
     doc.font("Helvetica");
   } else {
@@ -5435,9 +5435,9 @@ async function CashDisbursementBook(req: Request, res: Response) {
 
     yAxis += 40;
 
-    // doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
-    // doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
-    // doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
+    doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
+    doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
+    doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
 
     doc.font("Helvetica");
   } else {
@@ -5914,9 +5914,9 @@ async function GeneralJournalBookGJB(req: Request, res: Response) {
 
     yAxis += 40;
 
-    // doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
-    // doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
-    // doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
+    doc.text("Prepared : ___________", extraX + 20, yAxis + 5);
+    doc.text("Checked : ___________", extraX + 150 + 20, yAxis + 5);
+    doc.text("Approved : ___________", extraX + 300 + 20, yAxis + 5);
 
     doc.font("Helvetica");
   } else {

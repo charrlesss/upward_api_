@@ -183,8 +183,10 @@ VehiclePolicy.post("/search-policy", async (req, res) => {
         `
         SELECT 
           date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
-          Policy.PolicyNo, Policy.Account, 
-          ID_Entry.cID_No AS Name
+          Policy.PolicyNo, 
+          Policy.Account, 
+          ID_Entry.cID_No AS Name,
+          VPolicy.ChassisNo
         FROM Policy
         LEFT JOIN FPolicy ON Policy.PolicyNo = FPolicy.PolicyNo 
         LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 

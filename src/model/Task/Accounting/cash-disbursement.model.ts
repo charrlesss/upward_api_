@@ -385,7 +385,7 @@ export async function searchCashDisbursement(search: string, req: Request) {
         LEFT(a.Explanation, 7) <> '-- Void'
             AND (a.Source_No LIKE '%${search}%'
             OR a.Explanation LIKE '%${search}%')
-            ORDER BY a.Source_No
+            ORDER BY a.Date_Entry  desc, Source_No desc 
     LIMIT 50;
     `
   );
