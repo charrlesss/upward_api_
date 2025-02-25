@@ -17,6 +17,7 @@ import {
   getWords,
   deleteMarinePolicy,
   deletePolicyFromMarine,
+  getSearchMarinePolicySelected
 } from "../../../model/Task/Production/marine-policy";
 
 import {
@@ -33,24 +34,45 @@ import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const MarinePolicy = express.Router();
 
-MarinePolicy.get("/marine/get-account",async (req, res) => {
-    try {
-      res.send({
-        message: "Successfully get data",
-        success: true,
-        account: await __executeQuery(`SELECT '' as Account union all SELECT Account FROM policy_account where MAR = true;`)
-      });
-    } catch (error: any) {
-      console.log(error.message);
-  
-      res.send({
-        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-        success: false,
-        account: [],
-      });
-    }
+MarinePolicy.get("/marine/get-account", async (req, res) => {
+  try {
+    res.send({
+      message: "Successfully get data",
+      success: true,
+      account: await __executeQuery(
+        `SELECT '' as Account union all SELECT Account FROM policy_account where MAR = true;`
+      ),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      account: [],
+    });
+  }
 });
 
+MarinePolicy.get("/marine/get-words", async (req, res) => {
+  try {
+    res.send({
+      message: "Successfully get data",
+      success: true,
+      words: await __executeQuery(
+        `SELECT * FROM Words WHERE Wordings = 'MPolicy' `
+      ),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      words: [],
+    });
+  }
+});
 
 MarinePolicy.get("/get-marine-policy", (req, res) => {
   try {
@@ -92,10 +114,10 @@ MarinePolicy.post("/add-marine-policy", async (req, res) => {
     });
   }
 
-  const { sub_account, client_id, PolicyAccount, PolicyNo } = req.body;
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef } = req.body;
 
   try {
-    if (await findPolicy(PolicyNo, req)) {
+    if (await findPolicy(policyNoRef, req)) {
       return res.send({
         message: "Unable to save! Policy No. already exists!",
         success: false,
@@ -103,7 +125,7 @@ MarinePolicy.post("/add-marine-policy", async (req, res) => {
     }
     //get Commision rate
     const rate = (
-      (await getMarineRate(PolicyAccount, "Marine", req)) as Array<any>
+      (await getMarineRate(accountRef, "Marine", req)) as Array<any>
     )[0];
 
     if (rate == null) {
@@ -113,12 +135,14 @@ MarinePolicy.post("/add-marine-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = (
+      (await getClientById(clientIDRef, req)) as Array<any>
+    )[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
     await insertMarinePolicy({ ...req.body, cStrArea, strArea }, req);
-    await saveUserLogs(req, PolicyNo, "add", "Marine Policy");
+    await saveUserLogs(req, policyNoRef, "add", "Marine Policy");
     res.send({ message: "Create Marine Policy Successfully", success: true });
   } catch (err: any) {
     console.log(err.message);
@@ -129,24 +153,41 @@ MarinePolicy.post("/add-marine-policy", async (req, res) => {
   }
 });
 
-MarinePolicy.get(
+MarinePolicy.post(
   "/search-marine-policy",
   async (req: Request, res: Response) => {
     try {
       res.send({
         message: "Successfully search data",
         success: true,
-        marinePolicy: await searchMarinePolicy(
-          req.query.searchMarinePolicy as string,
-          req
-        ),
+        data: await searchMarinePolicy(req.body.search, req),
       });
     } catch (error: any) {
       console.log(error.message);
       res.send({
         message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
         success: false,
-        vehiclePolicy: null,
+        data: [],
+      });
+    }
+  }
+);
+
+MarinePolicy.post(
+  "/get-selected-search-marine-policy",
+  async (req: Request, res: Response) => {
+    try {
+      res.send({
+        message: "Successfully search data",
+        success: true,
+        data: await getSearchMarinePolicySelected(req.body.policyNo),
+      });
+    } catch (error: any) {
+      console.log(error.message);
+      res.send({
+        message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+        success: false,
+        data: [],
       });
     }
   }
@@ -164,15 +205,17 @@ MarinePolicy.post("/update-marine-policy", async (req, res) => {
       success: false,
     });
   }
-  const { sub_account, client_id, PolicyAccount, PolicyNo } = req.body;
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef } = req.body;
   try {
-    if (!(await saveUserLogsCode(req, "update", PolicyNo, "Marine Policy"))) {
+    if (
+      !(await saveUserLogsCode(req, "update", policyNoRef, "Marine Policy"))
+    ) {
       return res.send({ message: "Invalid User Code", success: false });
     }
 
     //get Commision rate
     const rate = (
-      (await getMarineRate(PolicyAccount, "Marine", req)) as Array<any>
+      (await getMarineRate(accountRef, "Marine", req)) as Array<any>
     )[0];
     if (rate == null) {
       return res.send({
@@ -181,18 +224,19 @@ MarinePolicy.post("/update-marine-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = (
+      (await getClientById(clientIDRef, req)) as Array<any>
+    )[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
 
-
     //delete policy
-    await deletePolicyFromMarine(PolicyNo, req);
+    await deletePolicyFromMarine(policyNoRef, req);
     //delete m policy
-    await deleteMarinePolicy(PolicyNo, req);
+    await deleteMarinePolicy(policyNoRef, req);
     //delete journal
-    await deleteJournalBySource(PolicyNo, "PL", req);
+    await deleteJournalBySource(policyNoRef, "PL", req);
 
     // insert fire policy
     await insertMarinePolicy({ ...req.body, cStrArea, strArea }, req);
@@ -246,82 +290,79 @@ MarinePolicy.post("/delete-marine-policy", async (req, res) => {
 async function insertMarinePolicy(
   {
     sub_account,
-    client_id,
-    client_name,
-    agent_id,
-    agent_com,
-    PolicyAccount,
-    PolicyNo,
-    DateFrom,
-    DateTo,
-    DateIssued,
-    insuredValue,
-    percentagePremium,
-    totalPremium,
-    vat,
-    docStamp,
-    localGovTax,
-    totalDue,
-    location,
-    consignee,
-    smi,
-    vessel,
-    add_info,
-    point_orig,
-    point_dis,
-    prem_text_one,
-    prem_text_two,
+    clientIDRef,
+    clientNameRef,
+    agentIdRef,
+    agentCommisionRef,
+    accountRef,
+    policyNoRef,
+    dateFromRef,
+    dateToRef,
+    dateIssuedRef,
+    insuredValueRef,
+    percentageRef,
+    totalPremiumRef,
+    vatRef,
+    docstampRef,
+    _localGovTaxRef,
+    totalDueRef,
+    locationRef,
+    consigneeRef,
+    subjectMatterInsuredRef,
+    vesselRef,
+    additionalInformationRef,
+    pointOriginRef,
+    pointDestinationRef,
+    remarks1Ref,
+    remarks2Ref,
     strArea,
     cStrArea,
   }: any,
   req: Request
 ) {
-
-
-  DateFrom = defaultFormat(new Date(DateFrom))
-  DateTo = defaultFormat(new Date(DateTo))
-  DateIssued = defaultFormat(new Date(DateIssued))
-
+  dateFromRef = defaultFormat(new Date(dateFromRef));
+  dateToRef = defaultFormat(new Date(dateToRef));
+  dateIssuedRef = defaultFormat(new Date(dateIssuedRef));
 
   await createPolicy(
     {
-      IDNo: client_id,
-      Account: PolicyAccount,
+      IDNo: clientIDRef,
+      Account: accountRef,
       SubAcct: sub_account,
       PolicyType: "MAR",
-      PolicyNo: PolicyNo,
-      DateIssued,
-      TotalPremium: parseFloat(totalPremium.replace(/,/g, '')),
-      Vat: parseFloat(vat.replace(/,/g, '')).toFixed(2),
-      DocStamp: parseFloat(docStamp.replace(/,/g, '')).toFixed(2),
+      PolicyNo: policyNoRef,
+      DateIssued: dateIssuedRef,
+      TotalPremium: parseFloat(totalPremiumRef.replace(/,/g, "")),
+      Vat: parseFloat(vatRef.replace(/,/g, "")).toFixed(2),
+      DocStamp: parseFloat(docstampRef.replace(/,/g, "")).toFixed(2),
       FireTax: "0",
-      LGovTax: parseFloat(localGovTax.replace(/,/g, '')).toFixed(2),
+      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, "")).toFixed(2),
       Notarial: "0",
       Misc: "0",
-      TotalDue: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
+      TotalDue: parseFloat(totalDueRef.replace(/,/g, "")).toFixed(2),
       TotalPaid: "0",
       Journal: false,
-      AgentID: agent_id,
-      AgentCom: agent_com,
+      AgentID: agentIdRef,
+      AgentCom: agentCommisionRef,
     },
     req
   );
 
   await createMarinePolicy(
     {
-      PolicyNo,
-      Account: PolicyAccount,
-      Location: location,
-      DateFrom: DateFrom,
-      DateTo: DateTo,
-      PointOfOrigin: point_orig,
-      PointofDestination: point_dis,
-      Vessel: vessel,
-      AdditionalInfo: add_info,
-      SubjectInsured: smi,
-      Consignee: consignee,
-      InsuredValue: parseFloat(insuredValue.replace(/,/g, '')),
-      Percentage: percentagePremium,
+      PolicyNo: policyNoRef,
+      Account: accountRef,
+      Location: locationRef,
+      DateFrom: dateFromRef,
+      DateTo: dateToRef,
+      PointOfOrigin: pointOriginRef,
+      PointofDestination: pointDestinationRef,
+      Vessel: vesselRef,
+      AdditionalInfo: additionalInformationRef,
+      SubjectInsured: subjectMatterInsuredRef,
+      Consignee: consigneeRef,
+      InsuredValue: parseFloat(insuredValueRef.replace(/,/g, "")),
+      Percentage: percentageRef,
     },
     req
   );
@@ -329,7 +370,7 @@ async function insertMarinePolicy(
   for (let i = 0; i <= 1; i++) {
     const wording = "MPolicy";
     const sType = i === 0 ? false : true;
-    const phrase = i === 0 ? prem_text_one : prem_text_two;
+    const phrase = i === 0 ?   remarks2Ref : remarks1Ref;
     await createWords(
       {
         Wordings: wording,
@@ -343,17 +384,17 @@ async function insertMarinePolicy(
   await createJournal(
     {
       Branch_Code: sub_account,
-      Date_Entry: DateIssued,
+      Date_Entry: dateIssuedRef,
       Source_Type: "PL",
-      Source_No: PolicyNo,
+      Source_No: policyNoRef,
       Explanation: "Marine Production",
       GL_Acct: "1.03.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "Premium Receivable",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
-      Debit: parseFloat(totalDue).toFixed(2),
+      cID_No: clientNameRef,
+      Debit: parseFloat(totalDueRef).toFixed(2),
       Credit: "0",
       TC: "P/R",
       Remarks: "",
@@ -365,18 +406,18 @@ async function insertMarinePolicy(
   await createJournal(
     {
       Branch_Code: sub_account,
-      Date_Entry: DateIssued,
+      Date_Entry: dateIssuedRef,
       Source_Type: "PL",
-      Source_No: PolicyNo,
+      Source_No: policyNoRef,
       Explanation: "Marine Production",
       GL_Acct: "4.02.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "A/P",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
+      cID_No: clientNameRef,
       Debit: 0,
-      Credit: parseFloat(totalDue).toFixed(2),
+      Credit: parseFloat(totalDueRef).toFixed(2),
       TC: "A/P",
       Remarks: "",
       Source_No_Ref_ID: "MAR",

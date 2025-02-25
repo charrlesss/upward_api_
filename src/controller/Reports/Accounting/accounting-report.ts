@@ -2773,15 +2773,15 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
   let qry = "";
   let sortQry = "";
   let whereQry = "";
-  if ((req.body.sort = "Name")) {
+  if ((req.body.sort === "Name")) {
     sortQry = `Order By Name ${
       req.body.order === "Ascending" ? "ASC" : "DESC"
     }`;
-  } else if ((req.body.sort = "Check Date")) {
+  } else if (req.body.sort === "Check Date") {
     sortQry = `Order By Check_Date ${
       req.body.order === "Ascending" ? "ASC" : "DESC"
     }`;
-  } else if ((req.body.sort = "Date Received")) {
+  } else if (req.body.sort === "Date Received") {
     sortQry = `Order By Date ${
       req.body.order === "Ascending" ? "ASC" : "DESC"
     }`;
@@ -2822,6 +2822,9 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
       }
       break;
   }
+
+  console.log(qry)
+
   const data_ = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
 
   function groupData(_data: any) {
@@ -3105,15 +3108,15 @@ async function PostDatedChecksRegistryExcel(req: Request, res: Response) {
   let qry = "";
   let sortQry = "";
   let whereQry = "";
-  if ((req.body.sort = "Name")) {
+  if (req.body.sort === "Name") {
     sortQry = `Order By Name ${
       req.body.order === "Ascending" ? "ASC" : "DESC"
     }`;
-  } else if ((req.body.sort = "Check Date")) {
+  } else if (req.body.sort === "Check Date") {
     sortQry = `Order By Check_Date ${
       req.body.order === "Ascending" ? "ASC" : "DESC"
     }`;
-  } else if ((req.body.sort = "Date Received")) {
+  } else if (req.body.sort === "Date Received") {
     sortQry = `Order By Date ${
       req.body.order === "Ascending" ? "ASC" : "DESC"
     }`;
@@ -3154,6 +3157,7 @@ async function PostDatedChecksRegistryExcel(req: Request, res: Response) {
       }
       break;
   }
+
   const data_ = (await prisma.$queryRawUnsafe(qry)) as Array<any>;
 
   function groupData(_data: any) {

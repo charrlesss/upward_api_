@@ -1,4 +1,4 @@
-import express, { Request } from "express";
+import express, { Request, Response } from "express";
 import promiseAll from "../../../lib/promise-all";
 import {
   createJournal,
@@ -14,10 +14,12 @@ import {
   deleteCGLPolicy,
   deletePolicyByCGL,
   searchCGLPolicy,
+  searchCGLPolicySelected,
 } from "../../../model/Task/Production/cgl-policy";
 import {
   getSubAccount,
   getPolicyAccount,
+  __executeQuery,
 } from "../../../model/Task/Production/policy";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
@@ -27,30 +29,43 @@ import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const CGLPolicy = express.Router();
 
-CGLPolicy.get("/get-cgl-policy", (req, res) => {
+CGLPolicy.get("/cgl/get-account", async (req, res) => {
   try {
-    promiseAll([getSubAccount(req), getPolicyAccount("CGL", req)]).then(
-      ([sub_account, policy_account]: any) => {
-        res.send({
-          message: "Successfully get data",
-          success: true,
-          cglPolicy: {
-            sub_account,
-            policy_account,
-          },
-        });
-      }
-    );
+    res.send({
+      message: "Successfully get data",
+      success: true,
+      account: await __executeQuery(
+        `SELECT '' as Account union all SELECT Account FROM policy_account where CGL = true;`
+      ),
+    });
   } catch (error: any) {
     console.log(error.message);
+
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
-      cglPolicy: null,
+      account: [],
     });
   }
 });
 
+CGLPolicy.post("/selected-search-cgl-policy", async (req: Request, res: Response) => {
+  try {
+    res.send({
+      message: "Successfully search data",
+      success: true,
+      data: await searchCGLPolicySelected(req.body.policyNo),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      vehiclePolicy: null,
+    });
+  }
+});
 CGLPolicy.post("/add-cgl-policy", async (req, res) => {
   convertToPassitive(req);
   const { userAccess }: any = await VerifyToken(
@@ -63,9 +78,9 @@ CGLPolicy.post("/add-cgl-policy", async (req, res) => {
       success: false,
     });
   }
-  const { sub_account, client_id, PolicyAccount, PolicyNo } = req.body;
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef } = req.body;
   try {
-    if (await findPolicy(PolicyNo, req)) {
+    if (await findPolicy(policyNoRef, req)) {
       return res.send({
         message: "Unable to save! Policy No. already exists!",
         success: false,
@@ -73,9 +88,7 @@ CGLPolicy.post("/add-cgl-policy", async (req, res) => {
     }
 
     // get Commision rate
-    const rate = (
-      (await getMSPRRate(PolicyAccount, "CGL", req)) as Array<any>
-    )[0];
+    const rate = ((await getMSPRRate(accountRef, "CGL", req)) as Array<any>)[0];
 
     if (rate == null) {
       return res.send({
@@ -84,12 +97,14 @@ CGLPolicy.post("/add-cgl-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = (
+      (await getClientById(clientIDRef, req)) as Array<any>
+    )[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
     await insertCGLPolicy({ ...req.body, cStrArea, strArea }, req);
-    await saveUserLogs(req, PolicyNo, "add", "CGL Policy");
+    await saveUserLogs(req, policyNoRef, "add", "CGL Policy");
     res.send({ message: "Create CGL Policy Successfully", success: true });
   } catch (error: any) {
     console.log(error.message);
@@ -100,15 +115,12 @@ CGLPolicy.post("/add-cgl-policy", async (req, res) => {
   }
 });
 
-CGLPolicy.get("/search-cgl-policy", async (req, res) => {
+CGLPolicy.post("/search-cgl-policy", async (req, res) => {
   try {
     res.send({
       message: "Successfully search data",
       success: true,
-      cglPolicy: await searchCGLPolicy(
-        req.query.searchCglPolicy as string,
-        req
-      ),
+      data: await searchCGLPolicy(req.body.search),
     });
   } catch (error: any) {
     console.log(error.message);
@@ -116,7 +128,7 @@ CGLPolicy.get("/search-cgl-policy", async (req, res) => {
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
-      cglPolicy: null,
+      data: [],
     });
   }
 });
@@ -133,16 +145,14 @@ CGLPolicy.post("/update-cgl-policy", async (req, res) => {
       success: false,
     });
   }
-  const { sub_account, client_id, PolicyAccount, PolicyNo } = req.body;
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef } = req.body;
   try {
-    if (!(await saveUserLogsCode(req, "edit", PolicyNo, "CGL Policy"))) {
+    if (!(await saveUserLogsCode(req, "edit", policyNoRef, "CGL Policy"))) {
       return res.send({ message: "Invalid User Code", success: false });
     }
 
     //get Commision rate
-    const rate = (
-      (await getMSPRRate(PolicyAccount, "CGL", req)) as Array<any>
-    )[0];
+    const rate = ((await getMSPRRate(accountRef, "CGL", req)) as Array<any>)[0];
 
     if (rate == null) {
       return res.send({
@@ -151,18 +161,18 @@ CGLPolicy.post("/update-cgl-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = (
+      (await getClientById(clientIDRef, req)) as Array<any>
+    )[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
 
-    await deleteCGLPolicy(PolicyNo, req);
-    await deletePolicyByCGL(PolicyNo, req);
-    await deleteJournalBySource(PolicyNo, "PL", req);
+    await deleteCGLPolicy(policyNoRef, req);
+    await deletePolicyByCGL(policyNoRef, req);
+    await deleteJournalBySource(policyNoRef, "PL", req);
 
-    req.body.sumInsured = parseFloat(
-      req.body.sumInsured.toString().replace(/,/, "")
-    ).toFixed(2);
+
 
     // insert CGL policy
     await insertCGLPolicy({ ...req.body, cStrArea, strArea }, req);
@@ -209,57 +219,56 @@ CGLPolicy.post("/delete-cgl-policy", async (req, res) => {
 
 async function insertCGLPolicy(
   {
-    sub_account,
-    client_id,
-    client_name,
-    agent_id,
-    agent_com,
-    PolicyAccount,
-    PolicyNo,
-    DateFrom,
-    DateTo,
-    DateIssued,
+    subAccountRef,
+    clientIDRef,
+    clientNameRef,
+    agentIdRef,
+    agentCommisionRef,
+    accountRef,
+    policyNoRef,
+    dateFromRef,
+    dateToRef,
+    dateIssuedRef,
     blPremium,
     pdPremium,
-    netPremium,
-    vat,
-    docStamp,
-    localGovTax,
-    totalDue,
-    premisisOperation,
+    netPremiumRef,
+    vatRef,
+    docstampRef,
+    _localGovTaxRef,
+    totalDueRef,
+    premisesOperationsRef,
     strArea,
     cStrArea,
-    address,
-    sumInsured,
+    addressRef,
+    sumInsuredRef,
   }: any,
   req: Request
 ) {
-
-  DateFrom = defaultFormat(new Date(DateFrom))
-  DateTo = defaultFormat(new Date(DateTo))
-  DateIssued = defaultFormat(new Date(DateIssued))
+  dateFromRef = defaultFormat(new Date(dateFromRef));
+  dateToRef = defaultFormat(new Date(dateToRef));
+  dateIssuedRef = defaultFormat(new Date(dateIssuedRef));
 
   //   create  Policy
   await createPolicy(
     {
-      IDNo: client_id,
-      Account: PolicyAccount,
-      SubAcct: sub_account,
+      IDNo: clientIDRef,
+      Account: accountRef,
+      SubAcct: subAccountRef,
       PolicyType: "CGL",
-      PolicyNo: PolicyNo,
-      DateIssued,
-      TotalPremium: parseFloat(netPremium),
-      Vat: parseFloat(vat.replace(/,/g, '')).toFixed(2),
-      DocStamp: parseFloat(docStamp.replace(/,/g, '')).toFixed(2),
+      PolicyNo: policyNoRef,
+      DateIssued: dateIssuedRef,
+      TotalPremium: parseFloat(netPremiumRef.toString().replace(/,/g, "")),
+      Vat: parseFloat(vatRef.replace(/,/g, "")).toFixed(2),
+      DocStamp: parseFloat(docstampRef.replace(/,/g, "")).toFixed(2),
       FireTax: "0",
-      LGovTax: parseFloat(localGovTax.replace(/,/g, '')).toFixed(2),
+      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, "")).toFixed(2),
       Notarial: "0",
       Misc: "0",
-      TotalDue: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
+      TotalDue: parseFloat(totalDueRef.replace(/,/g, "")).toFixed(2),
       TotalPaid: "0",
       Journal: false,
-      AgentID: agent_id,
-      AgentCom: agent_com,
+      AgentID: agentIdRef,
+      AgentCom: agentCommisionRef,
     },
     req
   );
@@ -267,15 +276,15 @@ async function insertCGLPolicy(
   // create CGL Policy
   await createCGLPolicy(
     {
-      PolicyNo,
-      Account: PolicyAccount,
-      Location: premisisOperation,
-      PeriodFrom: DateFrom,
-      PeriodTo: DateTo,
-      LimitA: blPremium,
-      LimitB: pdPremium,
-      address,
-      sumInsured,
+      PolicyNo: policyNoRef,
+      Account: accountRef,
+      Location: premisesOperationsRef,
+      PeriodFrom: dateFromRef,
+      PeriodTo: dateToRef,
+      LimitA: parseFloat((blPremium || "0.00").replace(/,/g, "")),
+      LimitB: parseFloat((pdPremium || "0.00").replace(/,/g, "")),
+      address: addressRef,
+      sumInsured: parseFloat((sumInsuredRef || "0.00").replace(/,/g, "")),
     },
     req
   );
@@ -283,18 +292,18 @@ async function insertCGLPolicy(
   //debit
   await createJournal(
     {
-      Branch_Code: sub_account,
-      Date_Entry: DateIssued,
+      Branch_Code: subAccountRef,
+      Date_Entry: dateIssuedRef,
       Source_Type: "PL",
-      Source_No: PolicyNo,
+      Source_No: policyNoRef,
       Explanation: "CGL Production",
       GL_Acct: "1.03.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "Premium Receivable",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
-      Debit: parseFloat(totalDue).toFixed(2),
+      cID_No: clientNameRef,
+      Debit: parseFloat(totalDueRef).toFixed(2),
       Credit: "0",
       TC: "P/R",
       Remarks: "",
@@ -306,19 +315,19 @@ async function insertCGLPolicy(
   //credit
   await createJournal(
     {
-      Branch_Code: sub_account,
-      Date_Entry: DateIssued,
+      Branch_Code: subAccountRef,
+      Date_Entry: dateIssuedRef,
       Source_Type: "PL",
-      Source_No: PolicyNo,
+      Source_No: policyNoRef,
       Explanation: "CGL Production",
       GL_Acct: "4.02.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "A/P",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
+      cID_No: clientNameRef,
       Debit: "0",
-      Credit: parseFloat(totalDue).toFixed(2),
+      Credit: parseFloat(totalDueRef).toFixed(2),
       TC: "A/P",
       Remarks: "",
       Source_No_Ref_ID: "CGL",

@@ -84,10 +84,11 @@ export async function searchFirePolicySelected(policyNo: string) {
 
   const query = `
   select 
-    a.*,
-    b.*,
     c.*,
     d.*,
+    a.*,
+    b.*,
+   
     c.address as client_address
    FROM fpolicy a
     left join policy b

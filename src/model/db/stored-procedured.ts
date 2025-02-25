@@ -1609,7 +1609,7 @@ export function PettyCashFundDisbursement(
           CRShort,
           Credit
       FROM petty_cash
-      WHERE petty_cash.PC_No >= '${from}' AND petty_cash.PC_No <= '${to}'`;
+      WHERE petty_cash.PC_No >= '${from}' AND petty_cash.PC_No <= '${to}' order by PC_No`;
 
     dtSummaryQuery = `
       SELECT Journal.GL_Acct, Chart_Account.Acct_Title AS Title, SUM(IFNULL(Journal.Debit, 0)) AS mDebit, SUM(IFNULL(Journal.Credit, 0)) AS mCredit
@@ -1617,7 +1617,9 @@ export function PettyCashFundDisbursement(
       LEFT JOIN Chart_Account ON Journal.GL_Acct = Chart_Account.Acct_Code
       WHERE Journal.Source_Type = 'PC' AND Journal.Source_No >= '${from}' AND Journal.Source_No <= '${to}'
       GROUP BY Journal.GL_Acct, Chart_Account.Acct_Title
-      HAVING Journal.GL_Acct <> ''`;
+      HAVING Journal.GL_Acct <> ''
+      
+      `;
   } else {
     dtPettyCashQuery = `
       SELECT
@@ -1632,7 +1634,7 @@ export function PettyCashFundDisbursement(
           CRShort,
           Credit
       FROM petty_cash
-      WHERE petty_cash.PC_No >= '${from}' AND petty_cash.PC_No <= '${to}' AND petty_cash.SubAcct = '${subAcct}'`;
+      WHERE petty_cash.PC_No >= '${from}' AND petty_cash.PC_No <= '${to}' AND petty_cash.SubAcct = '${subAcct}' order by PC_No`;
 
     dtSummaryQuery = `
       SELECT Journal.GL_Acct, Chart_Account.Acct_Title AS Title, SUM(IFNULL(Journal.Debit, 0)) AS mDebit, SUM(IFNULL(Journal.Credit, 0)) AS mCredit

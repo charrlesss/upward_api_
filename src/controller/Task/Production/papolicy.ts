@@ -1,4 +1,4 @@
-import express, { Request } from "express";
+import express, { Request ,Response} from "express";
 import promiseAll from "../../../lib/promise-all";
 import {
   createJournal,
@@ -14,12 +14,13 @@ import {
   searchPAPolicy,
   deletePAPolicy,
   deletePolicyByPAPolicy,
-  findPAPolicy,
+  searchPAPolicySelected
 } from "../../../model/Task/Production/pa-ppolicy";
 
 import {
   getSubAccount,
   getPolicyAccount,
+  __executeQuery,
 } from "../../../model/Task/Production/policy";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
@@ -29,33 +30,30 @@ import { defaultFormat } from "../../../lib/defaultDateFormat";
 
 const PAPolicy = express.Router();
 
-PAPolicy.get("/get-pa-policy", (req, res) => {
+PAPolicy.get("/pa/get-account",async (req,res)=>{
   try {
-    promiseAll([getSubAccount(req), getPolicyAccount("PA", req)]).then(
-      ([sub_account, policy_account]: any) => {
-        res.send({
-          message: "Successfully get data",
-          success: true,
-          paPolicy: {
-            sub_account,
-            policy_account,
-          },
-        });
-      }
-    );
+    res.send({
+      message: "Successfully get data",
+      success: true,
+      account: await __executeQuery(`SELECT '' as Account union all SELECT Account FROM policy_account where PA = true;`)
+    });
   } catch (error: any) {
     console.log(error.message);
+
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
-      paPolicy: null,
+      account: [],
     });
   }
-});
+
+})
+
 
 PAPolicy.post("/add-pa-policy", async (req, res) => {
+  console.log(req.body)
   convertToPassitive(req);
-  const { sub_account, client_id, PolicyAccount, PolicyNo } = req.body;
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef } = req.body;
 
   const { userAccess }: any = await VerifyToken(
     req.cookies["up-ac-login"] as string,
@@ -70,7 +68,7 @@ PAPolicy.post("/add-pa-policy", async (req, res) => {
   }
 
   try {
-    if (await findPolicy(PolicyNo, req)) {
+    if (await findPolicy(policyNoRef, req)) {
       return res.send({
         message: "Unable to save! Policy No. already exists!",
         success: false,
@@ -78,7 +76,7 @@ PAPolicy.post("/add-pa-policy", async (req, res) => {
     }
     // get Commision rate
     const rate = (
-      (await getMSPRRate(PolicyAccount, "PA", req)) as Array<any>
+      (await getMSPRRate(accountRef, "PA", req)) as Array<any>
     )[0];
 
     if (rate == null) {
@@ -88,15 +86,15 @@ PAPolicy.post("/add-pa-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = ((await getClientById(clientIDRef, req)) as Array<any>)[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
-    req.body.sumInsured = parseFloat(
-      req.body.sumInsured.toString().replace(/,/, "")
+    req.body.sumInsuredRef = parseFloat(
+      req.body.sumInsuredRef.toString().replace(/,/, "")
     ).toFixed(2);
     await insertPaPolicy({ ...req.body, cStrArea, strArea }, req);
-    await saveUserLogs(req, PolicyNo, "add", "PA Policy");
+    await saveUserLogs(req, policyNoRef, "add", "PA Policy");
     res.send({ message: "Create PA Policy Successfully", success: true });
   } catch (error: any) {
     console.log(error.message);
@@ -107,12 +105,12 @@ PAPolicy.post("/add-pa-policy", async (req, res) => {
   }
 });
 
-PAPolicy.get("/search-pa-policy", async (req, res) => {
+PAPolicy.post("/selected-search-pa-policy", async (req: Request, res: Response) => {
   try {
     res.send({
       message: "Successfully search data",
       success: true,
-      paPolicy: await searchPAPolicy(req.query.searchPaPolicy as string, req),
+      data: await searchPAPolicySelected(req.body.policyNo),
     });
   } catch (error: any) {
     console.log(error.message);
@@ -120,7 +118,25 @@ PAPolicy.get("/search-pa-policy", async (req, res) => {
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
-      paPolicy: null,
+      vehiclePolicy: null,
+    });
+  }
+});
+
+PAPolicy.post("/search-pa-policy", async (req, res) => {
+  try {
+    res.send({
+      message: "Successfully search data",
+      success: true,
+      data: await searchPAPolicy(req.body.search),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
     });
   }
 });
@@ -139,14 +155,14 @@ PAPolicy.post("/update-pa-policy", async (req, res) => {
     });
   }
 
-  const { sub_account, client_id, PolicyAccount, PolicyNo } = req.body;
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef } = req.body;
   try {
-    if (!(await saveUserLogsCode(req, "update", PolicyNo, "PA Policy"))) {
+    if (!(await saveUserLogsCode(req, "update", policyNoRef, "PA Policy"))) {
       return res.send({ message: "Invalid User Code", success: false });
     }
     //get Commision rate
     const rate = (
-      (await getMSPRRate(PolicyAccount, "PA", req)) as Array<any>
+      (await getMSPRRate(accountRef, "PA", req)) as Array<any>
     )[0];
     if (rate === null || rate === undefined) {
       return res.send({
@@ -155,18 +171,18 @@ PAPolicy.post("/update-pa-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = ((await getClientById(clientIDRef, req)) as Array<any>)[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
 
 
     //delete policy
-    await deletePolicyByPAPolicy(PolicyNo, req);
+    await deletePolicyByPAPolicy(policyNoRef, req);
     // //delete PA policy
-    await deletePAPolicy(PolicyNo, req);
+    await deletePAPolicy(policyNoRef, req);
     // //delete journal
-    await deleteJournalBySource(PolicyNo, "PL", req);
+    await deleteJournalBySource(policyNoRef, "PL", req);
 
     // insert pa policy
     await insertPaPolicy({ ...req.body, cStrArea, strArea }, req);
@@ -218,54 +234,54 @@ PAPolicy.post("/delete-pa-policy", async (req, res) => {
 
 async function insertPaPolicy(
   {
-    sub_account,
-    client_id,
-    client_name,
-    agent_id,
-    agent_com,
-    PolicyAccount,
-    PolicyNo,
-    DateFrom,
-    DateTo,
-    DateIssued,
-    propertyInsured,
-    netPremium,
-    vat,
-    docStamp,
-    localGovTax,
-    totalDue,
+    subAccountRef,
+    clientIDRef,
+    clientNameRef,
+    agentIdRef,
+    agentCommisionRef,
+    accountRef,
+    policyNoRef,
+    dateFromRef,
+    dateToRef,
+    dateIssuedRef,
+    propertyInsuredRef,
+    netPremiumRef,
+    vatRef,
+    docstampRef,
+    _localGovTaxRef,
+    totalDueRef,
     strArea,
     cStrArea,
-    sumInsured,
+    sumInsuredRef,
   }: any,
   req: Request
 ) {
 
-  DateFrom = defaultFormat(new Date(DateFrom))
-  DateTo = defaultFormat(new Date(DateTo))
-  DateIssued = defaultFormat(new Date(DateIssued))
+  dateFromRef = defaultFormat(new Date(dateFromRef))
+  dateToRef = defaultFormat(new Date(dateToRef))
+  dateIssuedRef = defaultFormat(new Date(dateIssuedRef))
 
   //   create  Policy
   await createPolicy(
     {
-      IDNo: client_id,
-      Account: PolicyAccount,
-      SubAcct: sub_account,
+      IDNo: clientIDRef,
+      Account: accountRef,
+      SubAcct: subAccountRef,
       PolicyType: "PA",
-      PolicyNo: PolicyNo,
-      DateIssued,
-      TotalPremium: parseFloat(parseFloat(netPremium).toFixed(2)),
-      Vat: parseFloat(vat.replace(/,/g, '')).toFixed(2),
-      DocStamp: parseFloat(docStamp.replace(/,/g, '')).toFixed(2),
+      PolicyNo: policyNoRef,
+      DateIssued:dateIssuedRef,
+      TotalPremium: parseFloat(netPremiumRef.toString().replace(/,/g,'')),
+      Vat: parseFloat(vatRef.replace(/,/g, '')).toFixed(2),
+      DocStamp: parseFloat(docstampRef.replace(/,/g, '')).toFixed(2),
       FireTax: "0",
-      LGovTax: parseFloat(localGovTax.replace(/,/g, '')).toFixed(2),
+      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, '')).toFixed(2),
       Notarial: "0",
       Misc: "0",
-      TotalDue: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
+      TotalDue: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
       TotalPaid: "0",
       Journal: false,
-      AgentID: agent_id,
-      AgentCom: agent_com,
+      AgentID: agentIdRef,
+      AgentCom: agentCommisionRef,
     },
     req
   );
@@ -273,12 +289,12 @@ async function insertPaPolicy(
   // create PA Policy
   await createPAPolicy(
     {
-      PolicyNo,
-      Account: PolicyAccount,
-      Location: propertyInsured,
-      PeriodFrom: DateFrom,
-      PeriodTo: DateTo,
-      sumInsured: parseFloat(sumInsured.replace(/,/g, '')),
+      PolicyNo:policyNoRef,
+      Account: accountRef,
+      Location: propertyInsuredRef,
+      PeriodFrom: dateFromRef,
+      PeriodTo: dateToRef,
+      sumInsured: parseFloat(sumInsuredRef.replace(/,/g, '')),
     },
     req
   );
@@ -286,18 +302,18 @@ async function insertPaPolicy(
   //debit
   await createJournal(
     {
-      Branch_Code: sub_account,
-      Date_Entry: DateIssued,
+      Branch_Code: subAccountRef,
+      Date_Entry: dateIssuedRef,
       Source_Type: "PL",
-      Source_No: PolicyNo,
+      Source_No: policyNoRef,
       Explanation: "PA Production",
       GL_Acct: "1.03.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "Premium Receivable",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
-      Debit: parseFloat(totalDue).toFixed(2),
+      cID_No: clientNameRef,
+      Debit: parseFloat(totalDueRef).toFixed(2),
       Credit: "0",
       TC: "P/R",
       Remarks: "",
@@ -309,19 +325,19 @@ async function insertPaPolicy(
   //credit
   await createJournal(
     {
-      Branch_Code: sub_account,
-      Date_Entry: DateIssued,
+      Branch_Code: subAccountRef,
+      Date_Entry: dateIssuedRef,
       Source_Type: "PL",
-      Source_No: PolicyNo,
+      Source_No: policyNoRef,
       Explanation: "PA Production",
       GL_Acct: "4.02.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "A/P",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
+      cID_No: clientNameRef,
       Debit: "0",
-      Credit: parseFloat(totalDue).toFixed(2),
+      Credit: parseFloat(totalDueRef).toFixed(2),
       TC: "A/P",
       Remarks: "",
       Source_No_Ref_ID: "PA",
