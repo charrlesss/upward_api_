@@ -19,6 +19,7 @@ const corsOptions = {
      "https://ucsmi.upwardinsurance.net", 
      "http://upwardinsurance.net", 
      "https://upwardinsurance.net", 
+     "http://192.168.100.220:4400", 
     "/", 
     "*"],
   credentials: true,
@@ -35,6 +36,7 @@ async function main() {
   app.use(express.static(path.join(__dirname, "static")));
   app.use(express.static(path.join(__dirname, "/static/image/")));
   // app.use(express.static(path.join(__dirname, "/src/view")));
+  
   app.use("/api", router);
   // creatSampleUser()
   // app.get("*", (req, res) => {

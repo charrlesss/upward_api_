@@ -2332,6 +2332,7 @@ async function BalanceSheet(req: Request, res: Response) {
       let h1TotalTotalBalance = 0;
       const H2Groups = H1Groups[H1].subGroups;
       for (const H2 in H2Groups) {
+
         newData.push({
           H1: "",
           HT1: "",
@@ -2347,19 +2348,27 @@ async function BalanceSheet(req: Request, res: Response) {
           H: "",
         });
         H2Groups[H2].items.forEach((item: any) => {
+          item.PrevBalance = formatNumber(parseFloat(item.PrevBalance.replace(/,/g,'')))
+          item.CurrDebit = formatNumber(parseFloat(item.CurrDebit.replace(/,/g,'')))
+          item.CurrCredit = formatNumber(parseFloat(item.CurrCredit.replace(/,/g,''))) 
+          item.CurrBalance = formatNumber(parseFloat(item.CurrBalance.replace(/,/g,'')))
+          item.TotalBalance = formatNumber(parseFloat(item.TotalBalance.replace(/,/g,'')))
           newData.push({
             ...item,
             dd: true,
           });
         });
+
         let PrevBalance = getSum(H2Groups[H2].items, "PrevBalance");
         let CurrDebit = getSum(H2Groups[H2].items, "CurrDebit");
         let CurrCredit = getSum(H2Groups[H2].items, "CurrCredit");
         let TotalBalance = getSum(H2Groups[H2].items, "TotalBalance");
+
         h1TotalPrevBalance = h1TotalPrevBalance + PrevBalance;
         h1TotalCurrDebite = h1TotalCurrDebite + CurrDebit;
         h1TotalCurrCredit = h1TotalCurrCredit + CurrCredit;
         h1TotalTotalBalance = h1TotalTotalBalance + TotalBalance;
+
         newData.push({
           H1: "",
           HT1: "",
@@ -2376,10 +2385,12 @@ async function BalanceSheet(req: Request, res: Response) {
           footer: true,
         });
       }
+
       hTotalPrevBalance = hTotalPrevBalance + h1TotalPrevBalance;
       hTotalCurrDebite = hTotalCurrDebite + h1TotalCurrDebite;
       hTotalCurrCredit = hTotalCurrCredit + h1TotalCurrCredit;
       hTotalTotalBalance = hTotalTotalBalance + h1TotalTotalBalance;
+
       newData.push({
         H1: "1",
         HT1: "",

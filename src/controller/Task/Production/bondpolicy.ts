@@ -26,8 +26,69 @@ import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
 import { VerifyToken } from "../../Authentication";
 import { convertToPassitive } from "../../../lib/convertToPassitive";
 import { defaultFormat } from "../../../lib/defaultDateFormat";
+import { prisma } from "../..";
 
 const BondPolicy = express.Router();
+
+
+BondPolicy.get("/bond/get-bond-subline", async (req, res) => {
+  try {
+  
+    res.send({
+
+      
+      message: "Create Bonds Policy Successfully",
+      data: await prisma?.$queryRawUnsafe(`select '' as  SubLineName union all select SubLineName from Subline where line = 'Bonds'`),
+      success: true,
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data:[]
+    });
+  }
+});
+BondPolicy.post("/bond/get-account", async (req, res) => {
+  try {
+    if(req.body.policyType === 'G02'){
+      res.send({
+        message: "Create Bonds Policy Successfully",
+        data: await prisma?.$queryRawUnsafe(`SELECT Account FROM policy_account WHERE G02 = true ORDER BY Account`),
+        success: true,
+      });
+    }else if(req.body.policyType === 'G13'){
+      res.send({
+        message: "Create Bonds Policy Successfully",
+        data: await prisma?.$queryRawUnsafe(`SELECT Account FROM policy_account WHERE G13 = true ORDER BY Account`),
+        success: true,
+      });
+    }else if(req.body.policyType === 'G16'){
+      res.send({
+        message: "Create Bonds Policy Successfully",
+        data: await prisma?.$queryRawUnsafe(`SELECT Account FROM policy_account WHERE  G16 = true ORDER BY Account`),
+        success: true,
+      });
+    }else{
+      res.send({
+        message: "Create Bonds Policy Successfully",
+        data: await prisma?.$queryRawUnsafe(`SELECT Account FROM policy_account    ORDER BY Account`),
+        success: true,
+      });
+    }
+  
+  
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data:[]
+    });
+  }
+});
+
 
 BondPolicy.get("/get-bond-acc-type", async (req, res) => {
   try {
@@ -93,11 +154,11 @@ BondPolicy.post("/add-bonds-policy", async (req, res) => {
       success: false,
     });
   }
-  const { sub_account, client_id, PolicyAccount, PolicyNo, policyType } =
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef, policyTypeRef } =
     req.body;
 
   try {
-    if (await findPolicy(PolicyNo, req)) {
+    if (await findPolicy(policyNoRef, req)) {
       return res.send({
         message: "Unable to save! Policy No. already exists!",
         success: false,
@@ -105,7 +166,7 @@ BondPolicy.post("/add-bonds-policy", async (req, res) => {
     }
     //get Commision rate
     const rate = (
-      (await getBondRate(PolicyAccount, policyType, req)) as Array<any>
+      (await getBondRate(accountRef, policyTypeRef, req)) as Array<any>
     )[0];
 
     if (rate == null) {
@@ -115,13 +176,13 @@ BondPolicy.post("/add-bonds-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = ((await getClientById(clientIDRef, req)) as Array<any>)[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
     await insertBondsPolicy({ ...req.body, cStrArea, strArea }, req);
 
-    await saveUserLogs(req, PolicyNo, "add", "Bonds Policy");
+    await saveUserLogs(req, policyNoRef, "add", "Bonds Policy");
     res.send({ message: "Create Bonds Policy Successfully", success: true });
   } catch (err: any) {
     console.log(err.message);
@@ -163,16 +224,16 @@ BondPolicy.post("/update-bonds-policy", async (req, res) => {
       success: false,
     });
   }
-  const { sub_account, client_id, PolicyAccount, PolicyNo, policyType } =
+  const { subAccountRef, clientIDRef, accountRef, policyNoRef, policyTypeRef } =
     req.body;
   try {
-    if (!(await saveUserLogsCode(req, "edit", PolicyNo, "Bonds Policy"))) {
+    if (!(await saveUserLogsCode(req, "edit", policyNoRef, "Bonds Policy"))) {
       return res.send({ message: "Invalid User Code", success: false });
     }
 
     //get Commision rate
     const rate = (
-      (await getBondRate(PolicyAccount, policyType, req)) as Array<any>
+      (await getBondRate(accountRef, policyTypeRef, req)) as Array<any>
     )[0];
 
     if (rate == null) {
@@ -182,17 +243,17 @@ BondPolicy.post("/update-bonds-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(client_id, req)) as Array<any>)[0];
+    const subAccount = ((await getClientById(clientIDRef, req)) as Array<any>)[0];
     const strArea =
-      subAccount.Acronym === "" ? sub_account : subAccount.Acronym;
+      subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
 
     //delete policy
-    await deletePolicyFromBond(policyType, PolicyNo, req);
+    await deletePolicyFromBond(policyTypeRef, policyNoRef, req);
     // //delete v policy
-    await deleteBondsPolicy(policyType, PolicyNo, req);
+    await deleteBondsPolicy(policyTypeRef, policyNoRef, req);
     // //delete journal
-    await deleteJournalBySource(PolicyNo, "PL", req);
+    await deleteJournalBySource(policyNoRef, "PL", req);
 
     // insert fire policy
     await insertBondsPolicy({ ...req.body, cStrArea, strArea }, req);
@@ -238,113 +299,113 @@ BondPolicy.post("/delete-bonds-policy", async (req, res) => {
 });
 async function insertBondsPolicy(
   {
-    sub_account,
-    client_id,
-    client_name,
-    agent_id,
-    agent_com,
-    PolicyAccount,
-    PolicyNo,
+    subAccountRef,
+    clientIDRef,
+    clientNameRef,
+    agentIdRef,
+    agentCommisionRef,
+    accountRef,
+    policyNoRef,
     policyType,
-    biddingDate,
-    time,
-    DateIssued,
-    validity,
-    officer,
-    position,
-    unit,
-    obligee,
-    officerName,
-    officerTaxCertNo,
-    officerIssuedLoc,
-    officerDateIssued,
-    insuranceCapacity,
-    insuranceOfficerTaxCert,
-    insuranceIssuedLoc,
-    insuranceDateIssued,
-    insuredValue,
-    percentagePremium,
-    totalPremium,
-    vat,
-    docStamp,
-    localGovTax,
-    umis,
-    principal,
-    totalDue,
+    biddingDateRef,
+    timeRef,
+    dateIssuedRef,
+    validityRef,
+    officerRef,
+    positionRef,
+    unitRef,
+    obligeeRef,
+    name1Ref,
+    tcn1Ref,
+    il1Ref,
+    di1Ref,
+    name2Ref,
+    tcn2Ref,
+    il2Ref,
+    di2Ref,
+    insuredValueRef,
+    percentageRef,
+    totalPremiumRef,
+    vatRef,
+    docstampRef,
+    _localGovTaxRef,
+    umisRef,
+    principalRef,
+    totalDueRef,
     strArea,
     cStrArea,
   }: any,
   req: Request
 ) {
   //create  Policy
-  biddingDate = defaultFormat(new Date(biddingDate))
-  time = defaultFormat(new Date(time))
-  DateIssued = defaultFormat(new Date(DateIssued))
+  biddingDateRef = defaultFormat(new Date(biddingDateRef))
+  timeRef = defaultFormat(new Date(timeRef))
+  dateIssuedRef = defaultFormat(new Date(dateIssuedRef))
 
   await createPolicy(
     {
-      IDNo: client_id,
-      Account: PolicyAccount,
-      SubAcct: sub_account,
+      IDNo: clientIDRef,
+      Account: accountRef,
+      SubAcct: subAccountRef,
       PolicyType: policyType,
-      PolicyNo: PolicyNo,
-      DateIssued,
-      TotalPremium: parseFloat(parseFloat(totalPremium).toFixed(2)),
-      Vat: parseFloat(vat.replace(/,/g, '')).toFixed(2),
-      DocStamp: parseFloat(docStamp.replace(/,/g, '')).toFixed(2),
+      PolicyNo: policyNoRef,
+      DateIssued:dateIssuedRef,
+      TotalPremium: parseFloat(parseFloat(totalPremiumRef).toFixed(2)),
+      Vat: parseFloat(vatRef.replace(/,/g, '')).toFixed(2),
+      DocStamp: parseFloat(docstampRef.replace(/,/g, '')).toFixed(2),
       FireTax: "0",
-      LGovTax: parseFloat(localGovTax.replace(/,/g, '')).toFixed(2),
-      Notarial: parseFloat(umis.replace(/,/g, '')).toFixed(2),
-      Misc: parseFloat(principal.replace(/,/g, '')).toFixed(2),
-      TotalDue: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
+      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, '')).toFixed(2),
+      Notarial: parseFloat(umisRef.replace(/,/g, '')).toFixed(2),
+      Misc: parseFloat(principalRef.replace(/,/g, '')).toFixed(2),
+      TotalDue: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
       TotalPaid: "0",
       Journal: false,
-      AgentID: agent_id,
-      AgentCom: agent_com,
+      AgentID: agentIdRef,
+      AgentCom: agentCommisionRef,
     },
     req
   );
   //create bond Policy
   await createBondsPolicy(
     {
-      PolicyNo: PolicyNo,
-      Account: PolicyAccount,
+      PolicyNo: policyNoRef,
+      Account: accountRef,
       PolicyType: policyType,
-      UnitDetail: unit,
-      Obligee: obligee,
-      BidDate: biddingDate,
-      BidTime: time,
-      NotaryName: officerName,
-      TaxCerNo: officerTaxCertNo,
-      IssuedLocation: officerIssuedLoc,
-      NIssued: officerDateIssued,
-      CapacityAs: insuranceCapacity,
-      TaxCerNoCorp: insuranceOfficerTaxCert,
-      IssuedLoctCorp: insuranceIssuedLoc,
-      CIssued: insuranceDateIssued,
-      BondValue: parseFloat(insuredValue.replace(/,/g, '')),
-      Percentage: percentagePremium,
-      Officer: officer,
-      OPosition: position,
-      Validity: validity,
+      UnitDetail: unitRef,
+      Obligee: obligeeRef,
+      BidDate: biddingDateRef,
+      BidTime: timeRef,
+      NotaryName: name1Ref,
+      TaxCerNo: tcn1Ref,
+      IssuedLocation: il1Ref,
+      NIssued: di1Ref,
+      CapacityAs: name2Ref,
+      TaxCerNoCorp: tcn2Ref,
+      IssuedLoctCorp: il2Ref,
+      CIssued: di2Ref,
+      BondValue: parseFloat(insuredValueRef.replace(/,/g, '')),
+      Percentage: percentageRef,
+      Officer: officerRef,
+      OPosition: positionRef,
+      Validity: validityRef,
     },
     req
   );
   //debit
   await createJournal(
     {
-      Branch_Code: sub_account,
-      Date_Entry: DateIssued,
+      Branch_Code: subAccountRef,
+      Date_Entry: dateIssuedRef,
       Source_Type: "PL",
-      Source_No: PolicyNo,
+      Source_No: policyNoRef,
       Explanation: "Bonds Production",
       GL_Acct: "1.03.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "Premium Receivable",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
-      Debit: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
+      cID_No: clientNameRef,
+      Debit: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
       Credit: "0",
       TC: "P/R",
       Remarks: "",
@@ -355,19 +416,19 @@ async function insertBondsPolicy(
   //credit
   await createJournal(
     {
-      Branch_Code: sub_account,
-      Date_Entry: DateIssued,
+      Branch_Code: subAccountRef,
+      Date_Entry: dateIssuedRef,
       Source_Type: "PL",
-      Source_No: PolicyNo,
+      Source_No: policyNoRef,
       Explanation: "Bonds Production",
       GL_Acct: "4.02.01",
       Sub_Acct: strArea,
-      ID_No: PolicyNo,
+      ID_No: policyNoRef,
       cGL_Acct: "A/P",
       cSub_Acct: cStrArea,
-      cID_No: client_name,
+      cID_No: clientNameRef,
       Debit: "0",
-      Credit: parseFloat(totalDue.replace(/,/g, '')).toFixed(2),
+      Credit: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
       TC: "A/P",
       Remarks: "",
       Source_No_Ref_ID: "Bonds",
