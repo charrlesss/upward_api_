@@ -325,25 +325,6 @@ PDC.get("/pdc-new-ref-number", async (req, res) => {
     });
   }
 });
-PDC.get("/search-pdc", async (req, res) => {
-  try {
-    const { searchPDCInput } = req.query;
-    const searchPDCData = await searchPDC(searchPDCInput as string, req);
-    res.send({
-      message: "Search PDC Successfully",
-      success: true,
-      searchPDC: searchPDCData,
-    });
-  } catch (error: any) {
-    console.log(error.message);
-
-    res.send({
-      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
-      success: false,
-      searchPDC: [],
-    });
-  }
-});
 PDC.post("/search-pdc", async (req, res) => {
   try {
     const data = await searchPDC(req.body.search as string, req);

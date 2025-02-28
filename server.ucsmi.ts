@@ -5,6 +5,7 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import env from "dotenv";
 import { createIdSequence } from "./src/model/StoredProcedure";
+import { hashSync } from "bcrypt";
 
 env.config({ path: ".env.ucsmi" });
 const PORT = process.env.PORT;
@@ -13,11 +14,8 @@ const corsOptions = {
   origin: [
     "http://localhost:3000",
      "http://localhost:4000", 
-     "http://umis.upwardinsurance.net", 
      "https://umis.upwardinsurance.net", 
-     "http://ucsmi.upwardinsurance.net", 
      "https://ucsmi.upwardinsurance.net", 
-     "http://upwardinsurance.net", 
      "https://upwardinsurance.net", 
     "/", 
     "*"],
@@ -26,6 +24,7 @@ const corsOptions = {
 };
 
 async function main() {
+  console.log(hashSync('EMP17008',12))
   const app = express();
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json({ limit: "1000mb" }));

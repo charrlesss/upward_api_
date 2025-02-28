@@ -334,7 +334,7 @@ export async function getSearchPDCheck(ref_no: any, req: Request) {
         LEFT JOIN bank d ON a.Bank = d.Bank_Code
         WHERE
         a.Ref_No = '${ref_no}'
-        order by  a.Check_No
+        order by  a.Check_Date
   `;
   console.log(qry);
   return await prisma.$queryRawUnsafe(qry);

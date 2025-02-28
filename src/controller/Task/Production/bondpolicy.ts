@@ -15,6 +15,7 @@ import {
   getAllBondsType,
   getBondRate,
   searchBondsPolicy,
+  searchSelectedBondsPolicy,
 } from "../../../model/Task/Production/bond-policy";
 import {
   getSubAccount,
@@ -30,15 +31,13 @@ import { prisma } from "../..";
 
 const BondPolicy = express.Router();
 
-
 BondPolicy.get("/bond/get-bond-subline", async (req, res) => {
   try {
-  
     res.send({
-
-      
       message: "Create Bonds Policy Successfully",
-      data: await prisma?.$queryRawUnsafe(`select '' as  SubLineName union all select SubLineName from Subline where line = 'Bonds'`),
+      data: await prisma?.$queryRawUnsafe(
+        `select '' as  SubLineName union all select SubLineName from Subline where line = 'Bonds'`
+      ),
       success: true,
     });
   } catch (err: any) {
@@ -46,49 +45,54 @@ BondPolicy.get("/bond/get-bond-subline", async (req, res) => {
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
-      data:[]
+      data: [],
     });
   }
 });
 BondPolicy.post("/bond/get-account", async (req, res) => {
   try {
-    if(req.body.policyType === 'G02'){
+    if (req.body.policyType === "G02") {
       res.send({
         message: "Create Bonds Policy Successfully",
-        data: await prisma?.$queryRawUnsafe(`SELECT Account FROM policy_account WHERE G02 = true ORDER BY Account`),
+        data: await prisma?.$queryRawUnsafe(
+          `SELECT Account FROM policy_account WHERE G02 = true ORDER BY Account`
+        ),
         success: true,
       });
-    }else if(req.body.policyType === 'G13'){
+    } else if (req.body.policyType === "G13") {
       res.send({
         message: "Create Bonds Policy Successfully",
-        data: await prisma?.$queryRawUnsafe(`SELECT Account FROM policy_account WHERE G13 = true ORDER BY Account`),
+        data: await prisma?.$queryRawUnsafe(
+          `SELECT Account FROM policy_account WHERE G13 = true ORDER BY Account`
+        ),
         success: true,
       });
-    }else if(req.body.policyType === 'G16'){
+    } else if (req.body.policyType === "G16") {
       res.send({
         message: "Create Bonds Policy Successfully",
-        data: await prisma?.$queryRawUnsafe(`SELECT Account FROM policy_account WHERE  G16 = true ORDER BY Account`),
+        data: await prisma?.$queryRawUnsafe(
+          `SELECT Account FROM policy_account WHERE  G16 = true ORDER BY Account`
+        ),
         success: true,
       });
-    }else{
+    } else {
       res.send({
         message: "Create Bonds Policy Successfully",
-        data: await prisma?.$queryRawUnsafe(`SELECT Account FROM policy_account    ORDER BY Account`),
+        data: await prisma?.$queryRawUnsafe(
+          `SELECT Account FROM policy_account    ORDER BY Account`
+        ),
         success: true,
       });
     }
-  
-  
   } catch (err: any) {
     console.log(err.message);
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
-      data:[]
+      data: [],
     });
   }
 });
-
 
 BondPolicy.get("/get-bond-acc-type", async (req, res) => {
   try {
@@ -176,7 +180,9 @@ BondPolicy.post("/add-bonds-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(clientIDRef, req)) as Array<any>)[0];
+    const subAccount = (
+      (await getClientById(clientIDRef, req)) as Array<any>
+    )[0];
     const strArea =
       subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
@@ -192,13 +198,13 @@ BondPolicy.post("/add-bonds-policy", async (req, res) => {
     });
   }
 });
-BondPolicy.get("/search-bonds-policy", async (req, res) => {
+BondPolicy.post("/search-bonds-policy", async (req, res) => {
   try {
     res.send({
       message: "Successfully search data",
       success: true,
-      bondsPolicy: await searchBondsPolicy(
-        req.query.searchBondsPolicy as string,
+      data: await searchBondsPolicy(
+        req.body.search ,
         req
       ),
     });
@@ -208,7 +214,26 @@ BondPolicy.get("/search-bonds-policy", async (req, res) => {
     res.send({
       message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
       success: false,
-      bondsPolicy: null,
+      data: [],
+    });
+  }
+});
+BondPolicy.post("/get-search-selected-bonds-policy", async (req, res) => {
+  try {
+    res.send({
+      message: "Successfully search data",
+      success: true,
+      data: await searchSelectedBondsPolicy(
+        req.body.policyNo
+      ),
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
     });
   }
 });
@@ -243,7 +268,9 @@ BondPolicy.post("/update-bonds-policy", async (req, res) => {
       });
     }
 
-    const subAccount = ((await getClientById(clientIDRef, req)) as Array<any>)[0];
+    const subAccount = (
+      (await getClientById(clientIDRef, req)) as Array<any>
+    )[0];
     const strArea =
       subAccount.Acronym === "" ? subAccountRef : subAccount.Acronym;
     const cStrArea = subAccount.ShortName;
@@ -306,7 +333,7 @@ async function insertBondsPolicy(
     agentCommisionRef,
     accountRef,
     policyNoRef,
-    policyType,
+    policyTypeRef,
     biddingDateRef,
     timeRef,
     dateIssuedRef,
@@ -338,26 +365,40 @@ async function insertBondsPolicy(
   req: Request
 ) {
   //create  Policy
-  biddingDateRef = defaultFormat(new Date(biddingDateRef))
-  timeRef = defaultFormat(new Date(timeRef))
-  dateIssuedRef = defaultFormat(new Date(dateIssuedRef))
+  // timeRef = defaultFormat(new Date(timeRef))
+  biddingDateRef = defaultFormat(new Date(biddingDateRef));
+  dateIssuedRef = defaultFormat(new Date(dateIssuedRef));
+  di2Ref = defaultFormat(new Date(di2Ref));
+  di1Ref = defaultFormat(new Date(di1Ref));
+  
+  const now = new Date();
+  const [hours, minutes] = timeRef.split(":").map(Number); // Extract hours & minutes
+
+  // Create a Date object with the current date and extracted time
+  const bidTime = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    hours,
+    minutes
+  );
 
   await createPolicy(
     {
       IDNo: clientIDRef,
       Account: accountRef,
       SubAcct: subAccountRef,
-      PolicyType: policyType,
+      PolicyType: policyTypeRef,
       PolicyNo: policyNoRef,
-      DateIssued:dateIssuedRef,
+      DateIssued: dateIssuedRef,
       TotalPremium: parseFloat(parseFloat(totalPremiumRef).toFixed(2)),
-      Vat: parseFloat(vatRef.replace(/,/g, '')).toFixed(2),
-      DocStamp: parseFloat(docstampRef.replace(/,/g, '')).toFixed(2),
+      Vat: parseFloat(vatRef.replace(/,/g, "")).toFixed(2),
+      DocStamp: parseFloat(docstampRef.replace(/,/g, "")).toFixed(2),
       FireTax: "0",
-      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, '')).toFixed(2),
-      Notarial: parseFloat(umisRef.replace(/,/g, '')).toFixed(2),
-      Misc: parseFloat(principalRef.replace(/,/g, '')).toFixed(2),
-      TotalDue: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
+      LGovTax: parseFloat(_localGovTaxRef.replace(/,/g, "")).toFixed(2),
+      Notarial: parseFloat(umisRef.replace(/,/g, "")).toFixed(2),
+      Misc: parseFloat(principalRef.replace(/,/g, "")).toFixed(2),
+      TotalDue: parseFloat(totalDueRef.replace(/,/g, "")).toFixed(2),
       TotalPaid: "0",
       Journal: false,
       AgentID: agentIdRef,
@@ -370,11 +411,11 @@ async function insertBondsPolicy(
     {
       PolicyNo: policyNoRef,
       Account: accountRef,
-      PolicyType: policyType,
+      PolicyType: policyTypeRef,
       UnitDetail: unitRef,
       Obligee: obligeeRef,
       BidDate: biddingDateRef,
-      BidTime: timeRef,
+      BidTime: bidTime,
       NotaryName: name1Ref,
       TaxCerNo: tcn1Ref,
       IssuedLocation: il1Ref,
@@ -383,7 +424,7 @@ async function insertBondsPolicy(
       TaxCerNoCorp: tcn2Ref,
       IssuedLoctCorp: il2Ref,
       CIssued: di2Ref,
-      BondValue: parseFloat(insuredValueRef.replace(/,/g, '')),
+      BondValue: parseFloat(insuredValueRef.replace(/,/g, "")),
       Percentage: percentageRef,
       Officer: officerRef,
       OPosition: positionRef,
@@ -405,7 +446,7 @@ async function insertBondsPolicy(
       cGL_Acct: "Premium Receivable",
       cSub_Acct: cStrArea,
       cID_No: clientNameRef,
-      Debit: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
+      Debit: parseFloat(totalDueRef.replace(/,/g, "")).toFixed(2),
       Credit: "0",
       TC: "P/R",
       Remarks: "",
@@ -428,7 +469,7 @@ async function insertBondsPolicy(
       cSub_Acct: cStrArea,
       cID_No: clientNameRef,
       Debit: "0",
-      Credit: parseFloat(totalDueRef.replace(/,/g, '')).toFixed(2),
+      Credit: parseFloat(totalDueRef.replace(/,/g, "")).toFixed(2),
       TC: "A/P",
       Remarks: "",
       Source_No_Ref_ID: "Bonds",
