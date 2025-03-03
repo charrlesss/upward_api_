@@ -107,7 +107,7 @@ Mortgagee.post("/delete-mortgagee", async (req: Request, res: Response) => {
     if (!(await saveUserLogsCode(req, "delete", Mortgagee, "Mortgagee"))) {
       return res.send({ message: "Invalid User Code", success: false });
     }
-
+    console.log(req.body)
     await deleteMortgagee(Mortgagee, req);
     res.send({
       message: "Delete Mortgagee Successfully!",
