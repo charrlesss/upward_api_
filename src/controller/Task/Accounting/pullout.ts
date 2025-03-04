@@ -34,6 +34,7 @@ const EmailToSend = [
   "encoder.upward@yahoo.com",
   "charlespalencia21@gmail.com",
 ];
+
 PulloutRequest.post(`/pullout/reqeust/save-pullout-request`, async (req, res) => {
   try {
 
