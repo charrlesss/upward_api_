@@ -81,6 +81,7 @@ CashDisbursement.post(
     }
 
     try {
+      console.log(req.body.cashDisbursement);
       if (
         req.body.hasSelected &&
         !(await saveUserLogsCode(
@@ -432,7 +433,7 @@ CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
         req
       );
 
-      console.log(PrintTable)
+      console.log(PrintTable);
 
       PrintTable.push({
         Account: "",
@@ -482,8 +483,7 @@ CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
           pdfReportGenerator: any,
           doc: PDFKit.PDFDocument
         ) => {
-
-          let adjustHeigth = 20
+          let adjustHeigth = 20;
           doc.fontSize(15);
           doc.text(req.body.reportTitle, 0, 40, {
             align: "center",
@@ -524,9 +524,14 @@ CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
           });
 
           doc.font("Helvetica");
-          doc.text(PrintPayeeDetails[0].CvNo, textWidth + 100 + 40, 85 + adjustHeigth, {
-            align: "left",
-          });
+          doc.text(
+            PrintPayeeDetails[0].CvNo,
+            textWidth + 100 + 40,
+            85 + adjustHeigth,
+            {
+              align: "left",
+            }
+          );
 
           doc.font("Helvetica-Bold");
           doc.text("Address. :", 20, 110 + adjustHeigth, {
@@ -564,7 +569,10 @@ CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
             .lineTo(PAGE_WIDTH - 10, 145 + adjustHeigth)
             .stroke();
 
-          doc.moveTo(450, 130 + adjustHeigth).lineTo(450, 240 + adjustHeigth).stroke();
+          doc
+            .moveTo(450, 130 + adjustHeigth)
+            .lineTo(450, 240 + adjustHeigth)
+            .stroke();
 
           doc.font("Helvetica-Bold");
           doc.text("PARTICULARS", 5, 133 + adjustHeigth, {
@@ -595,11 +603,16 @@ CashDisbursement.post("/cash-disbursement/print", async (req, res) => {
           // amount total
           doc.font("Helvetica-Bold");
 
-          doc.text(`PHP ${PrintPayeeDetails[0].CreditTotal}`, 460, 225  + adjustHeigth, {
-            align: "center",
-            width: 140,
-            height: 10,
-          });
+          doc.text(
+            `PHP ${PrintPayeeDetails[0].CreditTotal}`,
+            460,
+            225 + adjustHeigth,
+            {
+              align: "center",
+              width: 140,
+              height: 10,
+            }
+          );
           // amount total end
           doc.font("Helvetica-Bold");
 
