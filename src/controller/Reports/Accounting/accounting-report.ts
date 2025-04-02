@@ -32,7 +32,7 @@ accountingReporting.post("/report/get-chart-account", async (req, res) => {
     SELECT 
             Acct_Code AS Code, Acct_Title AS Title, Short AS Short_Name
         FROM
-            Chart_Account
+            chart_account
         WHERE
             Inactive = 0
                 AND (Acct_Code LIKE '%${req.body.search}%' OR Short LIKE '%${req.body.search}%'
@@ -77,7 +77,7 @@ accountingReporting.post("/report/sub-account", async (req, res) => {
       message: "Successfully get Sub Account",
       success: true,
       data: await prisma.$queryRawUnsafe(
-        `SELECT Acronym FROM Sub_Account order by Acronym asc`
+        `SELECT Acronym FROM sub_account order by Acronym asc`
       ),
     });
   } catch (err: any) {
@@ -94,7 +94,7 @@ accountingReporting.post("/report/sub-account-search", async (req, res) => {
       message: "Successfully get Sub Account",
       success: true,
       data: await prisma.$queryRawUnsafe(
-        `SELECT Acronym, ShortName FROM Sub_Account where Acronym like '%${req.body.search}%'  order by Acronym asc`
+        `SELECT Acronym, ShortName FROM sub_account where Acronym like '%${req.body.search}%'  order by Acronym asc`
       ),
     });
   } catch (err: any) {
@@ -1690,7 +1690,7 @@ async function IncomeStatement(req: Request, res: Response) {
     FROM
         (${tmp1}) tmp1
     LEFT JOIN
-        Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
+        chart_account as Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
     ORDER BY
         tmp1.Code;
     `;
@@ -1747,7 +1747,7 @@ async function IncomeStatement(req: Request, res: Response) {
     FROM
        (${tmp1}) tmp1
     LEFT JOIN
-        Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
+        chart_account as Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
     LEFT JOIN
        (${tmp3}) tmp3 ON tmp1.SubAccount = tmp3.SubAccount
     ORDER BY
@@ -2091,7 +2091,7 @@ async function BalanceSheet(req: Request, res: Response) {
         CurrBalance,
         TotalBalance
     FROM (${tmp1}) tmp1
-    LEFT JOIN Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
+    LEFT JOIN chart_account as Chart_Account ON tmp1.H2 = Chart_Account.Acct_Code
   `;
     let final = `
     SELECT
@@ -2107,7 +2107,7 @@ async function BalanceSheet(req: Request, res: Response) {
         CurrBalance,
         TotalBalance
     FROM (${finalTemp}) FinalTemp
-    LEFT JOIN Chart_Account ON FinalTemp.H1 = Chart_Account.Acct_Code
+    LEFT JOIN chart_account as Chart_Account ON FinalTemp.H1 = Chart_Account.Acct_Code
   `;
     const tmp2 = `
     SELECT
@@ -2819,12 +2819,12 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
     case "Check Date":
       if (req.body.branch === "All") {
         qry = `
-          SELECT PDC.* From PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}')
+          SELECT PDC.* From pdc as PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}')
         AND (((PDC.PDC_Remarks)<>'Fully Paid' And (PDC.PDC_Remarks)<>'Foreclosed') Or ((PDC.PDC_Remarks)='Replaced' Or (PDC.PDC_Remarks) IS NULL Or (PDC.PDC_Remarks)='')) AND ((PDC.PDC_Status)<>'Pulled Out'))  ${whereQry} ${sortQry}`;
       } else {
         qry = `
         SELECT 
-        PDC.* From PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}') 
+        PDC.* From pdc as PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}') 
         AND ((PDC.PDC_Remarks)<>'Fully Paid' Or (PDC.PDC_Remarks)='Replaced' Or (PDC.PDC_Remarks) IS NULL Or (PDC.PDC_Remarks)='') AND ((PDC.PDC_Status)<>'Pulled Out')) ${whereQry} ${sortQry}
         `;
       }
@@ -2832,11 +2832,11 @@ async function PostDatedChecksRegistry(req: Request, res: Response) {
     case "Date Received":
       if (req.body.branch === "All") {
         qry = `
-          SELECT PDC.* From PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}')
+          SELECT PDC.* From pdc as PDC WHERE (((PDC.Check_Date)>='${dateFrom}' And (PDC.Check_Date)<='${dateTo}')
         AND (((PDC.PDC_Remarks)<>'Fully Paid' And (PDC.PDC_Remarks)<>'Foreclosed') Or ((PDC.PDC_Remarks)='Replaced' Or (PDC.PDC_Remarks) IS NULL Or (PDC.PDC_Remarks)='')) AND ((PDC.PDC_Status)<>'Pulled Out'))  ${whereQry} ${sortQry}`;
       } else {
         qry = `
-            SELECT PDC.* From PDC WHERE (((PDC.Date)>='${dateFrom}' And (PDC.Date)<='${dateTo}') 
+            SELECT PDC.* From pdc as PDC WHERE (((PDC.Date)>='${dateFrom}' And (PDC.Date)<='${dateTo}') 
             AND ((PDC.PDC_Remarks)<>'Fully Paid' Or (PDC.PDC_Remarks)='Replaced' Or (PDC.PDC_Remarks) IS NULL Or (PDC.PDC_Remarks)='') AND ((PDC.PDC_Status)<>'Pulled Out')) ${whereQry} ${sortQry}
 
         `;

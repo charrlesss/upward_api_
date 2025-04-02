@@ -80,10 +80,10 @@ VehiclePolicy.post("/account", async (req, res) => {
     const policy = req.body.policy;
     let whr = "";
     if (policy === "COM") {
-      whr = " WHERE COM = 1";
+      whr = " WHERE COM = true";
     }
     if (policy === "TPL") {
-      whr = " WHERE TPL = 1";
+      whr = " WHERE TPL = true";
     }
     res.send({
       message: "search data successfully",
@@ -187,13 +187,8 @@ VehiclePolicy.post("/search-policy", async (req, res) => {
           Policy.Account, 
           ID_Entry.cID_No AS Name,
           VPolicy.ChassisNo
-        FROM Policy
-        LEFT JOIN FPolicy ON Policy.PolicyNo = FPolicy.PolicyNo 
-        LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
-        LEFT JOIN MPolicy  ON Policy.PolicyNo = MPolicy.PolicyNo LEFT JOIN BPolicy ON Policy.PolicyNo = BPolicy.PolicyNo 
-        LEFT JOIN MSPRPolicy  ON Policy.PolicyNo = MSPRPolicy.PolicyNo 
-        LEFT JOIN PAPolicy  ON Policy.PolicyNo = PAPolicy.PolicyNo 
-        LEFT JOIN CGLPolicy  ON Policy.PolicyNo = CGLPolicy.PolicyNo 
+        FROM policy as Policy
+        LEFT JOIN vpolicy as VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
         LEFT JOIN ( 
           SELECT 
                         a.entry_client_id as IDNo,
@@ -257,7 +252,7 @@ VehiclePolicy.post("/search-policy-selected", async (req, res) => {
             INS.cID_No AS InsName, 
             INS.address AS InsAdd, 
             ifnull(AGNT.cID_No,'') AS AgentName 
-          FROM Policy
+          FROM policy as Policy
           LEFT JOIN (
           SELECT 
                           a.entry_client_id as IDNo,
@@ -352,7 +347,7 @@ VehiclePolicy.post("/search-policy-selected", async (req, res) => {
         `
     );
     const data2 = await prisma.$queryRawUnsafe(
-      `SELECT *, ifNull(Denomination,'') as 'Denomi' FROM VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`
+      `SELECT *, ifNull(Denomination,'') as 'Denomi' FROM vpolicy as VPolicy WHERE Account = '${req.body.account}' And PolicyType = '${req.body.policy}' And PolicyNo = '${req.body.policyNo}'`
     );
 
     const data3 = await prisma.$queryRawUnsafe(
@@ -398,7 +393,7 @@ VehiclePolicy.post("/save", async (req, res) => {
 
   try {
     let dt: any = await prisma.$queryRawUnsafe(
-      `SELECT * FROM Policy  WHERE PolicyNo = '${req.body.policyNoRef}' `
+      `SELECT * FROM policy as Policy  WHERE PolicyNo = '${req.body.policyNoRef}' `
     );
     if (req.body.mode !== "update" && dt.length > 0) {
       return res.send({
@@ -593,13 +588,8 @@ VehiclePolicy.post("/search-policy-temp", async (req, res) => {
           date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
           Policy.PolicyNo, Policy.Account, 
           ID_Entry.cID_No AS Name
-        FROM Policy
-        LEFT JOIN FPolicy ON Policy.PolicyNo = FPolicy.PolicyNo 
-        LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
-        LEFT JOIN MPolicy  ON Policy.PolicyNo = MPolicy.PolicyNo LEFT JOIN BPolicy ON Policy.PolicyNo = BPolicy.PolicyNo 
-        LEFT JOIN MSPRPolicy  ON Policy.PolicyNo = MSPRPolicy.PolicyNo 
-        LEFT JOIN PAPolicy  ON Policy.PolicyNo = PAPolicy.PolicyNo 
-        LEFT JOIN CGLPolicy  ON Policy.PolicyNo = CGLPolicy.PolicyNo 
+        FROM policy as Policy
+        LEFT JOIN  vpolicy as VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
         LEFT JOIN ( 
           SELECT 
                         a.entry_client_id as IDNo,
@@ -679,13 +669,8 @@ VehiclePolicy.post("/search-policy-tpl", async (req, res) => {
           date_format(Policy.DateIssued,'%M  %d, %Y') AS Date, 
           Policy.PolicyNo, Policy.Account, 
           ID_Entry.cID_No AS Name
-        FROM Policy
-        LEFT JOIN FPolicy ON Policy.PolicyNo = FPolicy.PolicyNo 
-        LEFT JOIN VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
-        LEFT JOIN MPolicy  ON Policy.PolicyNo = MPolicy.PolicyNo LEFT JOIN BPolicy ON Policy.PolicyNo = BPolicy.PolicyNo 
-        LEFT JOIN MSPRPolicy  ON Policy.PolicyNo = MSPRPolicy.PolicyNo 
-        LEFT JOIN PAPolicy  ON Policy.PolicyNo = PAPolicy.PolicyNo 
-        LEFT JOIN CGLPolicy  ON Policy.PolicyNo = CGLPolicy.PolicyNo 
+        FROM policy as Policy
+        LEFT JOIN  vpolicy as VPolicy ON Policy.PolicyNo = VPolicy.PolicyNo 
         LEFT JOIN ( 
           SELECT 
                         a.entry_client_id as IDNo,
