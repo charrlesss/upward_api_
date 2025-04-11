@@ -405,7 +405,7 @@ VehiclePolicy.post("/save", async (req, res) => {
 
     //get Commision rate
     dt = await prisma.$queryRawUnsafe(
-      `select Rate from Rates where Account = '${req.body.accountRef}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`
+      `select Rate from rates where Account = '${req.body.accountRef}' and Line = 'Vehicle' and Type = '${req.body.dinomination}'`
     );
 
     // const rate = (
@@ -416,6 +416,7 @@ VehiclePolicy.post("/save", async (req, res) => {
     //     req
     //   )) as Array<any>
     // )[0];
+    
     // if (rate == null) {
     //   return res.send({
     //     message: "Please setup commission rate for this account and Line",
