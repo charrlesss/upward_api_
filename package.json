@@ -4,11 +4,11 @@
   "description": "company system",
   "main": "server.ts",
   "scripts": {
-    "start": "nodemon --exec  ts-node ./server.umis.ts",
-    "start_ucsmi": "nodemon --exec  ts-node ./server.ucsmi.ts",
-    "start_umis": "nodemon --exec  ts-node ./server.umis.ts",
-    "sub_server": "nodemon --exec  ts-node ./sub-server.ts",
-    "start_both":  "concurrently \"npm run start_umis\" \"npm run start_ucsmi\""
+    "start": " nodemon --exec  ts-node ./server.umis.ts",
+    "start_ucsmi": " nodemon --exec  ts-node ./server.ucsmi.ts",
+    "start_umis": " nodemon --exec  ts-node ./server.umis.ts",
+    "sub_server": " nodemon --exec  ts-node ./sub-server.ts",
+    "start_both": "concurrently \"npm run start_umis\" \"npm run start_ucsmi\""
   },
   "author": "",
   "license": "ISC",

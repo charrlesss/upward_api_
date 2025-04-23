@@ -37,7 +37,6 @@ const UMISEmailToSend = [
   "upwardinsurance.grace@gmail.com",
   "lva_ancar@yahoo.com",
   "upwardinsurance.grace@gmail.com",
-
 ];
 const UCSMIEmailToSend = [
   "upward.csmi@yahoo.com",
@@ -46,10 +45,12 @@ const UCSMIEmailToSend = [
 ];
 
 // ========================= REQUEST =================================
-CheckPostponement.get(
+CheckPostponement.post(
   "/check-postponement/request/load-pnno",
   async (req, res) => {
     try {
+
+      console.log(req.body)
       setTimeout(async () => {
         // Step 2: Create `tmp_numbers` table
         await prisma.$executeRawUnsafe(`
@@ -81,7 +82,7 @@ CheckPostponement.get(
         await prisma.$executeRawUnsafe(`
   UPDATE TMP
   SET IsWorkDay = 0
-  WHERE \`Date\` IN (SELECT \`Date\` FROM HOLIDAYS);
+  WHERE \`Date\` IN (SELECT \`Date\` FROM holidays);
 `);
 
         // Step 6: Update `TMP` table for weekends
@@ -95,16 +96,12 @@ CheckPostponement.get(
         const data = await prisma.$queryRawUnsafe(`
 
   select * from (
-        select  '' as PNo,
-          '' as Name,
-          '' AS BName
-  union all
   SELECT 
       a.PNo,
       a.Name,
       'HO' AS BName
   FROM
-      PDC a
+      pdc a
   LEFT JOIN TMP c
       ON c.\`Date\` >= CURDATE() AND c.\`Date\` < a.Check_Date
   LEFT JOIN (
@@ -227,7 +224,7 @@ CheckPostponement.post(
       union all
       SELECT 
         T.Check_No AS CheckNo
-      FROM PDC T
+      FROM pdc T
       LEFT JOIN tmp_dates c 
           ON c.Date >= CURDATE() 
           AND c.Date <= T.Check_Date
@@ -262,7 +259,7 @@ CheckPostponement.post(
       Bank,
       Check_No CheckNo,
       Check_Amnt Amount 
-        FROM PDC  
+        FROM pdc  
           Where 
         Check_No = '${req.body.checkNo}' And PNo = '${req.body.PNNo}'
       limit 1
@@ -315,7 +312,7 @@ CheckPostponement.post(
       (SELECT DISTINCT
               (name)
           FROM
-              PDC
+              pdc
           WHERE
               PNo = a.PNNo AND Check_No = a.CheckNo) AS 'Name',
       CheckNo,
@@ -323,17 +320,17 @@ CheckPostponement.post(
       (SELECT 
               bank
           FROM
-              PDC
+              pdc
           WHERE
               Check_No = a.CheckNo AND PNo = a.PNNO) AS 'Bank',
       (SELECT 
               Check_Amnt
           FROM
-              PDC
+              pdc
           WHERE
               Check_No = a.CheckNo AND PNo = a.PNNO) AS 'check_Amnt',
-      a.OldCheckDate,
-      a.NewCheckDate,
+      date_format(a.OldCheckDate ,'%m/%d/%Y') as OldCheckDate,
+       date_format(a.NewCheckDate ,'%m/%d/%Y') as NewCheckDate,
       a.Reason,
       (SELECT 
               PaidVia
@@ -438,10 +435,10 @@ CheckPostponement.post(
           RPCDNo: req.body.RPCDNoRef,
           PNNo: req.body.PNNoRef,
           HoldingFees: parseFloat(
-            req.body.HoldingFeesRef.replace(/,/g, "")
+            req.body.HoldingFeesRef.replace(/,/g, "") || 0
           ).toFixed(2),
           PenaltyCharge: parseFloat(
-            req.body.PenaltyChargeRef.replace(/,/g, "")
+            req.body.PenaltyChargeRef.replace(/,/g, "") || 0
           ).toFixed(2),
           PaidVia: req.body.HowToBePaidRef,
           PaidInfo: req.body.RemarksRef,
@@ -449,7 +446,7 @@ CheckPostponement.post(
           Status: "PENDING",
           Branch: req.body.BranchRef,
           Prepared_by: req.body.Prepared_By,
-          Surplus: parseFloat(req.body.SurplusRef.replace(/,/g, "")).toFixed(2),
+          Surplus: parseFloat(req.body.SurplusRef.replace(/,/g, "") || 0).toFixed(2),
           Deducted_to: req.body.DeductedToRef,
         },
       });
@@ -691,20 +688,20 @@ CheckPostponement.post(
           PNNO, 
           CheckNo, 
           'HO' as Branch,
-          date_format(a.OldCheckDate,'%Y-%m-%d') as OldDepositDate,
-          date_format(a.NewCheckDate,'%Y-%m-%d') as NewDate,
+          date_format(a.OldCheckDate,'%m/%d/%Y') as OldDepositDate,
+          date_format(a.NewCheckDate,'%m/%d/%Y') as NewDate,
           CAST(DATEDIFF(a.NewCheckDate,  a.OldCheckDate) AS CHAR) AS Datediff,
           a.Reason, 
-          (selecT distinct(name) from PDC where PNo = a.PnNo and Check_No = a.CheckNo) as 'Name', 
-          (select bank from PDC where Check_No = a.CheckNo and PNo =a.PNNO ) as 'Bank', 
-          (select Check_Amnt from PDC where Check_No = a.CheckNo and PNo =a.PNNO ) as 'Amount', 
-          (seleCT PaidVia from Postponement where RPCDNo = a.RPCD) as 'PaidVia', 
-          (seleCT Surplus from Postponement where RPCDNo = a.RPCD) as 'Surplus', 
-          (seleCT Deducted_to from Postponement where RPCDNo = a.RPCD) as 'Deducted_to',
-          (seleCT PaidInfo from Postponement where RPCDNo = a.RPCD) as 'PaidInfo' 
+          (selecT distinct(name) from pdc where PNo = a.PnNo and Check_No = a.CheckNo) as 'Name', 
+          (select bank from pdc where Check_No = a.CheckNo and PNo =a.PNNO ) as 'Bank', 
+          (select Check_Amnt from pdc where Check_No = a.CheckNo and PNo =a.PNNO ) as 'Amount', 
+          (seleCT PaidVia from postponement where RPCDNo = a.RPCD) as 'PaidVia', 
+          (seleCT Surplus from postponement where RPCDNo = a.RPCD) as 'Surplus', 
+          (seleCT Deducted_to from postponement where RPCDNo = a.RPCD) as 'Deducted_to',
+          (seleCT PaidInfo from postponement where RPCDNo = a.RPCD) as 'PaidInfo' 
       from (
           seleCT *, 
-          (selecT pnno from Postponement where RPCDNo = A.RPCD) as 'PNNO' 
+          (selecT pnno from postponement where RPCDNo = A.RPCD) as 'PNNO' 
           from postponement_detail A) a 
       where RPCD = '${req.body.RPCDNo}'   
       `;
