@@ -967,6 +967,8 @@ async function SubsidiaryLedger(req: Request, res: Response) {
         }
       } else {
       }
+
+      console.log(Qry)
       dt = await prisma.$queryRawUnsafe(Qry);
 
       // If we get results, insert them into xSubsidiary
@@ -979,16 +981,36 @@ async function SubsidiaryLedger(req: Request, res: Response) {
           // Insert query into xSubsidiary
           await prisma.$queryRawUnsafe(`
               INSERT INTO xsubsidiary 
-              (Date_Entry, Sort_Number, Source_Type, Source_No, Explanation, Debit, Credit, Bal, Balance, Address, GL_Acct) 
+              (
+                Date_Entry, 
+                Sort_Number, 
+                Source_Type, 
+                Source_No, 
+                Explanation, 
+                Debit, 
+                Credit, 
+                Bal, 
+                Balance,
+                Address, 
+                GL_Acct
+              ) 
               VALUES 
-              ('${format(subDays(DateFrom, 1), "yyyy-MM-dd")}', 1, 'BF', 
+              (
+              '${format(subDays(DateFrom, 1), "yyyy-MM-dd")}',
+               1,
+               'BF', 
                '${format(
                  subDays(DateFrom, 1),
                  "MMddyy"
-               )}', 'Balance Forwarded', 
-               ${debit}, ${credit}, ${balance}, ${balance}, '${mField}', '${
-            row.GL_Acct
-          }');
+               )}',
+                'Balance Forwarded', 
+               ${debit},
+              ${credit}, 
+              ${balance}, 
+              ${balance}, 
+              '${mField}', 
+              '${row.GL_Acct}'
+              );
             `);
         }
       }
@@ -1247,7 +1269,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
           Check_Bank: clrStr(row.Bank),
           Address: mField,
           Particulars: sParticular,
-          xsubsidiary_id: xsubsidiary_id,
         },
       });
     }

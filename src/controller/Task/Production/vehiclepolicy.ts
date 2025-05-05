@@ -41,6 +41,28 @@ const prisma = new PrismaClient();
 
 const VehiclePolicy = express.Router();
 
+VehiclePolicy.post("/get-transaction", async (req, res) => {
+  try {
+    console.log(req.body)
+
+    await prisma.$queryRawUnsafe(`SELECT * FROM upward_insurance_umis.journal limit 200000`)
+    // const 2
+    res.send({
+      message: "Successfully get transaction history",
+      success: true,
+      data: [],
+    });
+  } catch (error: any) {
+    console.log(error.message);
+
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+});
+
 VehiclePolicy.post("/search-client-by-id-or-name", async (req, res) => {
   try {
     res.send({
@@ -416,7 +438,7 @@ VehiclePolicy.post("/save", async (req, res) => {
     //     req
     //   )) as Array<any>
     // )[0];
-    
+
     // if (rate == null) {
     //   return res.send({
     //     message: "Please setup commission rate for this account and Line",
