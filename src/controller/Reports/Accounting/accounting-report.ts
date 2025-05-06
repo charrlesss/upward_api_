@@ -366,7 +366,7 @@ async function ScheduleAccounts(req: Request, res: Response) {
               IF(SUBSTRING(GL_Acct, 1, 1) <= '3' OR SUBSTRING(GL_Acct, 1, 1) = '7', 
               SUM(qryJournal.mDebit) - SUM(qryJournal.mCredit), 
               SUM(qryJournal.mCredit) - SUM(qryJournal.mDebit)) AS Balance
-              From (${_qryJournal}) QryJournal 
+              From (${_qryJournal}) qryJournal 
               WHERE (((qryJournal.Source_Type) <>'BF' And (qryJournal.Source_Type) <>'BFD' And (qryJournal.Source_Type) <>'BFS') AND ((qryJournal.Date_Entry) <='${dateFormatted}')) 
               GROUP BY qryJournal.GL_Acct, qryJournal.Sub_Acct, qryJournal.mSub_Acct 
               HAVING (qryJournal.GL_Acct='${account.trim()}') ${
@@ -391,7 +391,7 @@ async function ScheduleAccounts(req: Request, res: Response) {
               IF(SUBSTRING(GL_Acct, 1, 1) <= '3' OR SUBSTRING(GL_Acct, 1, 1) = '7', 
               SUM(qryJournal.mDebit) - SUM(qryJournal.mCredit), 
               SUM(qryJournal.mCredit) - SUM(qryJournal.mDebit)) AS Balance
-              From (${_qryJournal}) QryJournal 
+              From (${_qryJournal}) qryJournal 
               WHERE (((qryJournal.Source_Type) <>'BF' And (qryJournal.Source_Type) <>'BFD' And (qryJournal.Source_Type) <>'BFS') AND ((qryJournal.Date_Entry) <='${dateFormatted}')) 
               GROUP BY qryJournal.GL_Acct, qryJournal.Sub_Acct, qryJournal.mSub_Acct 
               ORDER BY  ${
@@ -438,22 +438,22 @@ async function ScheduleAccounts(req: Request, res: Response) {
             Left(GL.GL_Acct,1) AS 'Group Header', 
             Left(GL.GL_Acct,4) AS Header,GL.GL_Acct,CA.Short AS 'mShort',
             '' AS 'Sub_Acct',
-            ifnull(gl.ID_No,'') AS 'ID_No',
+            ifnull(GL.ID_No,'') AS 'ID_No',
             ifnull(ID.Shortname,'') as 'mID', 
             sum(Debit) as 'Debit',
             sum(Credit) as 'Credit',
             IF(SUBSTRING(GL_Acct, 1, 1) <= '3' OR SUBSTRING(GL_Acct, 1, 1) = '7', 
             SUM(Debit) - SUM(Credit), 
             SUM(Credit) - SUM(Debit)) AS Balance
-          FROM Journal GL 
-            INNER JOIN Chart_Account CA  ON CA.Acct_Code = GL.GL_Acct 
-            LEFT JOIN Sub_Account SUB  ON SUB.Sub_Acct = GL.Sub_Acct 
+          FROM journal GL 
+            INNER JOIN chart_account CA  ON CA.Acct_Code = GL.GL_Acct 
+            LEFT JOIN sub_account SUB  ON SUB.Sub_Acct = GL.Sub_Acct 
             LEFT JOIN (${id_entry}) ID  ON ID.IDNo = GL.ID_No 
           WHERE 
           GL.Source_Type NOT IN ('BF','BFD','BFS') AND
            Date_Entry <= '${dateFormatted}' AND 
            GL.GL_Acct ='${account.trim()}' 
-          GROUP BY GL_Acct,ca.Short,gl.ID_No,IfNULL(ID.Shortname,'')  ) a
+          GROUP BY GL_Acct,CA.Short,GL.ID_No,IfNULL(ID.Shortname,'')  ) a
           where Balance <> 0 
           ORDER BY 'Group Header',Header,GL_Acct,${
             parseInt(sort) === 0 ? "mID" : "ID_No"
@@ -494,18 +494,18 @@ async function ScheduleAccounts(req: Request, res: Response) {
             Left(GL.GL_Acct,4) AS Header,
             GL.GL_Acct,CA.Short AS 'mShort',
             '' AS 'Sub_Acct',
-            IFNULL(gl.ID_No,'') AS 'ID_No',
+            IFNULL(GL.ID_No,'') AS 'ID_No',
             IFNULL(ID.Shortname,'') as 'mID', 
             sum(Debit) as 'Debit',sum(Credit) as 'Credit', 
              IF(SUBSTRING(GL_Acct, 1, 1) <= '3' OR SUBSTRING(GL_Acct, 1, 1) = '7', 
             SUM(Debit) - SUM(Credit), 
             SUM(Credit) - SUM(Debit)) AS Balance
-        FROM Journal GL 
-        INNER JOIN Chart_Account CA ON CA.Acct_Code = GL.GL_Acct 
-        LEFT JOIN Sub_Account SUB ON SUB.Sub_Acct = GL.Sub_Acct 
+        FROM journal GL 
+        INNER JOIN chart_account CA ON CA.Acct_Code = GL.GL_Acct 
+        LEFT JOIN sub_account SUB ON SUB.Sub_Acct = GL.Sub_Acct 
         LEFT JOIN (${id_entry}) ID ON ID.IDNo = GL.ID_No 
         WHERE GL.Source_Type NOT IN ('BF','BFD','BFS') AND CAST(Date_Entry AS DATE) <= '${dateFormatted}' 
-        GROUP BY GL_Acct,ca.Short,gl.ID_No,IFNULL(ID.Shortname,'')  
+        GROUP BY GL_Acct,CA.Short,GL.ID_No,IFNULL(ID.Shortname,'')  
         ) a
          where Balance <> 0 
         ORDER BY 'Group Header',Header,GL_Acct,${
@@ -530,8 +530,8 @@ async function ScheduleAccounts(req: Request, res: Response) {
                 SUM(qryJournal.mDebit) - SUM(qryJournal.mCredit), 
                 SUM(qryJournal.mCredit) - SUM(qryJournal.mDebit)) AS Balance 
         FROM (${_qryJournal}) qryJournal 
-        LEFT JOIN Policy ON qryJournal.ID_No = Policy.PolicyNo 
-        INNER JOIN Policy_Account Account ON Policy.Account = Account.Account 
+        LEFT JOIN policy ON qryJournal.ID_No = policy.PolicyNo 
+        INNER JOIN policy_account Account ON policy.Account = Account.Account 
         WHERE qryJournal.Date_Entry <='${dateFormatted}' 
         GROUP BY Account.AccountCode, qryJournal.Sub_Acct, qryJournal.GL_Acct, qryJournal.ID_No 
         ) a
@@ -555,8 +555,8 @@ async function ScheduleAccounts(req: Request, res: Response) {
                 SUM(qryJournal.mDebit) - SUM(qryJournal.mCredit), 
                 SUM(qryJournal.mCredit) - SUM(qryJournal.mDebit)) AS Balance 
         FROM (${_qryJournal}) qryJournal 
-        LEFT JOIN Policy ON qryJournal.ID_No = Policy.PolicyNo 
-        INNER JOIN Policy_Account Account ON Policy.Account = Account.Account 
+        LEFT JOIN policy ON qryJournal.ID_No = policy.PolicyNo 
+        INNER JOIN policy_account Account ON policy.Account = Account.Account 
         WHERE qryJournal.Date_Entry <='${dateFormatted}' 
         GROUP BY Account.AccountCode, qryJournal.Sub_Acct, qryJournal.GL_Acct, qryJournal.ID_No 
         ) a
@@ -1236,7 +1236,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
           sParticular = clrStr(row.Remarks);
           break;
       }
-      let xsubsidiary_id = i.toString().padStart(5, "0");
 
       // const xsubsidiary_id = uuidV4();
 
@@ -1321,7 +1320,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       Credit: formatNumber(totalCredit),
       Bal: -15500,
       Balance: "0",
-      xsubsidiary_id: "",
       refs: "",
     });
 
@@ -1425,7 +1423,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       Credit: formatNumber(totalCredit),
       Bal: -15500,
       Balance: `${formatNumber(totalDebit - totalCredit)}`,
-      xsubsidiary_id: "",
       refs: "",
     });
 

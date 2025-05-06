@@ -2210,6 +2210,8 @@ export function AgingAccountsReport(date: Date, type: string) {
   console.log(formattedDate);
   let query = "";
 
+  const department = process.env.DEPARTMENT
+
   const ID_Entry = `
     SELECT 
       "Client" as IDType,
@@ -2351,10 +2353,10 @@ export function AgingAccountsReport(date: Date, type: string) {
                 Policy.AgentCom,
                 IFNULL(VPolicy.Mortgagee, FPolicy.Mortgage) AS Remarks
             FROM
-                Policy 
+                policy  as Policy
                 RIGHT OUTER JOIN (
                     SELECT ID_No, (IFNULL(SUM(Debit), 0) - IFNULL(SUM(Credit), 0)) AS Balance
-                    FROM Journal
+                    FROM journal as Journal
                     WHERE GL_Acct = '1.03.03' AND ((Source_Type) <> 'BFD' AND (Source_Type) <> 'BF' AND (Source_Type) <> 'BFS') AND Date_Entry <= '${formattedDate}'
                     GROUP BY ID_No
                 ) Payment ON Policy.PolicyNo = Payment.ID_No
@@ -2376,7 +2378,6 @@ export function AgingAccountsReport(date: Date, type: string) {
                 Policy.PolicyNo
         `;
   }
-
   const final_query = `
     select 
         a.*,
@@ -2390,7 +2391,7 @@ export function AgingAccountsReport(date: Date, type: string) {
         format(a.Discount,2) as  _Discount,
         format(a.AgentCom,2) as  _AgentCom,
         CASE
-            WHEN abs(DATEDIFF(CURDATE(), a.DateIssued)) > 90  THEN format((abs(DATEDIFF(CURDATE(), a.DateIssued)) - 90),0)
+            WHEN abs(DATEDIFF(CURDATE(), a.DateIssued)) > ${department === 'UMIS' ? '90' :'180'}  THEN format((abs(DATEDIFF(CURDATE(), a.DateIssued)) - 90),0)
             ELSE format(0,0)
         END AS due_days
     from ( ${query} ) a
