@@ -80,7 +80,7 @@ Warehouse.post(
           Check_Amnt, 
           Bank, 
           PDC_Status 
-        FROM PDC 
+        FROM pdc
         WHERE  ${searchBy}  LIKE '%${search}%' AND ${StrWhere} ORDER BY Date,Check_Date`;
       }
       res.send({

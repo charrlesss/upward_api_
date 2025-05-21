@@ -17,6 +17,7 @@ const corsOptions = {
      "https://umis.upwardinsurance.net", 
      "https://ucsmi.upwardinsurance.net", 
      "https://upwardinsurance.net", 
+     'http://192.168.100.220:3000',
     "/", 
     "*"],
   credentials: true,

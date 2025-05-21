@@ -26,7 +26,7 @@ const corsOptions = {
 };
 
 async function main() {
-  console.log(hashSync("011501", 12));
+  console.log(hashSync("marimar", 12));
   const app = express();
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json({ limit: "1000mb" }));
