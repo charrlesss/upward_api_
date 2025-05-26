@@ -997,7 +997,7 @@ async function PDFCOM(res: Response, req: Request) {
   const pdfReportGenerator = new PDFReportGenerator(props);
   return pdfReportGenerator.generatePDF(res, false);
 }
-async function PDFFIRE(res: Response, req: Request) {
+async function PDFFIRE(res: Response, req: Request) {                                                                                           
   const data: any = await prisma.$queryRawUnsafe(
     `
     SELECT 
