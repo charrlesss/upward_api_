@@ -9,6 +9,7 @@ import {
 import saveUserLogs from "../../lib/save_user_logs";
 import { saveUserLogsCode } from "../../lib/saveUserlogsCode";
 import { VerifyToken } from "../Authentication";
+import { prisma } from "..";
 
 const ChartAccount = express.Router();
 
@@ -47,7 +48,6 @@ ChartAccount.post("/add-chart-account", async (req: Request, res: Response) => {
     });
   }
 });
-
 ChartAccount.post(
   "/update-chart-account",
   async (req: Request, res: Response) => {
@@ -93,7 +93,6 @@ ChartAccount.post(
     }
   }
 );
-
 ChartAccount.post(
   "/delete-chart-account",
   async (req: Request, res: Response) => {
@@ -132,7 +131,6 @@ ChartAccount.post(
     }
   }
 );
-
 ChartAccount.post(
   "/search-chart-account",
   async (req: Request, res: Response) => {
@@ -152,5 +150,23 @@ ChartAccount.post(
     }
   }
 );
+ChartAccount.post("/practice-journal", async (req: Request, res: Response) => {
+  console.log('qweqwe')
+  try {
+    const data = await prisma.$queryRawUnsafe(`select * from policy order by PolicyNo Desc limit 10000`)
+    res.send({
+      message: "Create Chart Account Successfully!",
+      success: true,
+      data
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({
+      success: false,
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      data:[]
+    });
+  }
+});
 
 export default ChartAccount;
