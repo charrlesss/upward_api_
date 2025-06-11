@@ -153,7 +153,7 @@ ChartAccount.post(
 ChartAccount.post("/practice-journal", async (req: Request, res: Response) => {
   console.log('qweqwe')
   try {
-    const data = await prisma.$queryRawUnsafe(`select * from policy order by PolicyNo Desc limit 10000`)
+    const data = await prisma.$queryRawUnsafe(`select * from policy order by PolicyNo Desc limit 1000`)
     res.send({
       message: "Create Chart Account Successfully!",
       success: true,
