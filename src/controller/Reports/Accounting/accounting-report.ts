@@ -943,6 +943,8 @@ async function SubsidiaryLedger(req: Request, res: Response) {
               HAVING qryJournal.GL_Acct = '${GL_Code.trim()}' 
               ORDER BY qryJournal.GL_Acct;
             `;
+
+            
         } else {
           // Query excluding 'BF' and 'BFS' for specific GL code with ID filter
           Qry = `
@@ -968,7 +970,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       } else {
       }
 
-      console.log(Qry)
       dt = await prisma.$queryRawUnsafe(Qry);
 
       // If we get results, insert them into xSubsidiary
@@ -999,10 +1000,7 @@ async function SubsidiaryLedger(req: Request, res: Response) {
               '${format(subDays(DateFrom, 1), "yyyy-MM-dd")}',
                1,
                'BF', 
-               '${format(
-                 subDays(DateFrom, 1),
-                 "MMddyy"
-               )}',
+               '${format(subDays(DateFrom, 1), "MMddyy")}',
                 'Balance Forwarded', 
                ${debit},
               ${credit}, 
@@ -1216,7 +1214,9 @@ async function SubsidiaryLedger(req: Request, res: Response) {
 
         let dtBal: any = await prisma.$queryRawUnsafe(balanceQuery);
         if (dtBal.length > 0) {
-          Balance = dtBal[0].Balance;
+          Balance = parseFloat(
+            (dtBal[0].Balance || 0).toString().replace(/,/g, "")
+          );
         } else {
           Balance = 0;
         }
@@ -1240,7 +1240,6 @@ async function SubsidiaryLedger(req: Request, res: Response) {
       // const xsubsidiary_id = uuidV4();
 
       // Insert the record into xSubsidiary
-
       // Execute the insert query
       await prisma.xsubsidiary.create({
         data: {
