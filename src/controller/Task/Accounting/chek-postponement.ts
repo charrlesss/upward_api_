@@ -534,15 +534,17 @@ CheckPostponement.post("/check-postponement/request/edit", async (req, res) => {
       data: {
         RPCDNo: req.body.RPCDNoRef,
         PNNo: req.body.PNNoRef,
-        HoldingFees:  req.body.HoldingFeesRef === "" ? "0.00" : req.body.HoldingFeesRef, 
-        PenaltyCharge:  req.body.PenaltyChargeRef === "" ? "0.00" : req.body.PenaltyChargeRef, 
+        HoldingFees:
+          req.body.HoldingFeesRef === "" ? "0.00" : req.body.HoldingFeesRef,
+        PenaltyCharge:
+          req.body.PenaltyChargeRef === "" ? "0.00" : req.body.PenaltyChargeRef,
         PaidVia: req.body.HowToBePaidRef,
         PaidInfo: req.body.RemarksRef,
         Date: defaultFormat(new Date()),
         Status: "PENDING",
         Branch: req.body.BranchRef,
         Prepared_by: req.body.Prepared_By,
-        Surplus:  req.body.SurplusRef === "" ? "0.00" : req.body.SurplusRef,
+        Surplus: req.body.SurplusRef === "" ? "0.00" : req.body.SurplusRef,
         Deducted_to:
           req.body.DeductedToRef === "" ? "0.00" : req.body.DeductedToRef,
       },
@@ -849,10 +851,11 @@ CheckPostponement.post(
   async (req, res) => {
     try {
       res.send({
-        message: `Update ${req.body.RPCDNoRef} Successfully`,
+        message: `Update ${req.body.search} Successfully`,
         success: true,
         data: await prisma.$queryRawUnsafe(
-          ` Select RPCDNo from postponement  Where Status = 'PENDING'`
+          ` Select RPCDNo from postponement  Where Status = 'PENDING' and RPCDNo like ?`,
+          `%${req.body.search}%`
         ),
       });
     } catch (error: any) {
