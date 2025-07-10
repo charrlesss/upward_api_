@@ -218,6 +218,7 @@ Deposit.post("/search-deposit", async (req, res) => {
 });
 Deposit.post("/search-cash-check", async (req, res) => {
   try {
+    console.log(req.body)
     const { IDEntryWithPolicy } = qry_id_policy_sub();
     const cashKeys: any = {
       Pap_1000: "1,000.00",
