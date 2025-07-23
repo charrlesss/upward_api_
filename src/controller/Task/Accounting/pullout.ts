@@ -19,7 +19,7 @@ import {
 import { getUserById } from "../../../model/StoredProcedure";
 import generateUniqueUUID from "../../../lib/generateUniqueUUID";
 import sendEmail from "../../../lib/sendEmail";
-import { format } from "date-fns";
+import { format, formatDate } from "date-fns";
 import generateRandomNumber from "../../../lib/generateRandomNumber";
 import saveUserLogs from "../../../lib/save_user_logs";
 import { VerifyToken } from "../../Authentication";
@@ -27,6 +27,7 @@ import { defaultFormat } from "../../../lib/defaultDateFormat";
 import { prisma } from "../..";
 import PDFDocument from "pdfkit";
 import fs from "fs";
+import { formatNumber } from "./collection";
 const Pullout = express.Router();
 const PulloutRequest = express.Router();
 const PulloutApporved = express.Router();
@@ -349,23 +350,23 @@ PulloutApporved.post("/pullout/approved/load-details", async (req, res) => {
 });
 PulloutApporved.post("/pullout/approved/confirm", async (req, res) => {
   try {
-    const RCPNo = req.body.RCPNo;
-    const code = req.body.code;
-    const dt = (await checkApprovedCode(req, code)) as Array<any>;
-    const dt1 = (await checkApprovedCodeIsUsed(req, RCPNo)) as Array<any>;
-    if (dt.length <= 0) {
-      return res.send({
-        message: "Invalid Authorization Code",
-        success: false,
-      });
-    }
+    // const RCPNo = req.body.RCPNo;
+    // const code = req.body.code;
+    // const dt = (await checkApprovedCode(req, code)) as Array<any>;
+    // const dt1 = (await checkApprovedCodeIsUsed(req, RCPNo)) as Array<any>;
+    // if (dt.length <= 0) {
+    //   return res.send({
+    //     message: "Invalid Authorization Code",
+    //     success: false,
+    //   });
+    // }
 
-    if (dt1.length > 0) {
-      return res.send({
-        message: `Request No. ${RCPNo} had already been approved/disapproved!`,
-        success: false,
-      });
-    }
+    // if (dt1.length > 0) {
+    //   return res.send({
+    //     message: `Request No. ${RCPNo} had already been approved/disapproved!`,
+    //     success: false,
+    //   });
+    // }
 
     res.send({
       message: "You want to confirm this transaction?",
@@ -389,6 +390,7 @@ PulloutApporved.post("/pullout/approved/confirm-code", async (req, res) => {
     const Name = req.body.Name;
     const code = req.body.code;
     const selected = req.body.selected;
+    console.log(selected)
 
     const user = await getUserById((req.user as any).UserId);
     const Requested_By = user?.Username as string;
@@ -499,10 +501,33 @@ PulloutApporved.post(
 );
 PulloutApporved.post("/pullout/approved/print", async (req, res) => {
   try {
-    const newData = req.body.tableData;
-    const sortedChecks = newData.sort(
-      (a: any, b: any) => Number(a.seq) - Number(b.seq)
-    );
+    const data = (await prisma.$queryRawUnsafe(
+      `
+     Select 
+        CAST((ROW_NUMBER() OVER ()) AS CHAR) as row_count ,
+        a.RCPNo,
+        a.PNNo,
+        c.Name ,
+        a.Reason,
+        b.CheckNo as Check_No,
+        date_format(c.Check_Date, '%m/%d/%Y') as Check_Date,
+        c.Bank as BankName,
+        c.Check_Amnt 
+      From pullout_request a 
+      Inner join pullout_request_details b on a.RCPNo = b.RCPNo 
+      Inner join pdc c on b.CheckNo = c.Check_No and a.PNNo = c.PNo 
+      Where a.RCPNo =  ?
+      order by Check_Date asc
+    `,
+      req.body.state.rcpnNo
+    )) as Array<any>;
+
+    const newData = data.map((itm, idx: number) => {
+      itm.Check_Amnt = formatNumber(
+        parseFloat(itm.Check_Amnt.toString().replace(/,/g, ""))
+      );
+      return { ...itm, seq: idx + 1 };
+    });
 
     let PAGE_WIDTH = 612;
     let PAGE_HEIGHT = 792;
@@ -601,7 +626,7 @@ PulloutApporved.post("/pullout/approved/print", async (req, res) => {
 
     doc.font("Helvetica");
 
-    sortedChecks.forEach((rowItm: any, rowIndex: number) => {
+    newData.forEach((rowItm: any, rowIndex: number) => {
       const rowHeight = Math.max(
         ...headers.map((itm: any) => {
           return doc.heightOfString(rowItm[itm.key], {
@@ -702,9 +727,9 @@ function getSelectedCheck(selected: string) {
 }
 function generateTextTable(item: any) {
   return `<tr>
- <td style="border: 1px solid #ddd; padding: 8px">${item.Check_Date}</td>
+ <td style="border: 1px solid #ddd; padding: 8px">${formatDate(new Date(item.Check_Date),'MM/dd/yyyy')}</td>
  <td style="border: 1px solid #ddd; padding: 8px">${item.Bank}</td>
- <td style="border: 1px solid #ddd; padding: 8px">${item.Check_No}</td>
+ <td style="border: 1px solid #ddd; padding: 8px">${item.CheckNo}</td>
  <td style="border: 1px solid #ddd; padding: 8px">₱${item.Check_Amnt}</td>
 </tr>`;
 }
