@@ -1196,6 +1196,7 @@ model gpa_endorsement {
   address        String   @db.Text
   datefrom       DateTime @db.DateTime(6)
   dateto         DateTime @db.DateTime(6)
+  dateissued         DateTime @db.DateTime(6)
   suminsured     Decimal  @db.Decimal(19, 4)
   //description
   deleted        String  @db.Text
