@@ -17,9 +17,11 @@ StatementOfAccount.post("/soa/search-by-policy", async (req, res) => {
           a.PolicyType,
           a.PolicyNo,
           date_format(a.DateIssued,'%m/%d/%Y') as DateIssued,
-          b.IDNo,
-          b.Shortname
+          c.IDNo,
+          c.Shortname,
+          b.used
       FROM policy a
+      left join  ( select if(policy_no is null,"No","Yes") as used, policy_no  from soa_policy group by policy_no)  b on a.PolicyNo = b.policy_no
       left join (
       SELECT 
         "Client" as IDType,
@@ -80,13 +82,13 @@ StatementOfAccount.post("/soa/search-by-policy", async (req, res) => {
         aa.description as address
       FROM
         entry_others aa
-      )  b on b.IDNo = a.IDNo
+      )  c on c.IDNo = a.IDNo
       where
         a.PolicyNo like ? 
-        OR  b.IDNo like ? 
-        OR  b.Shortname like ?
+        OR  c.IDNo like ?  
+        OR c.Shortname like ? 
      order by a.DateIssued desc
-    limit 500
+     limit 500
       ;
   `,
     `%${req.body.search}%`,
@@ -377,6 +379,73 @@ where a.reference_no = ?;`,
       success: false,
       data: [],
       state: [],
+    });
+  }
+});
+StatementOfAccount.post("/soa/search-soa-by-policy", async (req, res) => {
+  const data = await prisma.$queryRawUnsafe(
+    `SELECT reference_no, policy_no FROM soa_policy where policy_no like ?;`,
+    `%${req.body.search}%`
+  );
+    console.log(data)
+
+  try {
+    res.send({
+      message: "Successfully Policy Details",
+      success: true,
+      data
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
+    });
+  }
+});
+StatementOfAccount.post("/soa/search-endorsement", async (req, res) => {
+  const data = await prisma.$queryRawUnsafe(
+    `SELECT * FROM gpa_endorsement where policyNo like ?;`,
+    `%${req.body.search}%`
+  );
+
+  const r  = `
+  
+   SELECT 
+    a.*,
+    format(b.Debit,2) as totalDue,
+    format(b.Credit , 2) as Payment,
+    format((b.Debit - b.Credit) , 2) as Balance
+FROM
+    policy a
+left join (
+SELECT 
+    SUM(journal.Debit) AS Debit,
+    SUM(journal.Credit) AS Credit,
+    journal.ID_No
+FROM
+    journal
+WHERE
+    journal.Source_Type NOT IN ('BF' , 'BFD', 'BFS')
+        AND journal.GL_Acct = '1.03.01'
+        group by journal.ID_No
+) b on a.PolicyNo = b.ID_No
+where (b.Debit - b.Credit) > 0
+  `
+
+  try {
+    res.send({
+      message: "Successfully Policy Details",
+      success: true,
+      data
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+      data: [],
     });
   }
 });
