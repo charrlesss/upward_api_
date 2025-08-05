@@ -1,9 +1,7 @@
 import express from "express";
 import { prisma } from "../..";
 import path from "path";
-import { differenceInYears, format, formatDate } from "date-fns";
-import PDFDocument, { toString } from "pdfkit";
-import fs from "fs";
+import { format } from "date-fns";
 import { selectClient } from "../../../model/Task/Accounting/pdc.model";
 import { formatNumber } from "../Accounting/collection";
 import PDFReportGenerator from "../../../lib/pdf-generator";
@@ -13,83 +11,99 @@ const StatementOfAccount = express.Router();
 StatementOfAccount.post("/soa/search-by-policy", async (req, res) => {
   const data = await prisma.$queryRawUnsafe(
     `
-    SELECT 
-          a.PolicyType,
-          a.PolicyNo,
-          date_format(a.DateIssued,'%m/%d/%Y') as DateIssued,
-          c.IDNo,
-          c.Shortname,
-          b.used
-      FROM policy a
-      left join  ( select if(policy_no is null,"No","Yes") as used, policy_no  from soa_policy group by policy_no)  b on a.PolicyNo = b.policy_no
-      left join (
-      SELECT 
-        "Client" as IDType,
-        aa.entry_client_id AS IDNo,
-        aa.sub_account,
-        if(aa.option = "individual", CONCAT(IF(aa.lastname is not null AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''),aa.firstname), aa.company) as Shortname,
-        aa.entry_client_id as client_id,
-        aa.address 
-      FROM
-        entry_client aa
-      union all
-      SELECT 
-        "Agent" as IDType,
-        aa.entry_agent_id AS IDNo,
-        aa.sub_account,
-        CONCAT(IF(aa.lastname is not null AND aa.lastname <> '', CONCAT(aa.lastname, ', '),''), aa.firstname) AS Shortname,
-        aa.entry_agent_id as client_id,
-        aa.address
-      FROM 
-        entry_agent aa
-      union all
-      SELECT 
-        "Employee" as IDType,
-        aa.entry_employee_id AS IDNo,
-        aa.sub_account,
-        CONCAT(IF(aa.lastname is not null AND aa.lastname <> '', CONCAT(aa.lastname , ', '),''), aa.firstname) AS Shortname,
-        aa.entry_employee_id as client_id,
-        aa.address  
-      FROM
-        entry_employee aa
-      union all
-      SELECT 
-        "Supplier" as IDType,
-        aa.entry_supplier_id AS IDNo,
-        aa.sub_account,
-        if(aa.option = "individual", CONCAT(IF(aa.lastname is not null AND aa.lastname <> '', CONCAT(aa.lastname, ', '),''),aa.firstname), aa.company) as Shortname,
-        aa.entry_supplier_id as client_id,
-        aa.address
-      FROM
-        entry_supplier aa
-      union all
-      SELECT 
-        "Fixed Assets" as IDType,
-        aa.entry_fixed_assets_id AS IDNo,
-        aa.sub_account,
-        aa.fullname AS Shortname,
-        aa.entry_fixed_assets_id as client_id,
-        aa.description as address
-      FROM
-        entry_fixed_assets aa
-      union all
-      SELECT 
-        "Others" as IDType,
-        aa.entry_others_id AS IDNo,
-        aa.sub_account,
-        aa.description AS Shortname,
-        aa.entry_others_id as client_id,
-        aa.description as address
-      FROM
-        entry_others aa
-      )  c on c.IDNo = a.IDNo
-      where
+SELECT 
+    a.PolicyType,
+    a.PolicyNo,
+    DATE_FORMAT(a.DateIssued, '%m/%d/%Y') AS DateIssued,
+    c.IDNo,
+    c.Shortname,
+    b.used,
+    format(d.Debit, 2) AS totalDue,
+    format(d.Credit, 2) AS payment,
+    format((d.Debit - d.Credit), 2) balance
+FROM
+    policy a
+        LEFT JOIN
+    (SELECT 
+        IF(policy_no IS NULL, 'No', 'Yes') AS used, policy_no
+    FROM
+        soa_policy
+    GROUP BY policy_no) b ON a.PolicyNo = b.policy_no
+        LEFT JOIN
+    (SELECT 
+        'Client' AS IDType,
+            aa.entry_client_id AS IDNo,
+            aa.sub_account,
+            IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS Shortname,
+            aa.entry_client_id AS client_id,
+            aa.address
+    FROM
+        entry_client aa UNION ALL SELECT 
+        'Agent' AS IDType,
+            aa.entry_agent_id AS IDNo,
+            aa.sub_account,
+            CONCAT(IF(aa.lastname IS NOT NULL
+                AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS Shortname,
+            aa.entry_agent_id AS client_id,
+            aa.address
+    FROM
+        entry_agent aa UNION ALL SELECT 
+        'Employee' AS IDType,
+            aa.entry_employee_id AS IDNo,
+            aa.sub_account,
+            CONCAT(IF(aa.lastname IS NOT NULL
+                AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname) AS Shortname,
+            aa.entry_employee_id AS client_id,
+            aa.address
+    FROM
+        entry_employee aa UNION ALL SELECT 
+        'Supplier' AS IDType,
+            aa.entry_supplier_id AS IDNo,
+            aa.sub_account,
+            IF(aa.option = 'individual', CONCAT(IF(aa.lastname IS NOT NULL
+                AND aa.lastname <> '', CONCAT(aa.lastname, ', '), ''), aa.firstname), aa.company) AS Shortname,
+            aa.entry_supplier_id AS client_id,
+            aa.address
+    FROM
+        entry_supplier aa UNION ALL SELECT 
+        'Fixed Assets' AS IDType,
+            aa.entry_fixed_assets_id AS IDNo,
+            aa.sub_account,
+            aa.fullname AS Shortname,
+            aa.entry_fixed_assets_id AS client_id,
+            aa.description AS address
+    FROM
+        entry_fixed_assets aa UNION ALL SELECT 
+        'Others' AS IDType,
+            aa.entry_others_id AS IDNo,
+            aa.sub_account,
+            aa.description AS Shortname,
+            aa.entry_others_id AS client_id,
+            aa.description AS address
+    FROM
+        entry_others aa) c ON a.IDNo = c.IDNo
+        LEFT JOIN
+    (SELECT 
+        SUM(journal.Debit) AS Debit,
+            SUM(journal.Credit) AS Credit,
+            journal.ID_No
+    FROM
+        journal
+    WHERE
+        journal.Date_Entry
+            AND journal.Source_Type NOT IN ('BF' , 'BFD', 'BFS')
+            AND journal.GL_Acct = '1.03.01'
+    GROUP BY journal.ID_No) d ON a.IDNo = d.ID_No or a.PolicyNo  = d.ID_No
+    where 
+     (
         a.PolicyNo like ? 
-        OR  c.IDNo like ?  
-        OR c.Shortname like ? 
+        OR  c.IDNo like ?   
+        OR c.Shortname like ?  
+    )
      order by a.DateIssued desc
      limit 500
-      ;
+
   `,
     `%${req.body.search}%`,
     `%${req.body.search}%`,
@@ -387,13 +401,13 @@ StatementOfAccount.post("/soa/search-soa-by-policy", async (req, res) => {
     `SELECT reference_no, policy_no FROM soa_policy where policy_no like ?;`,
     `%${req.body.search}%`
   );
-    console.log(data)
+  console.log(data);
 
   try {
     res.send({
       message: "Successfully Policy Details",
       success: true,
-      data
+      data,
     });
   } catch (err: any) {
     console.log(err.message);
@@ -410,7 +424,7 @@ StatementOfAccount.post("/soa/search-endorsement", async (req, res) => {
     `%${req.body.search}%`
   );
 
-  const r  = `
+  const r = `
   
    SELECT 
     a.*,
@@ -432,13 +446,13 @@ WHERE
         group by journal.ID_No
 ) b on a.PolicyNo = b.ID_No
 where (b.Debit - b.Credit) > 0
-  `
+  `;
 
   try {
     res.send({
       message: "Successfully Policy Details",
       success: true,
-      data
+      data,
     });
   } catch (err: any) {
     console.log(err.message);
@@ -449,7 +463,6 @@ where (b.Debit - b.Credit) > 0
     });
   }
 });
-
 StatementOfAccount.post("/soa/print", async (req, res) => {
   const qry = (policytablename: string, policies: string) => `
   SELECT * FROM ${policytablename} a 
@@ -469,7 +482,7 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
   //   req.body.careOf
   // );
 
-  for (const itm of req.body.data)
+  for (const itm of req.body.data) {
     if (itm.Type === "COM") {
       const COMDATA = (await prisma.$queryRawUnsafe(
         qry("vpolicy", itm.data.join("','"))
@@ -712,13 +725,103 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
           gap: true,
         });
       }
+    } else if (itm.Type === "ED") {
+      const EDDATA = (await prisma.$queryRawUnsafe(
+        `SELECT * FROM gpa_endorsement where endorsement_no in  ('${itm.data.join(
+          "','"
+        )}')`
+      )) as Array<any>;
+
+      if (EDDATA.length > 0) {
+        if (!data.some((itm: any) => itm.PolicyNo === "GPA")) {
+          data.push({
+            PolicyNo: "GPA",
+            Insured: "",
+            Premium: "",
+            From: "",
+            To: "",
+            GrossPremium: "",
+            header: true,
+          });
+        }
+
+        for (const itm of EDDATA) {
+          const newData: Array<any> = [
+            {
+              PolicyNo: itm.endorsement_no,
+              Insured: formatNumber(
+                parseFloat(itm.suminsured.toString().replace(/,/g, ""))
+              ),
+              Premium: formatNumber(
+                parseFloat(itm.totalpremium.toString().replace(/,/g, ""))
+              ),
+              From: format(new Date(itm.datefrom), "MM/dd/yyyy"),
+              To: format(new Date(itm.dateto), "MM/dd/yyyy"),
+              GrossPremium: formatNumber(
+                parseFloat(itm.totaldue.toString().replace(/,/g, ""))
+              ),
+              solo: false,
+            },
+          ];
+          if (typeof itm.deleted === "string" && itm.deleted !== "") {
+            newData.push({
+              PolicyNo: "",
+              Insured: `DELETED:  ${itm.deleted}`,
+              Premium: "",
+              From: "",
+              To: "",
+              GrossPremium: "",
+              solo: true,
+              endorsement: true,
+            });
+          }
+          if (typeof itm.replacement === "string" && itm.replacement !== "") {
+            newData.push({
+              PolicyNo: "",
+              Insured: `REPLACEMENT:  ${itm.replacement}`,
+              Premium: "",
+              From: "",
+              To: "",
+              GrossPremium: "",
+              solo: true,
+              endorsement: true,
+            });
+          }
+          if (typeof itm.additional === "string" && itm.additional !== "") {
+            newData.push({
+              PolicyNo: "",
+              Insured: `ADDITIONAL:  ${itm.additional}`,
+              Premium: "",
+              From: "",
+              To: "",
+              GrossPremium: "",
+              solo: true,
+              endorsement: true,
+            });
+          }
+
+          newData[1].PolicyNo = "ENDORSEMENT";
+
+          newData.push({
+            PolicyNo: "",
+            Insured: "",
+            Premium: "",
+            From: "",
+            To: "",
+            GrossPremium: "",
+            gap: true,
+          });
+
+          data.push(...newData);
+        }
+      }
     } else if (itm.Type === "CGL") {
       const CGLDATA = (await prisma.$queryRawUnsafe(
         qry("cglpolicy", itm.data.join("','"))
       )) as Array<any>;
       if (CGLDATA.length > 0) {
         data.push({
-          PolicyNo: "CGL",
+          PolicyNo: "CGL & CARI",
           Insured: "",
           Premium: "",
           From: "",
@@ -833,6 +936,7 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
         });
       }
     }
+  }
 
   // const MSPRDATA = (await prisma.$queryRawUnsafe(
   //   qry("msprpolicy")
@@ -857,6 +961,7 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
     GrossPremium: formatNumber(getTotal),
     total: true,
   });
+
   function bondsYear(itm: any) {
     const PolicyType = itm.PolicyType.trim();
     if (PolicyType === "G02") {
@@ -899,6 +1004,7 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
       return "";
     }
   }
+
   const headerIndexes = getIndexes(
     data,
     (item: any) =>
@@ -908,7 +1014,10 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
     data,
     (item: any) => item?.gapPerRow === true
   );
-
+  const getSolo = getIndexes(
+    data,
+    (item: any) => item?.solo === true && item?.endorsement
+  );
   let PAGE_WIDTH = 660;
   let PAGE_HEIGHT = 841;
 
@@ -934,7 +1043,7 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
     addHeaderBorderTop: true,
     PAGE_WIDTH,
     PAGE_HEIGHT,
-    MARGIN: { top: 160, right: 20, bottom: 30, left: 20 },
+    MARGIN: { top: 190, right: 20, bottom: 30, left: 20 },
     addDrawingOnHeader: (doc: PDFKit.PDFDocument, startY: number) => {
       doc.fontSize(7);
 
@@ -967,7 +1076,7 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
       // doc.fontSize(60);
       // doc.font("Helvetica-Bold");
       // doc.text("UPWARD", 155, yAxis);
-      yAxis += 50;
+      yAxis += 70;
 
       // if (process.env.DEPARTMENT === "UMIS") {
       //   doc.fontSize(9);
@@ -1042,6 +1151,73 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
       headerIndexes.forEach((itm: any) => {
         pdfReportGenerator.boldRow(itm);
       });
+      getSolo.forEach((itm: any) => {
+        pdfReportGenerator.SpanRow(itm, 1, 5);
+        pdfReportGenerator.boldRow(
+          itm,
+          (
+            doc: any,
+            cellValue: any,
+            startY_: any,
+            startX: any,
+            colWidth: any,
+            textHeader: any
+          ) => {
+            if (cellValue.includes("DELETED:")) {
+              doc.font("Helvetica-Bold");
+              const [label, value] = cellValue?.toString().split("DELETED:");
+              doc.text("DELETED:", startX + 5, startY_, {
+                width: 75,
+                align: textHeader,
+              });
+              doc.font("Helvetica");
+              doc.text(value.trim(), startX + 75, startY_, {
+                width: colWidth - 10 + 75,
+                align: textHeader,
+              });
+            } else if (cellValue.includes("REPLACEMENT:")) {
+              doc.font("Helvetica-Bold");
+              const [label, value] = cellValue
+                ?.toString()
+                .split("REPLACEMENT:");
+
+              doc.text("REPLACEMENT:", startX + 5, startY_, {
+                width: 75,
+                align: textHeader,
+              });
+              doc.font("Helvetica");
+              doc.text(value.trim(), startX + 75, startY_, {
+                width: colWidth - 10 + 75,
+                align: textHeader,
+              });
+            } else if (cellValue.includes("ADDITIONAL:")) {
+              doc.font("Helvetica-Bold");
+              const [label, value] = cellValue?.toString().split("ADDITIONAL:");
+
+              doc.text("ADDITIONAL:", startX + 5, startY_, {
+                width: 75,
+                align: textHeader,
+              });
+              doc.font("Helvetica");
+              doc.text(value.trim(), startX + 75, startY_, {
+                width: colWidth - 10 + 75,
+                align: textHeader,
+              });
+            } else {
+              doc.font("Helvetica");
+              doc.text(cellValue?.toString() || "", startX + 5, startY_, {
+                width: colWidth - 10,
+                align: textHeader,
+              });
+            }
+          }
+        );
+      });
+
+      // ||
+      //         cellValue.includes("REPLACEMENT:") ||
+      //         cellValue.includes("ADDITIONAL:")
+
       return yAxis;
     },
     drawOnColumn: (row: any, doc: PDFKit.PDFDocument, startY: number) => {
@@ -1111,7 +1287,7 @@ StatementOfAccount.post("/soa/print", async (req, res) => {
 
       yAxis += 60;
       doc.fontSize(9);
-      doc.text(`Ref. No. : ${req.body.refNo}`, 30, yAxis, {
+      doc.text(`Ref. No. : ${req.body.reference_no}`, 30, yAxis, {
         width: PAGE_WIDTH - 60,
         align: "right",
       });
