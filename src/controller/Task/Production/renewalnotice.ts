@@ -1352,7 +1352,7 @@ async function PDFFIRE(res: Response, req: Request) {
         align: "left",
       });
 
-      doc.text("MARY GRACE LLANERA", 30 + 300, nextpdy, {
+      doc.text("MARY GRACE LLANERA-LUMIDAO", 30 + 300, nextpdy, {
         width: 300,
         align: "left",
       });
@@ -1710,7 +1710,7 @@ async function PDFMAR(res: Response, req: Request) {
         align: "left",
       });
 
-      doc.text("MARY GRACE LLANERA", 30 + 300, nextpdy, {
+      doc.text("MARY GRACE LLANERA-LUMIDAO", 30 + 300, nextpdy, {
         width: 300,
         align: "left",
       });
@@ -1946,12 +1946,12 @@ async function PDFPA(res: Response, req: Request) {
         align: "left",
       });
       doc.font("Helvetica-Bold");
-      doc.text("Comprehensive Insurance Coverage", 250, 240, {
+      doc.text("Personal Accident Insurance Coverage", 250, 240, {
         width: PAGE_WIDTH_WITH_MARGIN,
         align: "left",
       });
       doc.font("Helvetica");
-      doc.text("which will expire on the date ", 410, 240, {
+      doc.text("which will expire on the date ", 420, 240, {
         width: PAGE_WIDTH_WITH_MARGIN,
         align: "left",
       });
@@ -2069,7 +2069,7 @@ async function PDFPA(res: Response, req: Request) {
         align: "left",
       });
 
-      doc.text("MARY GRACE LLANERA", 30 + 300, nextpdy, {
+      doc.text("MARY GRACE LLANERA-LUMIDAO", 30 + 300, nextpdy, {
         width: 300,
         align: "left",
       });

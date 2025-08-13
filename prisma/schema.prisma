@@ -876,6 +876,7 @@ model pullout_request {
   Requested_Date String? @db.VarChar(255)
   Approved_By    String? @db.VarChar(30)
   Approved_Date  String? @db.VarChar(255)
+  cancel         Boolean @default(false)
 }
 
 model pullout_request_details {

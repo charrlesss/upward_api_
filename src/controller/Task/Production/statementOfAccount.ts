@@ -8,6 +8,8 @@ import PDFReportGenerator from "../../../lib/pdf-generator";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import { clients_view } from "../../../model/db/views";
+import { saveUserLogsCode } from "../../../lib/saveUserlogsCode";
+import saveUserLogs from "../../../lib/save_user_logs";
 
 const StatementOfAccount = express.Router();
 
@@ -248,29 +250,89 @@ StatementOfAccount.post("/soa/generate-reference", async (req, res) => {
   }
 });
 StatementOfAccount.post("/soa/save", async (req, res) => {
-  console.log(req.body);
-  await prisma.soa.create({
-    data: {
-      reference_no: req.body.reference_no,
-      idno: req.body.idno,
-      name: req.body.name,
-      address: req.body.address,
-      attachment: req.body.attachment,
-    },
-  });
+  try {
+    const isUpdate = req.body.mode === "update";
+    if (isUpdate) {
+      if (
+        !(await saveUserLogsCode(req, "update", req.body.reference_no, "Soa"))
+      ) {
+        return res.send({ message: "Invalid User Code", success: false });
+      }
+      await prisma.$queryRawUnsafe(
+        `delete from soa where reference_no = ?`,
+        req.body.reference_no
+      );
+      await prisma.$queryRawUnsafe(
+        `delete from soa_policy where reference_no = ?`,
+        req.body.reference_no
+      );
+    } else {
+      const count = await prisma.soa.count({
+        where: { reference_no: req.body.reference_no },
+      });
 
-  for (const itm of req.body.tableData) {
-    await prisma.soa_policy.create({
+      const exists = count > 0;
+      if (exists) {
+        res.send({
+          message: `This ref - (${req.body.reference_no}) is already exist!`,
+          success: false,
+        });
+      }
+      await saveUserLogs(req, req.body.reference_no, "add", "Soa");
+    }
+
+    await prisma.soa.create({
       data: {
         reference_no: req.body.reference_no,
-        policy_no: itm.PolicyNo,
+        idno: req.body.idno,
+        name: req.body.name,
+        address: req.body.address,
+        attachment: req.body.attachment,
       },
     });
-  }
 
-  try {
+    for (const itm of req.body.tableData) {
+      await prisma.soa_policy.create({
+        data: {
+          reference_no: req.body.reference_no,
+          policy_no: itm.PolicyNo,
+        },
+      });
+    }
+
     res.send({
-      message: "Successfully Policy Details",
+      message: isUpdate
+        ? `Successfully Update Soa Ref - (${req.body.reference_no})`
+        : `Successfully Save Soa Ref - (${req.body.reference_no})`,
+      success: true,
+    });
+  } catch (err: any) {
+    console.log(err.message);
+    res.send({
+      message: `We're experiencing a server issue. Please try again in a few minutes. If the issue continues, report it to IT with the details of what you were doing at the time.`,
+      success: false,
+    });
+  }
+});
+StatementOfAccount.post("/soa/delete", async (req, res) => {
+  try {
+    if (
+      !(await saveUserLogsCode(req, "delete", req.body.reference_no, "Soa"))
+    ) {
+      return res.send({ message: "Invalid User Code", success: false });
+    }
+
+    await prisma.$queryRawUnsafe(
+      `delete from soa where reference_no = ?`,
+      req.body.reference_no
+    );
+    await prisma.$queryRawUnsafe(
+      `delete from soa_policy where reference_no = ?`,
+      req.body.reference_no
+    );
+
+    res.send({
+      message: `Successfully Delete Soa Ref - (${req.body.reference_no})`,
       success: true,
     });
   } catch (err: any) {
