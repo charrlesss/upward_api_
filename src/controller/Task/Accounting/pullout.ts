@@ -132,16 +132,17 @@ PulloutRequest.post(`/pullout/reqeust/get-rcpn-no`, async (req, res) => {
   try {
     const data = await prisma.$queryRawUnsafe(
       `
-      SELECT DISTINCT
-            (RCPNo)
+     SELECT DISTINCT
+            (a.RCPNo)
         FROM
-            pullout_request
+            pullout_request a
+            left join pullout_request_details b on a.RCPNo = b.RCPNo
         WHERE
             Branch = 'HO' 
             AND Status = 'PENDING' 
-            and cancel = 0
-            and RCPNo like ?
-        ORDER BY RCPNo
+            and b.cancel = 0
+            and a.RCPNo like ?
+        ORDER BY a.RCPNo
       `,
       `%${req.body.search}%`
     );
