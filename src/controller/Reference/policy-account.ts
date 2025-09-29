@@ -172,7 +172,7 @@ function updateValues(obj: any) {
     } else if (valueMappings.hasOwnProperty(obj[key])) {
       obj[key] = valueMappings[obj[key]];
     }
-  }
+  }  
 }
 PolicyAccount.get("/export-policy-account", async (req, res) => {
   try {
